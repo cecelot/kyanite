@@ -1,11 +1,13 @@
 use std::{
+    fmt,
     fs::File,
     io::{self, Read},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TokenKind {
     Identifier,
+    Type,
     Literal,
     // Punctuation
     LeftParen,
@@ -15,12 +17,6 @@ pub enum TokenKind {
     Semicolon,
     Colon,
     Comma,
-    // Types
-    String,
-    Float,
-    Int,
-    Void,
-    Bool,
     // Math
     Plus,
     Minus,
@@ -45,11 +41,17 @@ pub enum TokenKind {
     Eof,
 }
 
-#[derive(Debug)]
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    lexeme: Option<String>,
-    span: Span,
+    pub lexeme: Option<String>,
+    pub span: Span,
 }
 
 impl Token {
@@ -59,9 +61,15 @@ impl Token {
 }
 
 #[derive(Debug, Copy, Clone)]
-struct Span {
+pub struct Span {
     line: usize,
     column: usize,
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "line: {}, column: {}", self.line, self.column)
+    }
 }
 
 pub fn errored(tokens: &Vec<Token>) -> bool {
@@ -192,11 +200,9 @@ impl TokenStream {
         match lexeme.as_str() {
             "let" => Token::new(TokenKind::Let, None, self.span),
             "defn" => Token::new(TokenKind::Defn, None, self.span),
-            "string" => Token::new(TokenKind::String, None, self.span),
-            "float" => Token::new(TokenKind::Float, None, self.span),
-            "int" => Token::new(TokenKind::Int, None, self.span),
-            "void" => Token::new(TokenKind::Void, None, self.span),
-            "bool" => Token::new(TokenKind::Bool, None, self.span),
+            "str" | "float" | "int" | "void" | "bool" => {
+                Token::new(TokenKind::Type, Some(lexeme), self.span)
+            }
             "return" => Token::new(TokenKind::Return, None, self.span),
             _ => Token::new(TokenKind::Identifier, Some(lexeme), self.span),
         }

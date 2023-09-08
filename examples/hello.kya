@@ -1,3 +1,1 @@
-println("hello world");
-
-*%$)*#$)(#*$)
+println("hello world", 5 * 7 + 12);
