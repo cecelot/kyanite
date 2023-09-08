@@ -1,0 +1,6 @@
+defn mulByTwo(lhs: int, rhs: int): int {
+    let foo = "hello";
+    return lhs * rhs;
+}
+
+println(mulByTwo(5., 7));
