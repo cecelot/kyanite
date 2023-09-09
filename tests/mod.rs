@@ -27,4 +27,13 @@ mod parse {
             "println(\"hello world\", ((5 * 7) + 12))"
         );
     }
+
+    #[test]
+    fn precedence() {
+        let program = Program::from("test.assert(5 * (7 + (10 - 3)) / 2 >= 30);".to_string());
+        assert_eq!(
+            format!("{}", program),
+            "(test . assert)((((5 * (7 + (10 - 3))) / 2) >= 30))"
+        )
+    }
 }

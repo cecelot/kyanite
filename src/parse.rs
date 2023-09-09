@@ -197,6 +197,12 @@ impl Parser {
 
     fn primary(&mut self) -> Result<Item, ParseError> {
         Ok(match self.peek()?.kind {
+            TokenKind::LeftParen => {
+                self.consume(TokenKind::LeftParen)?;
+                let expr = self.expression()?;
+                self.consume(TokenKind::RightParen)?;
+                expr
+            }
             TokenKind::Literal => {
                 let token = self.advance().unwrap();
                 let lexeme = token.lexeme.unwrap();
