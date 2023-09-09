@@ -102,6 +102,12 @@ pub struct Span {
     column: usize,
 }
 
+impl Span {
+    pub fn new(line: usize, column: usize) -> Self {
+        Self {line,column}
+    }
+}
+
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "line: {}, column: {}", self.line, self.column)
@@ -124,7 +130,7 @@ impl From<String> for TokenStream {
     fn from(source: String) -> Self {
         Self {
             source: source.chars().collect::<Vec<char>>(),
-            span: Span { line: 1, column: 0 },
+            span: Span::new(1, 0),
             start: 0,
             current: 0,
         }
@@ -137,7 +143,7 @@ impl TokenStream {
         file.read_to_string(&mut source)?;
         Ok(Self {
             source: source.chars().collect::<Vec<char>>(),
-            span: Span { line: 1, column: 0 },
+            span: Span::new(1, 0),
             start: 0,
             current: 0,
         })

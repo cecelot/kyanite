@@ -85,6 +85,7 @@ pub mod item {
         #[allow(dead_code)]
         Void,
         Ident(String),
+        Eof,
     }
 
     impl Item {
@@ -129,6 +130,7 @@ pub mod item {
                 Item::Ident(s) => write!(f, "{}", s),
                 Item::Stmt(stmt) => write!(f, "{}", stmt),
                 Item::Unary(op, right) => write!(f, "({} {})", op, right),
+                Item::Eof => write!(f, "EOF"),
             }
         }
     }
