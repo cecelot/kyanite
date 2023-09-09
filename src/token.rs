@@ -17,6 +17,7 @@ pub enum TokenKind {
     Semicolon,
     Colon,
     Comma,
+    Dot,
     // Math
     Plus,
     Minus,
@@ -43,7 +44,36 @@ pub enum TokenKind {
 
 impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            TokenKind::Bang => write!(f, "!"),
+            TokenKind::BangEqual => write!(f, "!="),
+            TokenKind::Equal => write!(f, "="),
+            TokenKind::EqualEqual => write!(f, "=="),
+            TokenKind::Greater => write!(f, ">"),
+            TokenKind::GreaterEqual => write!(f, ">="),
+            TokenKind::Less => write!(f, "<"),
+            TokenKind::LessEqual => write!(f, "<="),
+            TokenKind::LeftParen => write!(f, "("),
+            TokenKind::RightParen => write!(f, ")"),
+            TokenKind::LeftBrace => write!(f, "{{"),
+            TokenKind::RightBrace => write!(f, "}}"),
+            TokenKind::Semicolon => write!(f, ";"),
+            TokenKind::Colon => write!(f, ":"),
+            TokenKind::Comma => write!(f, ","),
+            TokenKind::Dot => write!(f, "."),
+            TokenKind::Plus => write!(f, "+"),
+            TokenKind::Minus => write!(f, "-"),
+            TokenKind::Star => write!(f, "*"),
+            TokenKind::Slash => write!(f, "/"),
+            TokenKind::Let => write!(f, "let"),
+            TokenKind::Defn => write!(f, "defn"),
+            TokenKind::Return => write!(f, "return"),
+            TokenKind::Identifier => write!(f, "identifier"),
+            TokenKind::Type => write!(f, "type"),
+            TokenKind::Literal => write!(f, "literal"),
+            TokenKind::Error => write!(f, "error"),
+            TokenKind::Eof => write!(f, "eof"),
+        }
     }
 }
 
@@ -57,6 +87,12 @@ pub struct Token {
 impl Token {
     fn new(kind: TokenKind, lexeme: Option<String>, span: Span) -> Self {
         Self { kind, lexeme, span }
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }
 
@@ -121,6 +157,7 @@ impl TokenStream {
                     ';' => Token::new(TokenKind::Semicolon, None, self.span),
                     ',' => Token::new(TokenKind::Comma, None, self.span),
                     ':' => Token::new(TokenKind::Colon, None, self.span),
+                    '.' => Token::new(TokenKind::Dot, None, self.span),
                     '{' => Token::new(TokenKind::LeftBrace, None, self.span),
                     '}' => Token::new(TokenKind::RightBrace, None, self.span),
                     // Types
@@ -163,7 +200,7 @@ impl TokenStream {
             peeked = self.peek();
         }
         self.consume(); // don't forget the closing quote
-        let lexeme = self.lexeme(self.current - 1);
+        let lexeme = self.lexeme(self.start - 1, self.current);
         Token {
             span: self.span,
             kind: TokenKind::Literal,
@@ -189,7 +226,7 @@ impl TokenStream {
             }
         }
 
-        let lexeme = self.lexeme(self.current);
+        let lexeme = self.lexeme(self.start, self.current);
         Token {
             span: self.span,
             kind: TokenKind::Literal,
@@ -204,7 +241,7 @@ impl TokenStream {
             self.consume();
             peeked = self.peek();
         }
-        self.keyword(self.lexeme(self.current))
+        self.keyword(self.lexeme(self.start, self.current))
     }
 
     fn keyword(&mut self, lexeme: String) -> Token {
@@ -219,8 +256,8 @@ impl TokenStream {
         }
     }
 
-    fn lexeme(&self, end: usize) -> String {
-        self.source[self.start..end].iter().collect::<String>()
+    fn lexeme(&self, start: usize, end: usize) -> String {
+        self.source[start..end].iter().collect::<String>()
     }
 
     fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {

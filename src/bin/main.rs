@@ -7,11 +7,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     match cli.command {
         kyanite::cli::Commands::Eval { source } => {
             let program = Program::from(source);
-            println!("{:#?}", program);
+            println!("{}", program);
         }
         kyanite::cli::Commands::Run { path } => {
             let program = Program::from(File::open(path)?);
-            println!("{:#?}", program);
+            println!("{}", program);
         }
     }
 
