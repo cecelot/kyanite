@@ -18,6 +18,18 @@ impl Ast {
     }
 }
 
+impl From<Vec<Token>> for Ast {
+    fn from(tokens: Vec<Token>) -> Self {
+        match Ast::new(tokens) {
+            Ok(ast) => ast,
+            Err(e) => {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Type {
     Str,
@@ -41,7 +53,17 @@ impl From<String> for Type {
 }
 
 #[derive(Debug)]
-pub struct Stmt {}
+pub struct Param {
+    name: String,
+    ty: Type,
+}
+
+impl Param {
+    pub fn new(name: String, ty: Type) -> Self {
+        Self { name, ty }
+    }
+}
+
 pub mod item {
     use crate::token::Token;
 
@@ -66,17 +88,5 @@ pub mod item {
         pub fn binary(left: Item, operator: Token, right: Item) -> Self {
             Self::Binary(Box::new(left), operator, Box::new(right))
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct Param {
-    name: String,
-    ty: Type,
-}
-
-impl Param {
-    pub fn new(name: String, ty: Type) -> Self {
-        Self { name, ty }
     }
 }

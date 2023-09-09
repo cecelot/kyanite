@@ -209,7 +209,7 @@ impl Parser {
     }
 
     fn eof(&self) -> bool {
-        self.current >= self.tokens.len() - 1
+        self.current >= self.tokens.len()
     }
 
     fn peek(&self) -> Token {

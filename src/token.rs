@@ -84,6 +84,17 @@ pub struct TokenStream {
     current: usize,
 }
 
+impl From<String> for TokenStream {
+    fn from(source: String) -> Self {
+        Self {
+            source: source.chars().collect::<Vec<char>>(),
+            span: Span { line: 1, column: 0 },
+            start: 0,
+            current: 0,
+        }
+    }
+}
+
 impl TokenStream {
     pub fn new(mut file: File) -> Result<Self, io::Error> {
         let mut source: String = "".into();
