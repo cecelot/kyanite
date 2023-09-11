@@ -223,7 +223,7 @@ impl TokenStream {
         }
 
         // if we have a decimal point, we have a float
-        if self.peek().unwrap() == '.' {
+        if !self.eof() && self.peek().unwrap() == '.' {
             self.consume(); // consume '.'
             peeked = self.peek();
             while !self.eof() && self.num(peeked.unwrap()) {
