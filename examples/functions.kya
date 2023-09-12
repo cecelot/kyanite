@@ -1,6 +1,6 @@
 defn mulByTwo(lhs: int, rhs: int): int {
-    let foo = "hello";
-    return lhs * rhs;
+    let foo: str = "hello";
+    return kyanite.fs.mul(lhs * 3 + 1, rhs / 2 + 7);
 }
 
 println(mulByTwo(5., 7));

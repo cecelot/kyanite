@@ -2,8 +2,7 @@ use crate::{
     parse::{ParseError, Parser},
     token::Token,
 };
-
-use self::item::Item;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Ast {
@@ -64,74 +63,88 @@ impl Param {
     }
 }
 
-pub mod item {
-    use std::fmt;
+#[derive(Debug)]
+pub enum Item {
+    Program(Vec<Item>),
+    Function(String, Vec<Param>, Type, Box<Item>),
+    Assign(Box<Item>, Box<Item>),
+    Decl(String, Type, Box<Item>),
+    Block(Vec<Item>),
+    Call(Box<Item>, Vec<Item>),
+    Return(Box<Item>),
+    Binary(Box<Item>, Token, Box<Item>),
+    Unary(Token, Box<Item>),
+    Str(String),
+    Int(i64),
+    Float(f64),
+    Bool(bool),
+    #[allow(dead_code)]
+    Void,
+    Ident(String),
+}
 
-    use crate::token::Token;
-
-    use super::{Param, Type};
-
-    #[derive(Debug)]
-    pub enum Item {
-        Function(String, Vec<Param>, Type, Vec<Item>),
-        Call(Box<Item>, Vec<Item>),
-        Stmt(Box<Item>),
-        Binary(Box<Item>, Token, Box<Item>),
-        Unary(Token, Box<Item>),
-        Str(String),
-        Int(i64),
-        Float(f64),
-        Bool(bool),
-        #[allow(dead_code)]
-        Void,
-        Ident(String),
-        Eof,
+impl Item {
+    pub fn binary(left: Item, operator: Token, right: Item) -> Self {
+        Self::Binary(Box::new(left), operator, Box::new(right))
     }
+}
 
-    impl Item {
-        pub fn binary(left: Item, operator: Token, right: Item) -> Self {
-            Self::Binary(Box::new(left), operator, Box::new(right))
-        }
-    }
-
-    impl fmt::Display for Item {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                Item::Function(name, params, ty, body) => {
-                    write!(f, "defn {}(", name)?;
-                    for (i, param) in params.iter().enumerate() {
-                        write!(f, "{}: {:?}", param.name, param.ty)?;
-                        if i < params.len() - 1 {
-                            write!(f, ", ")?;
-                        }
-                    }
-                    write!(f, "): {:?} {{\n", ty)?;
-                    for item in body {
-                        write!(f, "{}", item)?;
-                    }
-                    write!(f, "}}")
+impl fmt::Display for Item {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Item::Program(items) => {
+                for item in items {
+                    writeln!(f, "{}", item)?;
                 }
-                Item::Binary(left, op, right) => write!(f, "({} {} {})", left, op, right),
-                Item::Call(name, args) => {
-                    write!(f, "{}(", name)?;
-                    for (i, arg) in args.iter().enumerate() {
-                        write!(f, "{}", arg)?;
-                        if i < args.len() - 1 {
-                            write!(f, ", ")?;
-                        }
-                    }
-                    write!(f, ")")
-                }
-                Item::Float(n) => write!(f, "{}", n),
-                Item::Int(i) => write!(f, "{}", i),
-                Item::Str(s) => write!(f, "{}", s),
-                Item::Bool(b) => write!(f, "{}", b),
-                Item::Void => write!(f, "void"),
-                Item::Ident(s) => write!(f, "{}", s),
-                Item::Stmt(stmt) => write!(f, "{}", stmt),
-                Item::Unary(op, right) => write!(f, "({} {})", op, right),
-                Item::Eof => write!(f, "EOF"),
+                Ok(())
             }
+            Item::Function(name, params, ty, body) => {
+                write!(f, "defn {}(", name)?;
+                for (i, param) in params.iter().enumerate() {
+                    write!(f, "{}: {:?}", param.name, param.ty)?;
+                    if i < params.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                writeln!(f, "): {:?} {{", ty)?;
+                match body.as_ref() {
+                    Item::Block(items) => {
+                        for item in items {
+                            writeln!(f, "\t{}", item)?;
+                        }
+                    }
+                    _ => unimplemented!(),
+                }
+                write!(f, "}}")
+            }
+            Item::Block(items) => {
+                writeln!(f, "{{")?;
+                for item in items {
+                    writeln!(f, "\t{}", item)?;
+                }
+                write!(f, "}}")
+            }
+            Item::Return(expr) => write!(f, "return {}", expr),
+            Item::Decl(ident, ty, value) => write!(f, "let {}: {:?} = {};", ident, ty, value),
+            Item::Assign(target, expr) => write!(f, "{} = {}", target, expr),
+            Item::Binary(left, op, right) => write!(f, "({} {} {})", left, op, right),
+            Item::Call(name, args) => {
+                write!(f, "{}(", name)?;
+                for (i, arg) in args.iter().enumerate() {
+                    write!(f, "{}", arg)?;
+                    if i < args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            Item::Float(n) => write!(f, "{}", n),
+            Item::Int(i) => write!(f, "{}", i),
+            Item::Str(s) => write!(f, "{}", s),
+            Item::Bool(b) => write!(f, "{}", b),
+            Item::Void => write!(f, "void"),
+            Item::Ident(s) => write!(f, "{}", s),
+            Item::Unary(op, right) => write!(f, "({} {})", op, right),
         }
     }
 }

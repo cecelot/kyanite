@@ -1,5 +1,5 @@
 use crate::{
-    ast::{item::Item, Param, Type},
+    ast::{Item, Param, Type},
     token::{Span, Token, TokenKind},
 };
 
@@ -12,7 +12,7 @@ pub enum ParseError {
     Expected(TokenKind, Span),
 
     #[error("Unhandled token {0} at {1}")]
-    Unexpected(TokenKind, Span),
+    Unhandled(TokenKind, Span),
 }
 
 pub struct Parser {
@@ -26,14 +26,15 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Item, ParseError> {
-        let token = self.peek();
-        match token {
-            Ok(token) => match token.kind {
-                TokenKind::Defn => self.function(),
-                _ => self.statement(),
-            }
-            Err(_) => Ok(Item::Eof)
-        }   
+        let mut items: Vec<Item> = vec![];
+        while let Ok(token) = self.peek() {
+            items.push(match token.kind {
+                TokenKind::Defn => self.function()?,
+                TokenKind::Eof => break,
+                _ => self.statement()?,
+            });
+        }
+        Ok(Item::Program(items))
     }
 
     fn function(&mut self) -> Result<Item, ParseError> {
@@ -53,7 +54,12 @@ impl Parser {
         self.consume(TokenKind::LeftBrace)?;
         let body = self.block()?;
         self.consume(TokenKind::RightBrace)?;
-        Ok(Item::Function(name.lexeme.unwrap(), params, ty, body))
+        Ok(Item::Function(
+            name.lexeme.unwrap(),
+            params,
+            ty,
+            Box::new(body),
+        ))
     }
 
     fn params(&mut self) -> Result<Vec<Param>, ParseError> {
@@ -80,18 +86,51 @@ impl Parser {
         Ok(params)
     }
 
-    fn block(&mut self) -> Result<Vec<Item>, ParseError> {
+    fn block(&mut self) -> Result<Item, ParseError> {
         let mut stmts: Vec<Item> = vec![];
         while self.peek()?.kind != TokenKind::RightBrace {
             stmts.push(self.statement()?);
         }
-        Ok(stmts)
+        Ok(Item::Block(stmts))
+    }
+
+    fn declaration(&mut self) -> Result<Item, ParseError> {
+        self.consume(TokenKind::Let)?;
+        let name = self.consume(TokenKind::Identifier)?;
+        self.consume(TokenKind::Colon)?;
+        let ty = self.consume(TokenKind::Type)?;
+        self.consume(TokenKind::Equal)?;
+        let value = self.expression()?;
+        self.consume(TokenKind::Semicolon)?;
+        Ok(Item::Decl(
+            name.lexeme.unwrap(),
+            Type::from(ty.lexeme.unwrap()),
+            Box::new(value),
+        ))
     }
 
     fn statement(&mut self) -> Result<Item, ParseError> {
-        let expr = self.expression()?;
+        match self.peek()?.kind {
+            TokenKind::Let => self.declaration(),
+            TokenKind::Return => {
+                self.consume(TokenKind::Return)?;
+                let value = self.expression()?;
+                self.consume(TokenKind::Semicolon)?;
+                Ok(Item::Return(Box::new(value)))
+            }
+            _ => self.assignment(),
+        }
+    }
+
+    fn assignment(&mut self) -> Result<Item, ParseError> {
+        let mut item = self.expression()?;
+        while self.peek()?.kind == TokenKind::Equal {
+            self.consume(TokenKind::Equal)?;
+            let right = self.expression()?;
+            item = Item::Assign(Box::new(item), Box::new(right));
+        }
         self.consume(TokenKind::Semicolon)?;
-        Ok(Item::Stmt(Box::new(expr)))
+        Ok(item)
     }
 
     fn expression(&mut self) -> Result<Item, ParseError> {
@@ -159,38 +198,36 @@ impl Parser {
                 let right = self.unary()?;
                 Item::Unary(operator, Box::new(right))
             }
-            _ => {
-                let item = self.primary()?;
-                match self.peek()?.kind {
-                    TokenKind::LeftParen => self.call(item)?,
-                    TokenKind::Dot => self.access(item)?,
-                    _ => item,
-                }
-            }
+            _ => self.access()?,
         })
     }
 
-    fn call(&mut self, item: Item) -> Result<Item, ParseError> {
-        self.consume(TokenKind::LeftParen)?;
-        let mut args: Vec<Item> = vec![];
-        while self.peek()?.kind != TokenKind::RightParen {
-            args.push(self.expression()?);
-            if self.peek()?.kind == TokenKind::Comma {
-                self.consume(TokenKind::Comma)?;
-            }
-        }
-        self.consume(TokenKind::RightParen)?;
-        Ok(Item::Call(Box::new(item), args))
-    }
+    fn access(&mut self) -> Result<Item, ParseError> {
+        let mut item = self.call()?;
 
-    fn access(&mut self, mut item: Item) -> Result<Item, ParseError> {
         while self.peek()?.kind == TokenKind::Dot {
             let token = self.consume(TokenKind::Dot)?;
-            let right = self.primary()?;
+            let right = self.call()?;
             item = Item::binary(item, token, right);
-            if self.peek()?.kind == TokenKind::LeftParen {
-                item = self.call(item)?;
+        }
+
+        Ok(item)
+    }
+
+    fn call(&mut self) -> Result<Item, ParseError> {
+        let mut item = self.primary()?;
+        if self.peek()?.kind == TokenKind::LeftParen {
+            self.consume(TokenKind::LeftParen)?;
+            let mut args: Vec<Item> = vec![];
+            if self.peek()?.kind != TokenKind::RightParen {
+                args.push(self.expression()?);
+                while self.peek()?.kind == TokenKind::Comma {
+                    self.consume(TokenKind::Comma)?;
+                    args.push(self.expression()?);
+                }
             }
+            self.consume(TokenKind::RightParen)?;
+            item = Item::Call(Box::new(item), args);
         }
         Ok(item)
     }
@@ -210,7 +247,7 @@ impl Parser {
                     "true" | "false" => Item::Bool(lexeme == "true"),
                     _ if lexeme.starts_with('"') => Item::Str(lexeme),
                     _ if lexeme.contains('.') => Item::Float(lexeme.parse().unwrap()),
-                    _ if matches!(lexeme.chars().next().unwrap(), '0'..='9') => {
+                    _ if lexeme.chars().next().unwrap().is_ascii_digit() => {
                         Item::Int(lexeme.parse().unwrap())
                     }
                     e => unimplemented!("{:?}", e),
@@ -221,7 +258,7 @@ impl Parser {
                 let lexeme = token.lexeme.unwrap();
                 Item::Ident(lexeme)
             }
-            _ => Err(ParseError::Unexpected(self.peek()?.kind, self.peek()?.span))?,
+            _ => Err(ParseError::Unhandled(self.peek()?.kind, self.peek()?.span))?,
         })
     }
 

@@ -104,7 +104,7 @@ pub struct Span {
 
 impl Span {
     pub fn new(line: usize, column: usize) -> Self {
-        Self {line,column}
+        Self { line, column }
     }
 }
 
@@ -114,7 +114,7 @@ impl fmt::Display for Span {
     }
 }
 
-pub fn errored(tokens: &Vec<Token>) -> bool {
+pub fn errored(tokens: &[Token]) -> bool {
     tokens.iter().any(|t| t.kind == TokenKind::Error)
 }
 
@@ -222,9 +222,8 @@ impl TokenStream {
             peeked = self.peek();
         }
 
-        // if we have a decimal point, we have a float
         if !self.eof() && self.peek().unwrap() == '.' {
-            self.consume(); // consume '.'
+            self.consume();
             peeked = self.peek();
             while !self.eof() && self.num(peeked.unwrap()) {
                 self.consume();
@@ -280,7 +279,7 @@ impl TokenStream {
     }
 
     fn num(&self, c: char) -> bool {
-        matches!(c, '0'..='9')
+        c.is_ascii_digit()
     }
 
     fn whitespace(&self, c: char) -> bool {
