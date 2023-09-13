@@ -29,7 +29,7 @@ impl From<Vec<Token>> for Ast {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Str,
     Int,
@@ -51,10 +51,10 @@ impl From<String> for Type {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
-    name: String,
-    ty: Type,
+    pub name: String,
+    pub ty: Type,
 }
 
 impl Param {
@@ -68,10 +68,10 @@ pub enum Item {
     Program(Vec<Item>),
     Function(String, Vec<Param>, Type, Box<Item>),
     Assign(Box<Item>, Box<Item>),
-    Decl(String, Type, Box<Item>),
+    VarDecl(String, Type, Box<Item>, Token),
     Block(Vec<Item>),
-    Call(Box<Item>, Vec<Item>),
-    Return(Box<Item>),
+    Call(Box<Item>, Vec<Item>, Token),
+    Return(Box<Item>, Token),
     Binary(Box<Item>, Token, Box<Item>),
     Unary(Token, Box<Item>),
     Str(String),
@@ -80,7 +80,7 @@ pub enum Item {
     Bool(bool),
     #[allow(dead_code)]
     Void,
-    Ident(String),
+    Ident(String, Token),
 }
 
 impl Item {
@@ -124,11 +124,11 @@ impl fmt::Display for Item {
                 }
                 write!(f, "}}")
             }
-            Item::Return(expr) => write!(f, "return {}", expr),
-            Item::Decl(ident, ty, value) => write!(f, "let {}: {:?} = {};", ident, ty, value),
+            Item::Return(expr, _) => write!(f, "return {}", expr),
+            Item::VarDecl(ident, ty, value, _) => write!(f, "let {}: {:?} = {};", ident, ty, value),
             Item::Assign(target, expr) => write!(f, "{} = {}", target, expr),
             Item::Binary(left, op, right) => write!(f, "({} {} {})", left, op, right),
-            Item::Call(name, args) => {
+            Item::Call(name, args, _) => {
                 write!(f, "{}(", name)?;
                 for (i, arg) in args.iter().enumerate() {
                     write!(f, "{}", arg)?;
@@ -143,7 +143,7 @@ impl fmt::Display for Item {
             Item::Str(s) => write!(f, "{}", s),
             Item::Bool(b) => write!(f, "{}", b),
             Item::Void => write!(f, "void"),
-            Item::Ident(s) => write!(f, "{}", s),
+            Item::Ident(s, _) => write!(f, "{}", s),
             Item::Unary(op, right) => write!(f, "({} {})", op, right),
         }
     }

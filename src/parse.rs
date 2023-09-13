@@ -1,5 +1,6 @@
 use crate::{
     ast::{Item, Param, Type},
+    symbols::{SymbolTable, TypeCheckPass},
     token::{Span, Token, TokenKind},
 };
 
@@ -34,7 +35,12 @@ impl Parser {
                 _ => self.statement()?,
             });
         }
-        Ok(Item::Program(items))
+        let root = Item::Program(items);
+        let symbols = SymbolTable::from(&root);
+        // println!("{:#?}", symbols);
+        let mut pass = TypeCheckPass::new(symbols, &root);
+        pass.run();
+        Ok(root)
     }
 
     fn function(&mut self) -> Result<Item, ParseError> {
@@ -102,10 +108,11 @@ impl Parser {
         self.consume(TokenKind::Equal)?;
         let value = self.expression()?;
         self.consume(TokenKind::Semicolon)?;
-        Ok(Item::Decl(
+        Ok(Item::VarDecl(
             name.lexeme.unwrap(),
-            Type::from(ty.lexeme.unwrap()),
+            Type::from(ty.clone().lexeme.unwrap()),
             Box::new(value),
+            ty,
         ))
     }
 
@@ -113,10 +120,10 @@ impl Parser {
         match self.peek()?.kind {
             TokenKind::Let => self.declaration(),
             TokenKind::Return => {
-                self.consume(TokenKind::Return)?;
+                let token = self.consume(TokenKind::Return)?;
                 let value = self.expression()?;
                 self.consume(TokenKind::Semicolon)?;
-                Ok(Item::Return(Box::new(value)))
+                Ok(Item::Return(Box::new(value), token))
             }
             _ => self.assignment(),
         }
@@ -217,7 +224,7 @@ impl Parser {
     fn call(&mut self) -> Result<Item, ParseError> {
         let mut item = self.primary()?;
         if self.peek()?.kind == TokenKind::LeftParen {
-            self.consume(TokenKind::LeftParen)?;
+            let token = self.consume(TokenKind::LeftParen)?;
             let mut args: Vec<Item> = vec![];
             if self.peek()?.kind != TokenKind::RightParen {
                 args.push(self.expression()?);
@@ -227,7 +234,7 @@ impl Parser {
                 }
             }
             self.consume(TokenKind::RightParen)?;
-            item = Item::Call(Box::new(item), args);
+            item = Item::Call(Box::new(item), args, token);
         }
         Ok(item)
     }
@@ -255,8 +262,8 @@ impl Parser {
             }
             TokenKind::Identifier => {
                 let token = self.advance().unwrap();
-                let lexeme = token.lexeme.unwrap();
-                Item::Ident(lexeme)
+                let lexeme = token.lexeme.clone().unwrap();
+                Item::Ident(lexeme, token)
             }
             _ => Err(ParseError::Unhandled(self.peek()?.kind, self.peek()?.span))?,
         })

@@ -5,6 +5,7 @@ use token::{errored, Token};
 mod ast;
 pub mod cli;
 mod parse;
+mod symbols;
 mod token;
 
 #[derive(Debug)]

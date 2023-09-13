@@ -110,7 +110,7 @@ impl Span {
 
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "line: {}, column: {}", self.line, self.column)
+        write!(f, "Ln {}, Col {}", self.line, self.column)
     }
 }
 
@@ -256,6 +256,8 @@ impl TokenStream {
             "str" | "float" | "int" | "void" | "bool" => {
                 Token::new(TokenKind::Type, Some(lexeme), self.span)
             }
+            "true" => Token::new(TokenKind::Literal, Some(lexeme), self.span),
+            "false" => Token::new(TokenKind::Literal, Some(lexeme), self.span),
             "return" => Token::new(TokenKind::Return, None, self.span),
             _ => Token::new(TokenKind::Identifier, Some(lexeme), self.span),
         }
