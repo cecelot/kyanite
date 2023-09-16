@@ -5,7 +5,7 @@ use token::{errored, Token};
 mod ast;
 pub mod cli;
 mod parse;
-mod symbols;
+mod pass;
 mod token;
 
 #[derive(Debug)]
@@ -15,7 +15,7 @@ pub struct Program {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ast.root)
+        write!(f, "{}", self.ast.file)
     }
 }
 

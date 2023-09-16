@@ -34,6 +34,7 @@ pub enum TokenKind {
     LessEqual,
     // Keywords
     Let,
+    Const,
     Defn,
     Return,
     // Error
@@ -66,6 +67,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Star => write!(f, "*"),
             TokenKind::Slash => write!(f, "/"),
             TokenKind::Let => write!(f, "let"),
+            TokenKind::Const => write!(f, "const"),
             TokenKind::Defn => write!(f, "defn"),
             TokenKind::Return => write!(f, "return"),
             TokenKind::Identifier => write!(f, "identifier"),
@@ -77,7 +79,7 @@ impl fmt::Display for TokenKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub kind: TokenKind,
     pub lexeme: Option<String>,
@@ -90,13 +92,19 @@ impl Token {
     }
 }
 
+impl From<&Token> for String {
+    fn from(token: &Token) -> Self {
+        token.lexeme.clone().unwrap_or(format!("{}", token.kind))
+    }
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind)
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Span {
     line: usize,
     column: usize,
@@ -252,6 +260,7 @@ impl TokenStream {
     fn keyword(&mut self, lexeme: String) -> Token {
         match lexeme.as_str() {
             "let" => Token::new(TokenKind::Let, None, self.span),
+            "const" => Token::new(TokenKind::Const, None, self.span),
             "defn" => Token::new(TokenKind::Defn, None, self.span),
             "str" | "float" | "int" | "void" | "bool" => {
                 Token::new(TokenKind::Type, Some(lexeme), self.span)
