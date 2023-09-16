@@ -9,7 +9,7 @@ mod parse {
         let program = Program::from(File::open("examples/access.kya").unwrap());
         assert_eq!(
             format!("{}", program),
-            "println(((kyanite . fs) . read(\"examples/access.kya\", ((kyanite . fs) . O_READ))))\n"
+            "defn main(): Void {\n\tprintln(((kyanite . fs) . read(\"examples/access.kya\", ((kyanite . fs) . O_READ))))\n}\n"
         );
     }
 
@@ -24,16 +24,18 @@ mod parse {
         let program = Program::from(File::open("examples/hello.kya").unwrap());
         assert_eq!(
             format!("{}", program),
-            "println(\"hello world\", ((5 * 7) + 12))\n"
+            "defn main(): Void {\n\tprintln(\"hello world\", ((5 * 7) + 12))\n}\n"
         );
     }
 
     #[test]
     fn precedence() {
-        let program = Program::from("test.assert(5 * (7 + (10 - 3)) / 2 >= 30);".to_string());
+        let program = Program::from(
+            "defn main(): void {\n\ttest.assert(5 * (7 + (10 - 3)) / 2 >= 30);\n}".to_string(),
+        );
         assert_eq!(
             format!("{}", program),
-            "(test . assert((((5 * (7 + (10 - 3))) / 2) >= 30)))\n"
+            "defn main(): Void {\n\t(test . assert((((5 * (7 + (10 - 3))) / 2) >= 30)))\n}\n"
         )
     }
 }

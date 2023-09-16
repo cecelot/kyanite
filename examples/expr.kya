@@ -1,1 +1,3 @@
-println(5. * 100 + 15 - 7 / 8 >= 7);
+defn main(): void {
+    println(5. * 100 + 15 - 7 / 8 >= 7);
+}

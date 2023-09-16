@@ -1,1 +1,3 @@
-println(kyanite.fs.read("examples/access.kya", kyanite.fs.O_READ));
+defn main(): void {
+    println(kyanite.fs.read("examples/access.kya", kyanite.fs.O_READ));
+}
