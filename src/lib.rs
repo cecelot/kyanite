@@ -3,14 +3,17 @@ use std::{fmt, fs::File};
 use token::{errored, Token};
 
 mod ast;
+mod builtins;
 pub mod cli;
 mod parse;
 mod pass;
 mod token;
 
+pub use pass::{Ir, SymbolTable, TypeCheckPass};
+
 #[derive(Debug)]
 pub struct Program {
-    ast: ast::Ast,
+    pub ast: ast::Ast,
 }
 
 impl fmt::Display for Program {

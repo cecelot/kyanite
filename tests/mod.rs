@@ -24,7 +24,7 @@ mod parse {
         let program = Program::from(File::open("examples/hello.kya").unwrap());
         assert_eq!(
             format!("{}", program),
-            "defn main(): Void {\n\tprintln(\"hello world\", ((5 * 7) + 12))\n}\n"
+            "defn main(): Void {\n\tprintln(\"hello world\")\n}\n"
         );
     }
 

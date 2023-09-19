@@ -1,0 +1,15 @@
+defn foo(bar: int): int {
+   return bar;
+}
+
+defn bar(): float {
+   return 42.;
+}
+
+defn main(): int {
+   println("Hello world!");
+   println(foo(72));
+   println(bar());
+
+   return 0;
+}

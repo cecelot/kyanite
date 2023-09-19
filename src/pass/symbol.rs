@@ -47,6 +47,12 @@ impl SymbolTable {
     }
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<Vec<(String, Symbol)>> for SymbolTable {
     fn from(vars: Vec<(String, Symbol)>) -> Self {
         Self(vars.into_iter().collect())

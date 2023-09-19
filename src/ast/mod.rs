@@ -1,5 +1,8 @@
+use inkwell::{types::BasicTypeEnum, AddressSpace};
+
 use crate::{
     parse::{ParseError, Parser},
+    pass::Ir,
     token::Token,
 };
 use std::fmt;
@@ -51,7 +54,7 @@ impl fmt::Display for File {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Node {
     FuncDecl(node::FuncDecl),
     Assign(node::Assign),
@@ -141,6 +144,22 @@ pub enum Type {
     Float,
     Bool,
     Void,
+}
+
+impl Type {
+    pub fn llvm<'a, 'ctx>(&'a self, ir: &Ir<'a, 'ctx>) -> BasicTypeEnum<'ctx> {
+        match self {
+            Type::Int => ir.context.i64_type().into(),
+            Type::Float => ir.context.f64_type().into(),
+            Type::Str => ir
+                .context
+                .i8_type()
+                .ptr_type(AddressSpace::default())
+                .into(),
+            Type::Bool => ir.context.bool_type().into(),
+            Type::Void => unimplemented!(),
+        }
+    }
 }
 
 impl From<&Token> for Type {

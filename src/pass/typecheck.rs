@@ -186,7 +186,9 @@ impl<'a> TypeCheckPass<'a> {
                 return Type::Void;
             }
             _ => {
-                self.error(&call.parens.0, format!("{} is not defined", name));
+                if name != "println" {
+                    self.error(&call.parens.0, format!("{} is not defined", name));
+                }
                 return Type::Void;
             }
         };

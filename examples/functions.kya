@@ -1,21 +1,12 @@
-const FOO: int = 5;
+const FOO: float = 5.;
 
-defn mulByTwo(lhs: float, rhs: int): int {
-    let lhs: str = "hello";
+defn mulByTwo(lhs: float, rhs: int): float {
     let rhs: float = 8.;
     return lhs * rhs + FOO;
 }
 
 defn main(): void {
     let a: float = 5.;
-    let res: int = mulByTwo(a, b);
-
     let b: int = 7;
-
-    let res: int = mulByTwo(a, b);
-    let res: int = mulByTwo(5., 7, 8, 12);
-    let res: void = mulByTwo("meow");
-
-    res();
-    FOO();
+    mulByTwo(a, b);
 }

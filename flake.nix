@@ -23,9 +23,16 @@
       };
     in {
       devShells.default = pkgs.mkShell {
-        buildInputs = [
+        buildInputs = with pkgs; [
           rust-stable
+          llvmPackages_15.libllvm
+          # LLVM dependencies
+          ncurses # -ltinfo
+          libffi # -lffi
+          libxml2 # -lxml2
         ];
+
+        LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
       };
     });
 }

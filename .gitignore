@@ -1,3 +1,8 @@
 /target
 .direnv
 examples/complete.kya
+
+# intermediate
+main
+*.o
+*.ll

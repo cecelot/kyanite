@@ -4,7 +4,7 @@ use crate::{ast::Type, token::Token};
 
 use super::{Node, Param};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
@@ -45,7 +45,7 @@ impl fmt::Display for FuncDecl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assign {
     pub target: Box<Node>,
     pub expr: Box<Node>,
@@ -63,7 +63,7 @@ impl fmt::Display for Assign {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VarDecl {
     pub name: Token,
     pub ty: Token,
@@ -88,7 +88,7 @@ impl fmt::Display for VarDecl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstantDecl {
     pub name: Token,
     pub ty: Token,
@@ -113,7 +113,7 @@ impl fmt::Display for ConstantDecl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Call {
     pub left: Box<Node>,
     pub args: Vec<Node>,
@@ -150,7 +150,7 @@ impl fmt::Display for Call {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Return {
     pub expr: Box<Node>,
     pub keyword: Token,
@@ -168,7 +168,7 @@ impl fmt::Display for Return {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Unary {
     pub op: Token,
     pub right: Box<Node>,
@@ -186,7 +186,7 @@ impl fmt::Display for Unary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Binary {
     pub left: Box<Node>,
     pub op: Token,
@@ -205,7 +205,7 @@ impl fmt::Display for Binary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ident {
     pub name: Token,
 }

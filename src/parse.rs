@@ -1,6 +1,5 @@
 use crate::{
     ast::{File, Node, Param},
-    pass::{SymbolTable, TypeCheckPass},
     token::{Span, Token, TokenKind},
 };
 
@@ -39,17 +38,11 @@ impl Parser {
                 }
             });
         }
-        let program = File::new(nodes);
-        match program.nodes.first() {
-            Some(_) => {
-                let symbols = SymbolTable::from(&program);
-                let mut pass = TypeCheckPass::new(symbols, &program);
-                pass.run();
-            }
-            _ => return Ok(File::new(vec![])),
+        let file = File::new(nodes);
+        match file.nodes.first() {
+            Some(_) => Ok(file),
+            _ => Ok(File::new(vec![])),
         }
-
-        Ok(program)
     }
 
     fn function(&mut self) -> Result<Node, ParseError> {
