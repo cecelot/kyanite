@@ -19,13 +19,23 @@ fn main() -> Result<(), Box<dyn Error>> {
             pass.run();
             Ir::build(&file).unwrap();
 
+            let build = if cfg!(debug_assertions) {
+                "target/debug"
+            } else {
+                "target/release"
+            };
+
             info!(
                 "llc -filetype=obj -o main.o out.ll ->\n{}",
                 run("llc", &["-filetype=obj", "-o", "main.o", "out.ll"])
             );
             info!(
-                "clang main.o -o main ->\n{}",
-                run("clang", &["main.o", "-o", "main"])
+                "clang main.o -o main -L{} -lkyanite_builtins ->\n{}",
+                build,
+                run(
+                    "clang",
+                    &["main.o", "-o", "main", "-L", build, "-lkyanite_builtins"]
+                )
             );
             info!("./main ->\n{}", run("./main", &[]));
         }

@@ -1,7 +1,7 @@
-use crate::Ir;
+use self::{math::Math, println::Println};
+use crate::codegen::Ir;
 
-use self::println::Println;
-
+mod math;
 mod println;
 
 pub trait Builtin {
@@ -17,5 +17,6 @@ impl Builtins {
 
     pub fn build(&mut self, ir: &mut Ir<'_, '_>) {
         Println {}.build(ir);
+        Math {}.build(ir);
     }
 }

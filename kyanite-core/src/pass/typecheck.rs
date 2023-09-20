@@ -187,7 +187,7 @@ impl<'a> TypeCheckPass<'a> {
             }
             _ => {
                 // TODO: more robust type checking for builtins
-                if name != "println" {
+                if name != "println" && name != "max" && name != "min" {
                     self.error(&call.parens.0, format!("{} is not defined", name));
                 }
                 return Type::Void;

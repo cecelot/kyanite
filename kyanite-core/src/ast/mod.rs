@@ -1,8 +1,8 @@
 use inkwell::{types::BasicTypeEnum, AddressSpace};
 
 use crate::{
+    codegen::Ir,
     parse::{ParseError, Parser},
-    pass::Ir,
     token::Token,
 };
 use std::fmt;

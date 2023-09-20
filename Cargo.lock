@@ -233,7 +233,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "kyanite"
+name = "kyanite_builtins"
+version = "0.1.0"
+
+[[package]]
+name = "kyanite_core"
 version = "0.1.0"
 dependencies = [
  "clap",

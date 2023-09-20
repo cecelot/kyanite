@@ -12,9 +12,11 @@ use inkwell::{
 
 use crate::{
     ast::{node, File, Node, Type},
-    builtins::Builtins,
     token::{Span, Token, TokenKind},
 };
+use builtins::Builtins;
+
+mod builtins;
 
 #[derive(thiserror::Error, Debug)]
 pub enum IrError {
@@ -161,17 +163,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Node::Ident(ref ident) => String::from(&ident.name),
             _ => todo!(),
         };
-        let name = if name == "println" {
-            match args.first().unwrap() {
-                BasicMetadataValueEnum::PointerValue(_) => "println_str",
-                BasicMetadataValueEnum::IntValue(_) => "println_int",
-                BasicMetadataValueEnum::FloatValue(_) => "println_float",
-                node => unimplemented!("println is not implemented for {}", node),
-            }
-        } else {
-            &name
-        };
-        match self.get_function(name) {
+        match self.get_function(&name, &args) {
             Some(func) => {
                 match self
                     .builder
@@ -209,8 +201,30 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     #[inline]
-    fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
-        self.module.get_function(name)
+    fn get_function(
+        &self,
+        name: &str,
+        args: &[BasicMetadataValueEnum<'ctx>],
+    ) -> Option<FunctionValue<'ctx>> {
+        match name {
+            "println" => match args.first().unwrap() {
+                BasicMetadataValueEnum::PointerValue(_) => self.module.get_function("println_str"),
+                BasicMetadataValueEnum::IntValue(_) => self.module.get_function("println_int"),
+                BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("println_float"),
+                node => unimplemented!("println is not implemented for {}", node),
+            },
+            "max" => match args.first().unwrap() {
+                BasicMetadataValueEnum::IntValue(_) => self.module.get_function("max_int"),
+                BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("max_float"),
+                node => unimplemented!("max is not implemented for {}", node),
+            },
+            "min" => match args.first().unwrap() {
+                BasicMetadataValueEnum::IntValue(_) => self.module.get_function("min_int"),
+                BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("min_float"),
+                node => unimplemented!("min is not implemented for {}", node),
+            },
+            _ => self.module.get_function(name),
+        }
     }
 
     fn alloca(&self, name: &str, arg: &BasicValueEnum) -> PointerValue<'ctx> {

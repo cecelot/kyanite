@@ -62,6 +62,7 @@ impl Parser {
         self.consume(TokenKind::LeftBrace)?;
         let body = self.block()?;
         self.consume(TokenKind::RightBrace)?;
+
         Ok(Node::func(name, params, ty, body))
     }
 

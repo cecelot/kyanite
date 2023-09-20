@@ -3,13 +3,14 @@ use std::{fmt, fs::File};
 use token::{errored, Token};
 
 mod ast;
-mod builtins;
 pub mod cli;
+mod codegen;
 mod parse;
 mod pass;
 mod token;
 
-pub use pass::{Ir, SymbolTable, TypeCheckPass};
+pub use codegen::Ir;
+pub use pass::{SymbolTable, TypeCheckPass};
 
 #[derive(Debug)]
 pub struct Program {

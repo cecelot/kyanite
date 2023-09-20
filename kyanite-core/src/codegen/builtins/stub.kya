@@ -1,0 +1,9 @@
+// Hooks into functions defined in `kyanite-builtins`
+defn println(s: str): void
+defn println(i: int): void
+defn println(f: float): void
+
+defn max(a: int, b: int): int
+defn max(a: float, b: float): float
+defn min(a: int, b: int): int
+defn min(a: float, b: float): float

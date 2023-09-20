@@ -1,8 +1,8 @@
 /target
 .direnv
-examples/complete.kya
+kyanite-core/examples/complete.kya
 
 # intermediate
 main
 *.o
-*.ll
+out.ll
