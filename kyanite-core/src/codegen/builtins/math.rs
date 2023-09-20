@@ -10,37 +10,35 @@ pub struct Math {}
 
 impl Builtin for Math {
     fn build(&self, ir: &mut Ir<'_, '_>) {
-        pair(
+        signatures(
             ir,
-            &[ir.context.i64_type().into(), ir.context.i64_type().into()],
+            ir.context.i64_type().into(),
             ir.context.i64_type(),
-            "max_int",
+            "int",
         );
-        pair(
+        signatures(
             ir,
-            &[ir.context.i64_type().into(), ir.context.i64_type().into()],
-            ir.context.i64_type(),
-            "min_int",
-        );
-        pair(
-            ir,
-            &[ir.context.f64_type().into(), ir.context.f64_type().into()],
+            ir.context.f64_type().into(),
             ir.context.f64_type(),
-            "max_float",
-        );
-        pair(
-            ir,
-            &[ir.context.f64_type().into(), ir.context.f64_type().into()],
-            ir.context.f64_type(),
-            "min_float",
+            "float",
         );
     }
+}
+
+fn signatures<'ctx>(
+    ir: &mut Ir<'_, 'ctx>,
+    ty: BasicMetadataTypeEnum<'ctx>,
+    ret: impl BasicType<'ctx>,
+    s: &str,
+) {
+    pair(ir, &[ty, ty], &ret, format!("max_{}", s).as_str());
+    pair(ir, &[ty, ty], &ret, format!("min_{}", s).as_str());
 }
 
 fn pair<'ctx>(
     ir: &mut Ir<'_, 'ctx>,
     types: &[BasicMetadataTypeEnum<'ctx>],
-    ret: impl BasicType<'ctx>,
+    ret: &impl BasicType<'ctx>,
     name: &str,
 ) {
     let fn_ty = ret.fn_type(types, false);
