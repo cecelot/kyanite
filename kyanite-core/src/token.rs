@@ -4,6 +4,8 @@ use std::{
     io::{self, Read},
 };
 
+use log::error;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TokenKind {
     Identifier,
@@ -122,8 +124,8 @@ impl fmt::Display for Span {
     }
 }
 
-pub fn errored(tokens: &[Token]) -> bool {
-    tokens.iter().any(|t| t.kind == TokenKind::Error)
+pub fn errors(tokens: &[Token]) -> usize {
+    tokens.iter().filter(|t| t.kind == TokenKind::Error).count()
 }
 
 #[derive(Debug)]
@@ -188,12 +190,7 @@ impl TokenStream {
                     '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
                     '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
                     _ => {
-                        eprintln!(
-                            "{}:{}: Unexpected character: {}",
-                            self.span.line,
-                            self.span.column - 1,
-                            token
-                        );
+                        error!("{}: Unexpected character: {}", self.span, token);
                         Token::new(TokenKind::Error, None, self.span)
                     }
                 }

@@ -265,7 +265,8 @@ impl Parser {
 
     fn consume(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
         if self.eof() {
-            return Err(ParseError::UnexpectedEof(
+            return Err(ParseError::Expected(
+                kind,
                 self.tokens[self.current - 1].span,
             ));
         }

@@ -6,7 +6,7 @@ mod parse {
 
     #[test]
     fn access() {
-        let program = Program::from(File::open("examples/access.kya").unwrap());
+        let program = Program::from_file(File::open("examples/access.kya").unwrap()).unwrap();
         assert_eq!(
             format!("{}", program),
             "defn main(): Void {\n\tprintln(((kyanite . fs) . read(\"examples/access.kya\", ((kyanite . fs) . O_READ))))\n}\n"
@@ -15,13 +15,14 @@ mod parse {
 
     #[test]
     fn empty() {
-        let program = Program::from(File::open("examples/function_empty.kya").unwrap());
+        let program =
+            Program::from_file(File::open("examples/function_empty.kya").unwrap()).unwrap();
         assert_eq!(format!("{}", program), "defn helloWorld(): Int {\n}\n");
     }
 
     #[test]
     fn hello() {
-        let program = Program::from(File::open("examples/hello.kya").unwrap());
+        let program = Program::from_file(File::open("examples/hello.kya").unwrap()).unwrap();
         assert_eq!(
             format!("{}", program),
             "defn main(): Void {\n\tprintln(\"hello world\")\n}\n"
@@ -30,9 +31,10 @@ mod parse {
 
     #[test]
     fn precedence() {
-        let program = Program::from(
+        let program = Program::from_string(
             "defn main(): void {\n\ttest.assert(5 * (7 + (10 - 3)) / 2 >= 30);\n}".to_string(),
-        );
+        )
+        .unwrap();
         assert_eq!(
             format!("{}", program),
             "defn main(): Void {\n\t(test . assert((((5 * (7 + (10 - 3))) / 2) >= 30)))\n}\n"

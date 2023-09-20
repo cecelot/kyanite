@@ -22,18 +22,6 @@ impl Ast {
     }
 }
 
-impl From<Vec<Token>> for Ast {
-    fn from(tokens: Vec<Token>) -> Self {
-        match Ast::new(tokens) {
-            Ok(ast) => ast,
-            Err(e) => {
-                eprintln!("{}", e);
-                std::process::exit(1);
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct File {
     pub nodes: Vec<Node>,
