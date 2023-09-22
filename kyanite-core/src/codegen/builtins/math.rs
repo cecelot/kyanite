@@ -48,7 +48,7 @@ fn pair<'ctx>(
         match arg {
             BasicValueEnum::IntValue(_) => arg.into_int_value().set_name("i"),
             BasicValueEnum::FloatValue(_) => arg.into_float_value().set_name("f"),
-            _ => unimplemented!(),
+            _ => unreachable!("math builtin has hardcoded formal parameters"),
         };
     }
 }

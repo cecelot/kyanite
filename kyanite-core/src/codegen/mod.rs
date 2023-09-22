@@ -70,7 +70,10 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         for node in &file.nodes {
             match node {
                 Node::FuncDecl(func) => ir.function(func),
-                _ => unimplemented!(),
+                Node::ConstantDecl(_) => todo!(),
+                _ => unreachable!(
+                    "parser is guaranteed to produce a `FuncDecl` or `ConstantDecl` at toplevel"
+                ),
             }?;
         }
 
@@ -85,7 +88,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let args: Vec<BasicMetadataTypeEnum> = func
             .params
             .iter()
-            .map(|p| Type::from(&p.ty).llvm(self).into())
+            .map(|p| Type::from(&p.ty).as_llvm_basic_type(self).into())
             .collect();
         let types = args.as_slice();
 
@@ -93,7 +96,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             self.context.void_type().fn_type(types, false)
         } else {
             Type::from(func.ty.as_ref())
-                .llvm(self)
+                .as_llvm_basic_type(self)
                 .fn_type(types, false)
         };
 
@@ -112,7 +115,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 BasicValueEnum::PointerValue(_) => arg
                     .into_pointer_value()
                     .set_name(&String::from(&func.params[i].name)),
-                _ => unimplemented!(),
+                _ => unimplemented!("formal parameter type `{arg}` is not implemented"),
             };
         }
 
@@ -121,13 +124,13 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn block(&mut self, block: &[Node]) -> Result<BasicValueEnum<'ctx>, IrError> {
         for node in block {
-            self.expression(node)?;
+            self.compile(node)?;
         }
 
         Ok(self.context.i64_type().const_int(0, false).into())
     }
 
-    fn expression(&mut self, node: &Node) -> Result<BasicValueEnum<'ctx>, IrError> {
+    fn compile(&mut self, node: &Node) -> Result<BasicValueEnum<'ctx>, IrError> {
         match node {
             Node::Str(s) => {
                 let bytes = s[1..s.len() - 1].as_bytes().to_vec();
@@ -146,18 +149,18 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .const_int((*n).try_into().unwrap(), false)
                 .into()),
             Node::Return(r) => {
-                let val = self.expression(&r.expr)?;
+                let val = self.compile(&r.expr)?;
                 self.builder.build_return(Some(&val));
                 Ok(val)
             }
-            _ => unimplemented!("codegen for {:?}", node),
+            _ => todo!("compilation not implemented for {:?}", node),
         }
     }
 
     fn call(&mut self, call: &node::Call) -> Result<BasicValueEnum<'ctx>, IrError> {
         let mut args: Vec<BasicMetadataValueEnum> = Vec::with_capacity(call.args.len());
         for arg in &call.args {
-            args.push(self.expression(arg)?.into());
+            args.push(self.compile(arg)?.into());
         }
         let name = match *call.left {
             Node::Ident(ref ident) => String::from(&ident.name),
@@ -175,7 +178,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                         BasicValueEnum::IntValue(_) => val.into_int_value().into(),
                         BasicValueEnum::FloatValue(_) => val.into_float_value().into(),
                         BasicValueEnum::PointerValue(_) => val.into_pointer_value().into(),
-                        _ => unimplemented!(),
+                        _ => unimplemented!("return type `{val}` is not implemented"),
                     }),
                     None => Ok(self.context.i64_type().const_int(0, false).into()),
                 }
@@ -195,7 +198,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn ident(&mut self, ident: &node::Ident) -> Result<BasicValueEnum<'ctx>, IrError> {
         match self.variables.get(&String::from(&ident.name)) {
-            Some(var) => Ok(self.load(var, var.1.llvm(self), ident)),
+            Some(var) => Ok(self.load(var, var.1.as_llvm_basic_type(self), ident)),
             None => Err(IrError::Undefined(String::from(&ident.name))),
         }
     }
@@ -211,17 +214,17 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 BasicMetadataValueEnum::PointerValue(_) => self.module.get_function("println_str"),
                 BasicMetadataValueEnum::IntValue(_) => self.module.get_function("println_int"),
                 BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("println_float"),
-                node => unimplemented!("println is not implemented for {}", node),
+                node => unreachable!("impossible to call println with {node:?}"),
             },
             "max" => match args.first().unwrap() {
                 BasicMetadataValueEnum::IntValue(_) => self.module.get_function("max_int"),
                 BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("max_float"),
-                node => unimplemented!("max is not implemented for {}", node),
+                node => unreachable!("impossible to call max with {}", node),
             },
             "min" => match args.first().unwrap() {
                 BasicMetadataValueEnum::IntValue(_) => self.module.get_function("min_int"),
                 BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("min_float"),
-                node => unimplemented!("min is not implemented for {}", node),
+                node => unreachable!("impossible to call min with {}", node),
             },
             _ => self.module.get_function(name),
         }
@@ -241,7 +244,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 self.context.i8_type().ptr_type(AddressSpace::default()),
                 name,
             ),
-            _ => unimplemented!(),
+            _ => unimplemented!("alloca is not implemented for {}", arg),
         }
     }
 

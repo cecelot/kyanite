@@ -30,7 +30,7 @@ fn println<'ctx>(ir: &mut Ir<'_, 'ctx>, ty: BasicMetadataTypeEnum<'ctx>, name: &
             BasicValueEnum::IntValue(_) => arg.into_int_value().set_name("i"),
             BasicValueEnum::FloatValue(_) => arg.into_float_value().set_name("f"),
             BasicValueEnum::PointerValue(_) => arg.into_pointer_value().set_name("s"),
-            _ => unimplemented!(),
+            _ => unreachable!("println builtin has hardcoded formal parameters"),
         };
     }
 }

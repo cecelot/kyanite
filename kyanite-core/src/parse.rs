@@ -252,7 +252,7 @@ impl Parser {
                     _ if lexeme.chars().next().unwrap().is_ascii_digit() => {
                         Node::Int(lexeme.parse().unwrap())
                     }
-                    e => unimplemented!("{:?}", e),
+                    e => unreachable!("impossible lexeme `{}`", e),
                 }
             }
             TokenKind::Identifier => {

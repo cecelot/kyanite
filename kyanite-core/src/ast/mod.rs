@@ -135,7 +135,7 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn llvm<'a, 'ctx>(&'a self, ir: &Ir<'a, 'ctx>) -> BasicTypeEnum<'ctx> {
+    pub fn as_llvm_basic_type<'a, 'ctx>(&'a self, ir: &Ir<'a, 'ctx>) -> BasicTypeEnum<'ctx> {
         match self {
             Type::Int => ir.context.i64_type().into(),
             Type::Float => ir.context.f64_type().into(),
@@ -145,20 +145,25 @@ impl Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
-            Type::Void => unimplemented!(),
+            Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
         }
     }
 }
 
 impl From<&Token> for Type {
     fn from(value: &Token) -> Self {
-        match value.lexeme.clone().unwrap_or("".into()).as_str() {
+        match value
+            .lexeme
+            .clone()
+            .expect("token should have lexeme")
+            .as_str()
+        {
             "str" => Self::Str,
             "int" => Self::Int,
             "float" => Self::Float,
             "bool" => Self::Bool,
             "void" => Self::Void,
-            _ => unimplemented!(),
+            _ => unreachable!("type lexeme must be one of `str`, `int`, `float`, `bool`, `void`"),
         }
     }
 }

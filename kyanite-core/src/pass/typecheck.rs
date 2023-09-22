@@ -69,7 +69,7 @@ impl<'a> TypeCheckPass<'a> {
             Node::Binary(b) => self.binary(b),
             Node::Ident(id) => self.ident(id),
             Node::Call(call) => self.call(call),
-            e => unimplemented!("{:?}", e),
+            e => todo!("{:?}", e),
         }
     }
 
