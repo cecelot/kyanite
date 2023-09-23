@@ -45,7 +45,7 @@ impl PreciseError {
         comment.push_str(&self.line);
         comment.push('\n');
 
-        // help text
+        // error text
         sidebar(&mut comment, len, false);
         let mut end = self.span.column + len - 1;
         if len > 1 {
@@ -54,8 +54,7 @@ impl PreciseError {
         for _ in 0..end {
             comment.push(' ');
         }
-        comment.push_str(&"^ ".yellow().bold().to_string());
-        comment.push_str(&self.text.red().bold().to_string());
+        comment.push_str(&format!("^ {}", self.text).red().bold().to_string());
         comment.push('\n');
 
         // empty line
