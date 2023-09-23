@@ -4,7 +4,7 @@ use std::{
     io::{self, Read},
 };
 
-use crate::details::error::PreciseError;
+use crate::reporting::error::PreciseError;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TokenKind {

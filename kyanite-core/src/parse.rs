@@ -1,6 +1,6 @@
 use crate::{
     ast::{File, Node, Param},
-    details::error::PreciseError,
+    reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
 };
 

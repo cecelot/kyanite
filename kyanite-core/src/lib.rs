@@ -14,9 +14,9 @@ mod ast;
 pub mod cli;
 mod codegen;
 mod compile;
-mod details;
 mod parse;
 mod pass;
+mod reporting;
 mod token;
 
 #[derive(thiserror::Error, Debug)]
