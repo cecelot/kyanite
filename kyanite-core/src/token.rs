@@ -4,7 +4,7 @@ use std::{
     io::{self, Read},
 };
 
-use log::error;
+use crate::details::error::PreciseError;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TokenKind {
@@ -108,8 +108,8 @@ impl fmt::Display for Token {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Span {
-    line: usize,
-    column: usize,
+    pub(super) line: usize,
+    pub(super) column: usize,
 }
 
 impl Span {
@@ -130,6 +130,7 @@ pub fn errors(tokens: &[Token]) -> usize {
 
 #[derive(Debug)]
 pub struct TokenStream {
+    pub(super) raw: String,
     source: Vec<char>,
     span: Span,
     start: usize,
@@ -140,6 +141,7 @@ impl From<String> for TokenStream {
     fn from(source: String) -> Self {
         Self {
             source: source.chars().collect::<Vec<char>>(),
+            raw: source,
             span: Span::new(1, 0),
             start: 0,
             current: 0,
@@ -153,6 +155,7 @@ impl TokenStream {
         file.read_to_string(&mut source)?;
         Ok(Self {
             source: source.chars().collect::<Vec<char>>(),
+            raw: source,
             span: Span::new(1, 0),
             start: 0,
             current: 0,
@@ -189,8 +192,20 @@ impl TokenStream {
                     '!' => self.match_next('=', TokenKind::BangEqual, TokenKind::Bang),
                     '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
                     '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
-                    _ => {
-                        error!("{}: Unexpected character: {}", self.span, token);
+                    c => {
+                        println!(
+                            "{}",
+                            PreciseError::new(
+                                self.raw
+                                    .lines()
+                                    .nth(self.span.line - 1)
+                                    .expect("span to have valid line number")
+                                    .into(),
+                                self.span,
+                                format!("unexpected character `{c}`"),
+                                "not a token".into(),
+                            )
+                        );
                         Token::new(TokenKind::Error, None, self.span)
                     }
                 }
@@ -297,11 +312,11 @@ impl TokenStream {
     fn skip_whitespace(&mut self) {
         let mut peeked = self.peek();
         while !self.eof() && self.whitespace(peeked.unwrap()) {
+            self.consume();
             if peeked.unwrap() == '\n' {
                 self.span.line += 1;
                 self.span.column = 0;
             }
-            self.consume();
             peeked = self.peek();
         }
     }

@@ -1,10 +1,6 @@
 use inkwell::{types::BasicTypeEnum, AddressSpace};
 
-use crate::{
-    codegen::Ir,
-    parse::{ParseError, Parser},
-    token::Token,
-};
+use crate::{codegen::Ir, parse::Parser, token::Token, PipelineError};
 use std::fmt;
 
 pub mod node;
@@ -15,10 +11,13 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(tokens: Vec<Token>) -> Result<Self, ParseError> {
-        Ok(Self {
-            file: Parser::from(tokens).parse()?,
-        })
+    pub fn new(source: String, tokens: Vec<Token>) -> Result<Self, PipelineError> {
+        let mut parser = Parser::new(source, tokens);
+        let file = parser.parse();
+        if parser.errors > 0 {
+            return Err(PipelineError::ParseError(parser.errors));
+        }
+        Ok(Self { file })
     }
 }
 

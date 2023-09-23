@@ -2,7 +2,5 @@
 .direnv
 kyanite-core/examples/complete.kya
 
-# intermediate
-main
-*.o
-out.ll
+# kyanite
+kya-dist

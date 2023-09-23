@@ -11,7 +11,7 @@ use inkwell::{
 };
 
 use crate::{
-    ast::{node, File, Node, Type},
+    ast::{self, node, Node, Type},
     token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
@@ -84,7 +84,7 @@ pub struct Ir<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn build(file: &File) -> Result<(), IrError> {
+    pub fn from_ast(ast: &ast::Ast) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
         let builder = context.create_builder();
@@ -109,7 +109,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
         Builtins::new().build(&mut ir);
 
-        for node in &file.nodes {
+        for node in &ast.file.nodes {
             match node {
                 Node::FuncDecl(func) => ir.function(func),
                 Node::ConstantDecl(_) => todo!(),
@@ -119,11 +119,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             }?;
         }
 
-        ir.module
-            .print_to_file(std::path::Path::new("out.ll"))
-            .unwrap();
-
-        Ok(())
+        Ok(ir.module.print_to_string().to_string())
     }
 
     fn prototype(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {

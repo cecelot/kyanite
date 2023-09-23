@@ -9,7 +9,7 @@ use super::symbol::{Symbol, SymbolTable};
 
 pub struct TypeCheckPass<'a> {
     program: &'a File,
-    errored: bool,
+    errors: usize,
     function: Option<String>,
     scopes: Vec<SymbolTable>,
 }
@@ -18,16 +18,17 @@ impl<'a> TypeCheckPass<'a> {
     pub fn new(table: SymbolTable, program: &'a File) -> Self {
         Self {
             program,
-            errored: false,
+            errors: 0,
             function: None,
             scopes: vec![table],
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> usize {
         for node in &self.program.nodes {
             self.check(node);
         }
+        self.errors
     }
 
     fn scope_mut(&mut self) -> &mut SymbolTable {
@@ -53,7 +54,7 @@ impl<'a> TypeCheckPass<'a> {
 
     fn error(&mut self, at: &Token, msg: String) {
         eprintln!("{} at {}", msg, at.span);
-        self.errored = true;
+        self.errors += 1;
     }
 
     fn check(&mut self, node: &Node) -> Type {

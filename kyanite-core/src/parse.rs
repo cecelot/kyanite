@@ -1,5 +1,6 @@
 use crate::{
     ast::{File, Node, Param},
+    details::error::PreciseError,
     token::{Span, Token, TokenKind},
 };
 
@@ -8,40 +9,50 @@ pub enum ParseError {
     #[error("Unexpected EOF at {0}")]
     UnexpectedEof(Span),
 
-    #[error("Expected {0} at {1}")]
-    Expected(TokenKind, Span),
+    #[error("expected {0} but found {2}")]
+    Expected(TokenKind, Span, TokenKind),
 
     #[error("Unhandled token {0} at {1}")]
     Unhandled(TokenKind, Span),
 }
 
 pub struct Parser {
+    raw: String,
+    pub(super) errors: usize,
     tokens: Vec<Token>,
     current: usize,
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+    pub fn new(raw: String, tokens: Vec<Token>) -> Self {
+        Self {
+            raw,
+            tokens,
+            errors: 0,
+            current: 0,
+        }
     }
 
-    pub fn parse(&mut self) -> Result<File, ParseError> {
+    pub fn parse(&mut self) -> File {
         let mut nodes: Vec<Node> = vec![];
         while let Ok(token) = self.peek() {
-            nodes.push(match token.kind {
-                TokenKind::Defn => self.function()?,
-                TokenKind::Const => self.constant()?,
+            match match token.kind {
+                TokenKind::Defn => self.function(),
+                TokenKind::Const => self.constant(),
                 TokenKind::Eof => break,
                 _ => {
                     let token = self.advance().unwrap();
-                    Err(ParseError::Unhandled(token.kind, token.span))?
+                    Err(ParseError::Unhandled(token.kind, token.span))
                 }
-            });
+            } {
+                Ok(node) => nodes.push(node),
+                Err(e) => self.error(e),
+            }
         }
         let file = File::new(nodes);
         match file.nodes.first() {
-            Some(_) => Ok(file),
-            _ => Ok(File::new(vec![])),
+            Some(_) => file,
+            _ => File::new(vec![]),
         }
     }
 
@@ -83,7 +94,11 @@ impl Parser {
     fn block(&mut self) -> Result<Vec<Node>, ParseError> {
         let mut stmts: Vec<Node> = vec![];
         while self.peek()?.kind != TokenKind::RightBrace {
-            stmts.push(self.statement()?);
+            let stmt = self.statement();
+            match stmt {
+                Ok(stmt) => stmts.push(stmt),
+                Err(e) => self.error(e),
+            }
         }
         Ok(stmts)
     }
@@ -268,6 +283,7 @@ impl Parser {
             return Err(ParseError::Expected(
                 kind,
                 self.tokens[self.current - 1].span,
+                TokenKind::Eof,
             ));
         }
 
@@ -275,7 +291,7 @@ impl Parser {
         if token.kind == kind {
             Ok(token)
         } else {
-            Err(ParseError::Expected(kind, token.span))
+            Err(ParseError::Expected(kind, token.span, token.kind))
         }
     }
 
@@ -295,14 +311,30 @@ impl Parser {
         }
     }
 
+    fn error(&mut self, e: ParseError) {
+        self.errors += 1;
+        match e {
+            ParseError::Expected(expected, span, _) => {
+                println!(
+                    "{}",
+                    PreciseError::new(
+                        self.raw
+                            .lines()
+                            .nth(span.line - 1)
+                            .expect("span to have valid line number")
+                            .into(),
+                        span,
+                        format!("{}", e),
+                        format!("expected {} here", expected)
+                    )
+                )
+            }
+            _ => todo!(),
+        }
+    }
+
     fn advance(&mut self) -> Option<Token> {
         self.current += 1;
         self.tokens.get(self.current - 1).cloned()
-    }
-}
-
-impl From<Vec<Token>> for Parser {
-    fn from(tokens: Vec<Token>) -> Self {
-        Self::new(tokens)
     }
 }
