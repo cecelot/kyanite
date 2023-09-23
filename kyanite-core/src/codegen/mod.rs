@@ -7,7 +7,7 @@ use inkwell::{
     passes::PassManager,
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
     values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue},
-    AddressSpace,
+    AddressSpace, FloatPredicate, IntPredicate,
 };
 
 use crate::{
@@ -17,6 +17,48 @@ use crate::{
 use builtins::Builtins;
 
 mod builtins;
+
+macro_rules! num_instrs  {
+    {$self:ident, $bin:ident, $($kind:ident => $int_instr:ident $float_instr:ident),*} => {
+        match $bin.op.kind {
+            $(
+                TokenKind::$kind => {
+                    let left = $self.compile(&$bin.left)?;
+                    let right = $self.compile(&$bin.right)?;
+                    match (left, right) {
+                        (BasicValueEnum::IntValue(left), BasicValueEnum::IntValue(right)) => {
+                            return Ok($self.builder.$int_instr(left, right, "tmp").into())
+                        }
+                        (BasicValueEnum::FloatValue(left), BasicValueEnum::FloatValue(right)) => {
+                            return Ok($self.builder.$float_instr(left, right, "tmp").into())
+                        }
+                        ty => unreachable!("cannot perform numeric operation on {ty:?}"),
+                    }
+                }
+            )*,
+            _ => {
+                // fallback
+            }
+        }
+    }
+}
+
+macro_rules! bool_instrs {
+    {$self:ident, $bin:ident, $conversion:ident, $build_fn:ident, $predicate:ident, $($kind:ident => $member:ident),*} => {
+        match $bin.op.kind {
+            $(
+                TokenKind::$kind => {
+                    let left = $self.compile(&$bin.left)?.$conversion();
+                    let right = $self.compile(&$bin.right)?.$conversion();
+                    return Ok($self.builder.$build_fn($predicate::$member, left, right, "tmp").into())
+                }
+            )*,
+            _ => {
+                // fallback
+            }
+        }
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum IrError {
@@ -148,6 +190,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .i64_type()
                 .const_int((*n).try_into().unwrap(), false)
                 .into()),
+            Node::Binary(binary) => self.binary(binary),
             Node::Return(r) => {
                 let val = self.compile(&r.expr)?;
                 self.builder.build_return(Some(&val));
@@ -155,6 +198,36 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             }
             _ => todo!("compilation not implemented for {:?}", node),
         }
+    }
+
+    fn binary(&mut self, binary: &node::Binary) -> Result<BasicValueEnum<'ctx>, IrError> {
+        num_instrs! { self, binary,
+            Plus => build_int_add build_float_add,
+            Minus => build_int_sub build_float_sub,
+            Star => build_int_mul build_float_mul,
+            Slash => build_int_signed_div build_float_div
+        }
+
+        bool_instrs! { self, binary, into_int_value, build_int_compare, IntPredicate,
+            EqualEqual => EQ,
+            BangEqual => NE,
+            GreaterEqual => SGE,
+            LessEqual => SLE,
+            Greater => SGT,
+            Less => SLT
+        }
+
+        bool_instrs! { self, binary, into_float_value, build_float_compare, FloatPredicate,
+            EqualEqual => OEQ,
+            BangEqual => ONE,
+            GreaterEqual => OGE,
+            LessEqual => OLE,
+            Greater => OGT,
+            Less => OLT
+        }
+
+        // finally fail if still not implemented (should be type error)
+        unimplemented!("binary operation not implemented for {:?}", binary.op.kind)
     }
 
     fn call(&mut self, call: &node::Call) -> Result<BasicValueEnum<'ctx>, IrError> {
@@ -212,7 +285,13 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         match name {
             "println" => match args.first().unwrap() {
                 BasicMetadataValueEnum::PointerValue(_) => self.module.get_function("println_str"),
-                BasicMetadataValueEnum::IntValue(_) => self.module.get_function("println_int"),
+                BasicMetadataValueEnum::IntValue(i) => {
+                    if i.get_type().get_bit_width() == 1 {
+                        self.module.get_function("println_bool")
+                    } else {
+                        self.module.get_function("println_int")
+                    }
+                }
                 BasicMetadataValueEnum::FloatValue(_) => self.module.get_function("println_float"),
                 node => unreachable!("impossible to call println with {node:?}"),
             },

@@ -7,6 +7,7 @@ pub struct Println {}
 impl Builtin for Println {
     fn build(&self, ir: &mut Ir<'_, '_>) {
         println(ir, ir.context.i64_type().into(), "println_int");
+        println(ir, ir.context.bool_type().into(), "println_bool");
         println(ir, ir.context.f64_type().into(), "println_float");
         println(
             ir,

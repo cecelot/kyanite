@@ -21,6 +21,11 @@ pub extern "C" fn min_float(a: f64, b: f64) -> f64 {
 }
 
 #[no_mangle]
+pub extern "C" fn println_bool(b: bool) {
+    println!("{}", b);
+}
+
+#[no_mangle]
 pub extern "C" fn println_int(i: i32) {
     println!("{}", i);
 }
