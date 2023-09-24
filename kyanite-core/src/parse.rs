@@ -9,10 +9,10 @@ pub enum ParseError {
     #[error("unexpected EOF")]
     UnexpectedEof(Span),
 
-    #[error("expected {0} but found {2}")]
+    #[error("expected `{0}` but found `{2}`")]
     Expected(TokenKind, Span, TokenKind),
 
-    #[error("unexpected {0}")]
+    #[error("unexpected `{0}`")]
     Unhandled(TokenKind, Span, &'static [TokenKind]),
 }
 
@@ -21,6 +21,7 @@ pub struct Parser {
     pub(super) errors: usize,
     tokens: Vec<Token>,
     current: usize,
+    panic: bool,
 }
 
 impl Parser {
@@ -28,6 +29,7 @@ impl Parser {
         Self {
             raw,
             tokens,
+            panic: false,
             errors: 0,
             current: 0,
         }
@@ -50,7 +52,15 @@ impl Parser {
                 }
             } {
                 Ok(node) => nodes.push(node),
-                Err(e) => self.error(e),
+                Err(e) => match e {
+                    ParseError::Unhandled(_, _, _) => {
+                        self.advance();
+                        continue;
+                    }
+                    _ => {
+                        self.error(&e);
+                    }
+                },
             }
         }
         let file = File::new(nodes);
@@ -101,7 +111,13 @@ impl Parser {
             let stmt = self.statement();
             match stmt {
                 Ok(stmt) => stmts.push(stmt),
-                Err(e) => self.error(e),
+                Err(e) => {
+                    self.error(&e);
+                    if self.panic {
+                        self.panic = false;
+                        return Err(e);
+                    }
+                }
             }
         }
         Ok(stmts)
@@ -313,6 +329,9 @@ impl Parser {
 
     fn peek(&self) -> Result<Token, ParseError> {
         let span = if self.current > 0 {
+            if self.current > self.tokens.len() {
+                return Err(ParseError::UnexpectedEof(Span::new(0, 0, 0)));
+            }
             self.tokens[self.current - 1].span
         } else {
             Span::new(0, 0, 0)
@@ -323,7 +342,8 @@ impl Parser {
         }
     }
 
-    fn error(&mut self, e: ParseError) {
+    fn error(&mut self, e: &ParseError) {
+        self.panic = true;
         self.errors += 1;
         let span = *match &e {
             ParseError::Expected(_, span, _) => span,

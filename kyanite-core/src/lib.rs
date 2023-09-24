@@ -23,11 +23,11 @@ mod token;
 pub enum PipelineError {
     #[error("File is not valid UTF-8")]
     InvalidUtf8,
-    #[error("(while lexing source) {0} errors encountered")]
+    #[error("(while lexing source) {0} error(s) encountered")]
     LexError(usize),
-    #[error("(while parsing) {0} errors encountered")]
+    #[error("(while parsing) {0} error(s) encountered")]
     ParseError(usize),
-    #[error("(while type checking) {0} errors encountered")]
+    #[error("(while type checking) {0} error(s) encountered")]
     TypeError(usize),
     #[error("(while building ir) {0}")]
     IrError(IrError),
