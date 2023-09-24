@@ -6,14 +6,14 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParseError {
-    #[error("Unexpected EOF at {0}")]
+    #[error("unexpected EOF")]
     UnexpectedEof(Span),
 
     #[error("expected {0} but found {2}")]
     Expected(TokenKind, Span, TokenKind),
 
-    #[error("Unhandled token {0} at {1}")]
-    Unhandled(TokenKind, Span),
+    #[error("unexpected {0}")]
+    Unhandled(TokenKind, Span, &'static [TokenKind]),
 }
 
 pub struct Parser {
@@ -42,7 +42,11 @@ impl Parser {
                 TokenKind::Eof => break,
                 _ => {
                     let token = self.advance().unwrap();
-                    Err(ParseError::Unhandled(token.kind, token.span))
+                    Err(ParseError::Unhandled(
+                        token.kind,
+                        token.span,
+                        &[TokenKind::Defn, TokenKind::Const],
+                    ))
                 }
             } {
                 Ok(node) => nodes.push(node),
@@ -274,7 +278,15 @@ impl Parser {
                 let token = self.advance().unwrap();
                 Node::ident(token)
             }
-            _ => Err(ParseError::Unhandled(self.peek()?.kind, self.peek()?.span))?,
+            _ => Err(ParseError::Unhandled(
+                self.peek()?.kind,
+                self.peek()?.span,
+                &[
+                    TokenKind::Identifier,
+                    TokenKind::Literal,
+                    TokenKind::LeftParen,
+                ],
+            ))?,
         })
     }
 
@@ -303,7 +315,7 @@ impl Parser {
         let span = if self.current > 0 {
             self.tokens[self.current - 1].span
         } else {
-            Span::new(0, 0)
+            Span::new(0, 0, 0)
         };
         match self.tokens.get(self.current).cloned() {
             Some(token) => Ok(token),
@@ -313,24 +325,33 @@ impl Parser {
 
     fn error(&mut self, e: ParseError) {
         self.errors += 1;
-        match e {
-            ParseError::Expected(expected, span, _) => {
-                println!(
-                    "{}",
-                    PreciseError::new(
-                        self.raw
-                            .lines()
-                            .nth(span.line - 1)
-                            .expect("span to have valid line number")
-                            .into(),
-                        span,
-                        format!("{}", e),
-                        format!("expected {} here", expected)
-                    )
-                )
+        let span = *match &e {
+            ParseError::Expected(_, span, _) => span,
+            ParseError::Unhandled(_, span, _) => span,
+            ParseError::UnexpectedEof(span) => span,
+        };
+        let line = self
+            .raw
+            .lines()
+            .nth(span.line - 1)
+            .expect("span to have valid line number")
+            .to_string();
+        let detail = match e {
+            ParseError::Expected(expected, _, _) => format!("expected {} here", expected),
+            ParseError::Unhandled(_, _, expected) => {
+                let expected = expected
+                    .iter()
+                    .map(|t| format!("`{}`", t))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                format!("expected one of {} here", expected)
             }
-            _ => todo!(),
-        }
+            ParseError::UnexpectedEof(_) => "unexpected end of file".into(),
+        };
+        println!(
+            "{}",
+            PreciseError::new(line, span, format!("{}", e), detail)
+        );
     }
 
     fn advance(&mut self) -> Option<Token> {

@@ -32,7 +32,9 @@ impl PreciseError {
             &"-->".blue().bold().to_string(), // arrow
             &format!(
                 " {}:{}:{}\n",
-                self.filename, self.span.line, self.span.column
+                self.filename,
+                self.span.line,
+                self.span.column - self.span.length + 1
             ), // filename
         );
 
@@ -47,7 +49,7 @@ impl PreciseError {
 
         // error text
         sidebar(&mut comment, len, false);
-        let mut end = self.span.column + len - 1;
+        let mut end = self.span.column + len - 1 - self.span.length + 1;
         if len > 1 {
             end -= len - 1;
         }

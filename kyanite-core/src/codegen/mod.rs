@@ -345,7 +345,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let void = Type::from(&func.ty.clone().unwrap_or(Token {
             kind: TokenKind::Type,
             lexeme: Some("void".into()),
-            span: Span::new(0, 0),
+            span: Span::new(0, 0, 0),
         })) == Type::Void;
         if void {
             self.builder.build_return(None);

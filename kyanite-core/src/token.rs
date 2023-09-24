@@ -106,21 +106,33 @@ impl fmt::Display for Token {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Span {
     pub(super) line: usize,
     pub(super) column: usize,
+    pub(super) length: usize,
 }
 
 impl Span {
-    pub fn new(line: usize, column: usize) -> Self {
-        Self { line, column }
+    pub fn new(line: usize, column: usize, length: usize) -> Self {
+        Self {
+            line,
+            column,
+            length,
+        }
     }
 }
 
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Ln {}, Col {}", self.line, self.column)
+        write!(
+            f,
+            "{}:{} to {}:{}",
+            self.line,
+            self.column,
+            self.line,
+            self.column + self.length
+        )
     }
 }
 
@@ -142,7 +154,7 @@ impl From<String> for TokenStream {
         Self {
             source: source.chars().collect::<Vec<char>>(),
             raw: source,
-            span: Span::new(1, 0),
+            span: Span::new(1, 0, 0),
             start: 0,
             current: 0,
         }
@@ -156,13 +168,14 @@ impl TokenStream {
         Ok(Self {
             source: source.chars().collect::<Vec<char>>(),
             raw: source,
-            span: Span::new(1, 0),
+            span: Span::new(1, 0, 0),
             start: 0,
             current: 0,
         })
     }
 
     fn token(&mut self) -> Option<Token> {
+        self.span.length = 1;
         self.skip_whitespace();
         let token: Option<char> = self.peek();
         Some(match token {
@@ -226,6 +239,23 @@ impl TokenStream {
             peeked = self.peek();
         }
         self.consume(); // don't forget the closing quote
+        self.span.length = self.current - self.start + 1;
+        if self.eof() {
+            println!(
+                "{}",
+                PreciseError::new(
+                    self.raw
+                        .lines()
+                        .nth(self.span.line - 1)
+                        .expect("span to have valid line number")
+                        .into(),
+                    self.span,
+                    "unterminated string".into(),
+                    "opening quote here".into(),
+                )
+            );
+            return Token::new(TokenKind::Error, None, self.span);
+        }
         let lexeme = self.lexeme(self.start - 1, self.current);
         Token {
             span: self.span,
@@ -252,6 +282,7 @@ impl TokenStream {
         }
 
         let lexeme = self.lexeme(self.start, self.current);
+        self.span.length = self.current - self.start;
         Token {
             span: self.span,
             kind: TokenKind::Literal,
@@ -270,6 +301,7 @@ impl TokenStream {
     }
 
     fn keyword(&mut self, lexeme: String) -> Token {
+        self.span.length = self.current - self.start;
         match lexeme.as_str() {
             "let" => Token::new(TokenKind::Let, None, self.span),
             "const" => Token::new(TokenKind::Const, None, self.span),
@@ -285,7 +317,7 @@ impl TokenStream {
     }
 
     fn lexeme(&self, start: usize, end: usize) -> String {
-        self.source[start..end].iter().collect::<String>()
+        self.source[start..end].iter().collect()
     }
 
     fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {
