@@ -1,8 +1,13 @@
 use inkwell::{types::BasicTypeEnum, AddressSpace};
 use serde::{Deserialize, Serialize};
 
-use crate::{codegen::Ir, parse::Parser, token::Token, PipelineError};
-use std::fmt;
+use crate::{
+    codegen::Ir,
+    parse::Parser,
+    token::{self, Token, TokenStream},
+    PipelineError,
+};
+use std::{fmt, fs};
 
 pub mod node;
 
@@ -12,8 +17,25 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(source: String, tokens: Vec<Token>) -> Result<Self, PipelineError> {
-        let mut parser = Parser::new(source, tokens);
+    pub fn from_file(file: fs::File) -> Result<Self, PipelineError> {
+        let stream = TokenStream::new(file).map_err(|_| PipelineError::InvalidUtf8)?;
+        Self::new(stream)
+    }
+
+    pub fn from_string(str: String) -> Result<Self, PipelineError> {
+        let stream = TokenStream::from(str);
+        Self::new(stream)
+    }
+
+    fn new(stream: TokenStream) -> Result<Self, PipelineError> {
+        // TODO: messy clone
+        let raw = stream.raw.clone();
+        let tokens: Vec<Token> = stream.collect();
+        let errors = token::errors(&tokens);
+        if errors > 0 {
+            return Err(PipelineError::LexError(errors));
+        }
+        let mut parser = Parser::new(raw, tokens);
         let file = parser.parse();
         if parser.errors > 0 {
             return Err(PipelineError::ParseError(parser.errors));
@@ -195,13 +217,13 @@ macro_rules! assert_ast {
         mod tests {
             use std::fs::File;
 
-            use crate::Program;
+            use crate::ast;
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let program = Program::from_file(File::open($path)?)?;
-                    insta::assert_yaml_snapshot!(program.ast);
+                    let ast = ast::Ast::from_file(File::open($path)?)?;
+                    insta::assert_yaml_snapshot!(ast);
 
                     Ok(())
                 }
@@ -213,5 +235,8 @@ macro_rules! assert_ast {
 assert_ast!(
     "examples/hello.kya" => hello_world,
     "examples/expr.kya" => expr,
-    "examples/calls.kya" => calls
+    "examples/calls.kya" => calls,
+    "examples/empty.kya" => empty,
+    "examples/access.kya" => access,
+    "examples/mixed.kya" => mixed
 );

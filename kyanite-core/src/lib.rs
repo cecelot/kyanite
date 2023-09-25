@@ -5,7 +5,6 @@ use codegen::IrError;
 use crate::{
     codegen::Ir,
     pass::{SymbolTable, TypeCheckPass},
-    token::Token,
 };
 
 pub use compile::Compile;
@@ -48,28 +47,12 @@ impl Program {
     }
 
     pub fn from_file(file: File) -> Result<Self, PipelineError> {
-        let stream = token::TokenStream::new(file).map_err(|_| PipelineError::InvalidUtf8)?;
-        // TODO: messy clone
-        let raw = stream.raw.clone();
-        let tokens: Vec<Token> = stream.collect();
-        let errored = token::errors(&tokens);
-        if errored > 0 {
-            return Err(PipelineError::LexError(errored));
-        }
-        let ast = ast::Ast::new(raw, tokens)?;
+        let ast = ast::Ast::from_file(file)?;
         Self::new(ast)?.build()
     }
 
     pub fn from_string(str: String) -> Result<Self, PipelineError> {
-        let stream = token::TokenStream::from(str);
-        // TODO: messy clone
-        let raw = stream.raw.clone();
-        let tokens: Vec<Token> = stream.collect();
-        let errored = token::errors(&tokens);
-        if errored > 0 {
-            return Err(PipelineError::LexError(errored));
-        }
-        let ast = ast::Ast::new(raw, tokens)?;
+        let ast = ast::Ast::from_string(str)?;
         Self::new(ast)?.build()
     }
 

@@ -1,0 +1,24 @@
+---
+source: kyanite-core/src/ast/mod.rs
+expression: program.ast
+---
+file:
+  nodes:
+    - FuncDecl:
+        name:
+          kind: Identifier
+          lexeme: foo
+          span:
+            line: 1
+            column: 8
+            length: 3
+        params: []
+        ty:
+          kind: Type
+          lexeme: void
+          span:
+            line: 1
+            column: 16
+            length: 4
+        body: []
+

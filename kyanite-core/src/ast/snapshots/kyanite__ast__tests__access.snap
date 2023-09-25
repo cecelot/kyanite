@@ -1,0 +1,171 @@
+---
+source: kyanite-core/src/ast/mod.rs
+expression: ast
+---
+file:
+  nodes:
+    - FuncDecl:
+        name:
+          kind: Identifier
+          lexeme: main
+          span:
+            line: 1
+            column: 9
+            length: 4
+        params: []
+        ty:
+          kind: Type
+          lexeme: int
+          span:
+            line: 1
+            column: 16
+            length: 3
+        body:
+          - Call:
+              left:
+                Ident:
+                  name:
+                    kind: Identifier
+                    lexeme: println
+                    span:
+                      line: 2
+                      column: 11
+                      length: 7
+              args:
+                - Binary:
+                    left:
+                      Binary:
+                        left:
+                          Ident:
+                            name:
+                              kind: Identifier
+                              lexeme: kyanite
+                              span:
+                                line: 2
+                                column: 19
+                                length: 7
+                        op:
+                          kind: Dot
+                          lexeme: ~
+                          span:
+                            line: 2
+                            column: 20
+                            length: 1
+                        right:
+                          Ident:
+                            name:
+                              kind: Identifier
+                              lexeme: fs
+                              span:
+                                line: 2
+                                column: 22
+                                length: 2
+                    op:
+                      kind: Dot
+                      lexeme: ~
+                      span:
+                        line: 2
+                        column: 23
+                        length: 1
+                    right:
+                      Call:
+                        left:
+                          Ident:
+                            name:
+                              kind: Identifier
+                              lexeme: read
+                              span:
+                                line: 2
+                                column: 27
+                                length: 4
+                        args:
+                          - Str: "\"examples/access.kya\""
+                          - Binary:
+                              left:
+                                Binary:
+                                  left:
+                                    Ident:
+                                      name:
+                                        kind: Identifier
+                                        lexeme: kyanite
+                                        span:
+                                          line: 2
+                                          column: 58
+                                          length: 7
+                                  op:
+                                    kind: Dot
+                                    lexeme: ~
+                                    span:
+                                      line: 2
+                                      column: 59
+                                      length: 1
+                                  right:
+                                    Ident:
+                                      name:
+                                        kind: Identifier
+                                        lexeme: fs
+                                        span:
+                                          line: 2
+                                          column: 61
+                                          length: 2
+                              op:
+                                kind: Dot
+                                lexeme: ~
+                                span:
+                                  line: 2
+                                  column: 62
+                                  length: 1
+                              right:
+                                Ident:
+                                  name:
+                                    kind: Identifier
+                                    lexeme: O_READ
+                                    span:
+                                      line: 2
+                                      column: 68
+                                      length: 6
+                        parens:
+                          - kind: LeftParen
+                            lexeme: ~
+                            span:
+                              line: 2
+                              column: 28
+                              length: 1
+                          - kind: RightParen
+                            lexeme: ~
+                            span:
+                              line: 2
+                              column: 69
+                              length: 1
+                        delimiters:
+                          - kind: Comma
+                            lexeme: ~
+                            span:
+                              line: 2
+                              column: 50
+                              length: 1
+              parens:
+                - kind: LeftParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 12
+                    length: 1
+                - kind: RightParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 70
+                    length: 1
+              delimiters: []
+          - Return:
+              expr:
+                Int: 0
+              keyword:
+                kind: Return
+                lexeme: ~
+                span:
+                  line: 4
+                  column: 10
+                  length: 6
+

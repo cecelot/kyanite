@@ -5,8 +5,10 @@ defn mulByTwo(lhs: float, rhs: int): float {
     return lhs * rhs + FOO;
 }
 
-defn main(): void {
+defn main(): int {
     let a: float = 5.;
     let b: int = 7;
     mulByTwo(a, b);
+
+    return 0;
 }
