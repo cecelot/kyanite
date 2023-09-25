@@ -1,0 +1,59 @@
+---
+source: kyanite-core/src/token.rs
+expression: "stream.collect::<Vec<_>>()"
+---
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 1
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: foo
+  span:
+    line: 1
+    column: 8
+    length: 3
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 9
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 10
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 1
+    column: 11
+    length: 1
+- kind: Type
+  lexeme: void
+  span:
+    line: 1
+    column: 16
+    length: 4
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 1
+    column: 18
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 1
+    column: 19
+    length: 1
+- kind: Eof
+  lexeme: ~
+  span:
+    line: 2
+    column: 0
+    length: 1
+

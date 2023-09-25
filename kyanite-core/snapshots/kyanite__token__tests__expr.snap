@@ -1,0 +1,239 @@
+---
+source: kyanite-core/src/token.rs
+expression: "stream.collect::<Vec<_>>()"
+---
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 1
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: main
+  span:
+    line: 1
+    column: 9
+    length: 4
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 10
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 11
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 1
+    column: 12
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 1
+    column: 16
+    length: 3
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 1
+    column: 18
+    length: 1
+- kind: Identifier
+  lexeme: println
+  span:
+    line: 2
+    column: 11
+    length: 7
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 12
+    length: 1
+- kind: Literal
+  lexeme: "5."
+  span:
+    line: 2
+    column: 14
+    length: 2
+- kind: Star
+  lexeme: ~
+  span:
+    line: 2
+    column: 16
+    length: 1
+- kind: Literal
+  lexeme: "100."
+  span:
+    line: 2
+    column: 21
+    length: 4
+- kind: Plus
+  lexeme: ~
+  span:
+    line: 2
+    column: 23
+    length: 1
+- kind: Literal
+  lexeme: "15."
+  span:
+    line: 2
+    column: 27
+    length: 3
+- kind: Minus
+  lexeme: ~
+  span:
+    line: 2
+    column: 29
+    length: 1
+- kind: Literal
+  lexeme: "7."
+  span:
+    line: 2
+    column: 32
+    length: 2
+- kind: Slash
+  lexeme: ~
+  span:
+    line: 2
+    column: 34
+    length: 1
+- kind: Literal
+  lexeme: "8."
+  span:
+    line: 2
+    column: 37
+    length: 2
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 38
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 2
+    column: 39
+    length: 1
+- kind: Identifier
+  lexeme: println
+  span:
+    line: 3
+    column: 11
+    length: 7
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 3
+    column: 12
+    length: 1
+- kind: Literal
+  lexeme: "5"
+  span:
+    line: 3
+    column: 13
+    length: 1
+- kind: Star
+  lexeme: ~
+  span:
+    line: 3
+    column: 15
+    length: 1
+- kind: Literal
+  lexeme: "100"
+  span:
+    line: 3
+    column: 19
+    length: 3
+- kind: Plus
+  lexeme: ~
+  span:
+    line: 3
+    column: 21
+    length: 1
+- kind: Literal
+  lexeme: "15"
+  span:
+    line: 3
+    column: 24
+    length: 2
+- kind: Minus
+  lexeme: ~
+  span:
+    line: 3
+    column: 26
+    length: 1
+- kind: Literal
+  lexeme: "7"
+  span:
+    line: 3
+    column: 28
+    length: 1
+- kind: Slash
+  lexeme: ~
+  span:
+    line: 3
+    column: 30
+    length: 1
+- kind: Literal
+  lexeme: "8"
+  span:
+    line: 3
+    column: 32
+    length: 1
+- kind: GreaterEqual
+  lexeme: ~
+  span:
+    line: 3
+    column: 35
+    length: 2
+- kind: Literal
+  lexeme: "7"
+  span:
+    line: 3
+    column: 37
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 3
+    column: 38
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 3
+    column: 39
+    length: 1
+- kind: Return
+  lexeme: ~
+  span:
+    line: 5
+    column: 10
+    length: 6
+- kind: Literal
+  lexeme: "0"
+  span:
+    line: 5
+    column: 12
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 5
+    column: 13
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 6
+    column: 1
+    length: 1
+

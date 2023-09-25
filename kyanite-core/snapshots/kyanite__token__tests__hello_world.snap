@@ -1,0 +1,101 @@
+---
+source: kyanite-core/src/token.rs
+expression: "stream.collect::<Vec<_>>()"
+---
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 1
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: main
+  span:
+    line: 1
+    column: 9
+    length: 4
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 10
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 11
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 1
+    column: 12
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 1
+    column: 16
+    length: 3
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 1
+    column: 18
+    length: 1
+- kind: Identifier
+  lexeme: println
+  span:
+    line: 2
+    column: 10
+    length: 7
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 11
+    length: 1
+- kind: Literal
+  lexeme: "\"Hello, world!\""
+  span:
+    line: 2
+    column: 26
+    length: 15
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 27
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 2
+    column: 28
+    length: 1
+- kind: Return
+  lexeme: ~
+  span:
+    line: 4
+    column: 9
+    length: 6
+- kind: Literal
+  lexeme: "0"
+  span:
+    line: 4
+    column: 11
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 4
+    column: 12
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 5
+    column: 1
+    length: 1
+

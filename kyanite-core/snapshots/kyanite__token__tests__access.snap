@@ -1,0 +1,179 @@
+---
+source: kyanite-core/src/token.rs
+expression: "stream.collect::<Vec<_>>()"
+---
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 1
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: main
+  span:
+    line: 1
+    column: 9
+    length: 4
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 10
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 1
+    column: 11
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 1
+    column: 12
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 1
+    column: 16
+    length: 3
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 1
+    column: 18
+    length: 1
+- kind: Identifier
+  lexeme: println
+  span:
+    line: 2
+    column: 11
+    length: 7
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 12
+    length: 1
+- kind: Identifier
+  lexeme: kyanite
+  span:
+    line: 2
+    column: 19
+    length: 7
+- kind: Dot
+  lexeme: ~
+  span:
+    line: 2
+    column: 20
+    length: 1
+- kind: Identifier
+  lexeme: fs
+  span:
+    line: 2
+    column: 22
+    length: 2
+- kind: Dot
+  lexeme: ~
+  span:
+    line: 2
+    column: 23
+    length: 1
+- kind: Identifier
+  lexeme: read
+  span:
+    line: 2
+    column: 27
+    length: 4
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 28
+    length: 1
+- kind: Literal
+  lexeme: "\"examples/access.kya\""
+  span:
+    line: 2
+    column: 49
+    length: 21
+- kind: Comma
+  lexeme: ~
+  span:
+    line: 2
+    column: 50
+    length: 1
+- kind: Identifier
+  lexeme: kyanite
+  span:
+    line: 2
+    column: 58
+    length: 7
+- kind: Dot
+  lexeme: ~
+  span:
+    line: 2
+    column: 59
+    length: 1
+- kind: Identifier
+  lexeme: fs
+  span:
+    line: 2
+    column: 61
+    length: 2
+- kind: Dot
+  lexeme: ~
+  span:
+    line: 2
+    column: 62
+    length: 1
+- kind: Identifier
+  lexeme: O_READ
+  span:
+    line: 2
+    column: 68
+    length: 6
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 69
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 2
+    column: 70
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 2
+    column: 71
+    length: 1
+- kind: Return
+  lexeme: ~
+  span:
+    line: 4
+    column: 10
+    length: 6
+- kind: Literal
+  lexeme: "0"
+  span:
+    line: 4
+    column: 12
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 4
+    column: 13
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 5
+    column: 1
+    length: 1
+

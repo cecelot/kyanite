@@ -1,0 +1,413 @@
+---
+source: kyanite-core/src/token.rs
+expression: "stream.collect::<Vec<_>>()"
+---
+- kind: Const
+  lexeme: ~
+  span:
+    line: 1
+    column: 5
+    length: 5
+- kind: Identifier
+  lexeme: FOO
+  span:
+    line: 1
+    column: 9
+    length: 3
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 1
+    column: 10
+    length: 1
+- kind: Type
+  lexeme: float
+  span:
+    line: 1
+    column: 16
+    length: 5
+- kind: Equal
+  lexeme: ~
+  span:
+    line: 1
+    column: 18
+    length: 1
+- kind: Literal
+  lexeme: "5."
+  span:
+    line: 1
+    column: 21
+    length: 2
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 1
+    column: 22
+    length: 1
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 3
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: mulByTwo
+  span:
+    line: 3
+    column: 13
+    length: 8
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 3
+    column: 14
+    length: 1
+- kind: Identifier
+  lexeme: lhs
+  span:
+    line: 3
+    column: 17
+    length: 3
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 3
+    column: 18
+    length: 1
+- kind: Type
+  lexeme: float
+  span:
+    line: 3
+    column: 24
+    length: 5
+- kind: Comma
+  lexeme: ~
+  span:
+    line: 3
+    column: 25
+    length: 1
+- kind: Identifier
+  lexeme: rhs
+  span:
+    line: 3
+    column: 29
+    length: 3
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 3
+    column: 30
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 3
+    column: 34
+    length: 3
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 3
+    column: 35
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 3
+    column: 36
+    length: 1
+- kind: Type
+  lexeme: float
+  span:
+    line: 3
+    column: 42
+    length: 5
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 3
+    column: 44
+    length: 1
+- kind: Let
+  lexeme: ~
+  span:
+    line: 4
+    column: 7
+    length: 3
+- kind: Identifier
+  lexeme: rhs
+  span:
+    line: 4
+    column: 11
+    length: 3
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 4
+    column: 12
+    length: 1
+- kind: Type
+  lexeme: float
+  span:
+    line: 4
+    column: 18
+    length: 5
+- kind: Equal
+  lexeme: ~
+  span:
+    line: 4
+    column: 20
+    length: 1
+- kind: Literal
+  lexeme: "8."
+  span:
+    line: 4
+    column: 23
+    length: 2
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 4
+    column: 24
+    length: 1
+- kind: Return
+  lexeme: ~
+  span:
+    line: 5
+    column: 10
+    length: 6
+- kind: Identifier
+  lexeme: lhs
+  span:
+    line: 5
+    column: 14
+    length: 3
+- kind: Star
+  lexeme: ~
+  span:
+    line: 5
+    column: 16
+    length: 1
+- kind: Identifier
+  lexeme: rhs
+  span:
+    line: 5
+    column: 20
+    length: 3
+- kind: Plus
+  lexeme: ~
+  span:
+    line: 5
+    column: 22
+    length: 1
+- kind: Identifier
+  lexeme: FOO
+  span:
+    line: 5
+    column: 26
+    length: 3
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 5
+    column: 27
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 6
+    column: 1
+    length: 1
+- kind: Defn
+  lexeme: ~
+  span:
+    line: 8
+    column: 4
+    length: 4
+- kind: Identifier
+  lexeme: main
+  span:
+    line: 8
+    column: 9
+    length: 4
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 8
+    column: 10
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 8
+    column: 11
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 8
+    column: 12
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 8
+    column: 16
+    length: 3
+- kind: LeftBrace
+  lexeme: ~
+  span:
+    line: 8
+    column: 18
+    length: 1
+- kind: Let
+  lexeme: ~
+  span:
+    line: 9
+    column: 7
+    length: 3
+- kind: Identifier
+  lexeme: a
+  span:
+    line: 9
+    column: 9
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 9
+    column: 10
+    length: 1
+- kind: Type
+  lexeme: float
+  span:
+    line: 9
+    column: 16
+    length: 5
+- kind: Equal
+  lexeme: ~
+  span:
+    line: 9
+    column: 18
+    length: 1
+- kind: Literal
+  lexeme: "5."
+  span:
+    line: 9
+    column: 21
+    length: 2
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 9
+    column: 22
+    length: 1
+- kind: Let
+  lexeme: ~
+  span:
+    line: 10
+    column: 7
+    length: 3
+- kind: Identifier
+  lexeme: b
+  span:
+    line: 10
+    column: 9
+    length: 1
+- kind: Colon
+  lexeme: ~
+  span:
+    line: 10
+    column: 10
+    length: 1
+- kind: Type
+  lexeme: int
+  span:
+    line: 10
+    column: 14
+    length: 3
+- kind: Equal
+  lexeme: ~
+  span:
+    line: 10
+    column: 16
+    length: 1
+- kind: Literal
+  lexeme: "7"
+  span:
+    line: 10
+    column: 18
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 10
+    column: 19
+    length: 1
+- kind: Identifier
+  lexeme: mulByTwo
+  span:
+    line: 11
+    column: 12
+    length: 8
+- kind: LeftParen
+  lexeme: ~
+  span:
+    line: 11
+    column: 13
+    length: 1
+- kind: Identifier
+  lexeme: a
+  span:
+    line: 11
+    column: 14
+    length: 1
+- kind: Comma
+  lexeme: ~
+  span:
+    line: 11
+    column: 15
+    length: 1
+- kind: Identifier
+  lexeme: b
+  span:
+    line: 11
+    column: 17
+    length: 1
+- kind: RightParen
+  lexeme: ~
+  span:
+    line: 11
+    column: 18
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 11
+    column: 19
+    length: 1
+- kind: Return
+  lexeme: ~
+  span:
+    line: 13
+    column: 10
+    length: 6
+- kind: Literal
+  lexeme: "0"
+  span:
+    line: 13
+    column: 12
+    length: 1
+- kind: Semicolon
+  lexeme: ~
+  span:
+    line: 13
+    column: 13
+    length: 1
+- kind: RightBrace
+  lexeme: ~
+  span:
+    line: 14
+    column: 1
+    length: 1
+

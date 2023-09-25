@@ -223,7 +223,9 @@ macro_rules! assert_ast {
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let ast = ast::Ast::from_file(File::open($path)?)?;
-                    insta::assert_yaml_snapshot!(ast);
+                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
+                        insta::assert_yaml_snapshot!(ast);
+                    });
 
                     Ok(())
                 }

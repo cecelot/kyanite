@@ -376,3 +376,35 @@ impl Iterator for TokenStream {
         }
     }
 }
+
+macro_rules! assert_tokens {
+    ($($path:expr => $name:ident),*) => {
+        #[cfg(test)]
+        mod tests {
+            use std::fs::File;
+
+            use crate::token::TokenStream;
+
+            $(
+                #[test]
+                fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                    let stream = TokenStream::new(File::open($path)?)?;
+                    insta::with_settings!({snapshot_path => "../snapshots"}, {
+                        insta::assert_yaml_snapshot!(stream.collect::<Vec<_>>());
+                    });
+
+                    Ok(())
+                }
+            )*
+        }
+    };
+}
+
+assert_tokens! {
+    "examples/hello.kya" => hello_world,
+    "examples/expr.kya" => expr,
+    "examples/calls.kya" => calls,
+    "examples/empty.kya" => empty,
+    "examples/access.kya" => access,
+    "examples/mixed.kya" => mixed
+}
