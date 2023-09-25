@@ -1,11 +1,12 @@
 use inkwell::{types::BasicTypeEnum, AddressSpace};
+use serde::{Deserialize, Serialize};
 
 use crate::{codegen::Ir, parse::Parser, token::Token, PipelineError};
 use std::fmt;
 
 pub mod node;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Ast {
     pub file: File,
 }
@@ -21,7 +22,7 @@ impl Ast {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct File {
     pub nodes: Vec<Node>,
 }
@@ -41,7 +42,7 @@ impl fmt::Display for File {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Node {
     FuncDecl(node::FuncDecl),
     Assign(node::Assign),
@@ -176,7 +177,7 @@ impl From<Option<&Token>> for Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Param {
     pub name: Token,
     pub ty: Token,
@@ -187,3 +188,30 @@ impl Param {
         Self { name, ty }
     }
 }
+
+macro_rules! assert_ast {
+    ($($path:expr => $name:ident),*) => {
+        #[cfg(test)]
+        mod tests {
+            use std::fs::File;
+
+            use crate::Program;
+
+            $(
+                #[test]
+                fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                    let program = Program::from_file(File::open($path)?)?;
+                    insta::assert_yaml_snapshot!(program.ast);
+
+                    Ok(())
+                }
+            )*
+        }
+    };
+}
+
+assert_ast!(
+    "examples/hello.kya" => hello_world,
+    "examples/expr.kya" => expr,
+    "examples/calls.kya" => calls
+);

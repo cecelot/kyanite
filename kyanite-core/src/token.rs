@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     fs::File,
@@ -6,7 +7,7 @@ use std::{
 
 use crate::reporting::error::PreciseError;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum TokenKind {
     Identifier,
     Type,
@@ -81,7 +82,7 @@ impl fmt::Display for TokenKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub lexeme: Option<String>,
@@ -106,7 +107,7 @@ impl fmt::Display for Token {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Span {
     pub(super) line: usize,
     pub(super) column: usize,
@@ -323,6 +324,7 @@ impl TokenStream {
     fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {
         if self.peek().unwrap() == c {
             self.consume();
+            self.span.length += 1;
             Token::new(first, None, self.span)
         } else {
             Token::new(second, None, self.span)

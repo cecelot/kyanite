@@ -1,0 +1,60 @@
+---
+source: kyanite-core/src/ast/mod.rs
+expression: program.ast
+---
+file:
+  nodes:
+    - FuncDecl:
+        name:
+          kind: Identifier
+          lexeme: main
+          span:
+            line: 1
+            column: 9
+            length: 4
+        params: []
+        ty:
+          kind: Type
+          lexeme: int
+          span:
+            line: 1
+            column: 16
+            length: 3
+        body:
+          - Call:
+              left:
+                Ident:
+                  name:
+                    kind: Identifier
+                    lexeme: println
+                    span:
+                      line: 2
+                      column: 10
+                      length: 7
+              args:
+                - Str: "\"Hello, world!\""
+              parens:
+                - kind: LeftParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 11
+                    length: 1
+                - kind: RightParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 27
+                    length: 1
+              delimiters: []
+          - Return:
+              expr:
+                Int: 0
+              keyword:
+                kind: Return
+                lexeme: ~
+                span:
+                  line: 4
+                  column: 9
+                  length: 6
+

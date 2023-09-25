@@ -1,10 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::{ast::Type, token::Token};
 
 use super::{Node, Param};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
@@ -45,7 +46,7 @@ impl fmt::Display for FuncDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assign {
     pub target: Box<Node>,
     pub expr: Box<Node>,
@@ -63,7 +64,7 @@ impl fmt::Display for Assign {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VarDecl {
     pub name: Token,
     pub ty: Token,
@@ -88,7 +89,7 @@ impl fmt::Display for VarDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstantDecl {
     pub name: Token,
     pub ty: Token,
@@ -113,7 +114,7 @@ impl fmt::Display for ConstantDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Call {
     pub left: Box<Node>,
     pub args: Vec<Node>,
@@ -150,7 +151,7 @@ impl fmt::Display for Call {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Return {
     pub expr: Box<Node>,
     pub keyword: Token,
@@ -168,7 +169,7 @@ impl fmt::Display for Return {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Unary {
     pub op: Token,
     pub right: Box<Node>,
@@ -186,7 +187,7 @@ impl fmt::Display for Unary {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Binary {
     pub left: Box<Node>,
     pub op: Token,
@@ -205,7 +206,7 @@ impl fmt::Display for Binary {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ident {
     pub name: Token,
 }

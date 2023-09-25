@@ -1,0 +1,185 @@
+---
+source: kyanite-core/src/ast/mod.rs
+expression: program.ast
+---
+file:
+  nodes:
+    - FuncDecl:
+        name:
+          kind: Identifier
+          lexeme: main
+          span:
+            line: 1
+            column: 9
+            length: 4
+        params: []
+        ty:
+          kind: Type
+          lexeme: int
+          span:
+            line: 1
+            column: 16
+            length: 3
+        body:
+          - Call:
+              left:
+                Ident:
+                  name:
+                    kind: Identifier
+                    lexeme: println
+                    span:
+                      line: 2
+                      column: 11
+                      length: 7
+              args:
+                - Binary:
+                    left:
+                      Binary:
+                        left:
+                          Binary:
+                            left:
+                              Float: 5
+                            op:
+                              kind: Star
+                              lexeme: ~
+                              span:
+                                line: 2
+                                column: 16
+                                length: 1
+                            right:
+                              Float: 100
+                        op:
+                          kind: Plus
+                          lexeme: ~
+                          span:
+                            line: 2
+                            column: 23
+                            length: 1
+                        right:
+                          Float: 15
+                    op:
+                      kind: Minus
+                      lexeme: ~
+                      span:
+                        line: 2
+                        column: 29
+                        length: 1
+                    right:
+                      Binary:
+                        left:
+                          Float: 7
+                        op:
+                          kind: Slash
+                          lexeme: ~
+                          span:
+                            line: 2
+                            column: 34
+                            length: 1
+                        right:
+                          Float: 8
+              parens:
+                - kind: LeftParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 12
+                    length: 1
+                - kind: RightParen
+                  lexeme: ~
+                  span:
+                    line: 2
+                    column: 38
+                    length: 1
+              delimiters: []
+          - Call:
+              left:
+                Ident:
+                  name:
+                    kind: Identifier
+                    lexeme: println
+                    span:
+                      line: 3
+                      column: 11
+                      length: 7
+              args:
+                - Binary:
+                    left:
+                      Binary:
+                        left:
+                          Binary:
+                            left:
+                              Binary:
+                                left:
+                                  Int: 5
+                                op:
+                                  kind: Star
+                                  lexeme: ~
+                                  span:
+                                    line: 3
+                                    column: 15
+                                    length: 1
+                                right:
+                                  Int: 100
+                            op:
+                              kind: Plus
+                              lexeme: ~
+                              span:
+                                line: 3
+                                column: 21
+                                length: 1
+                            right:
+                              Int: 15
+                        op:
+                          kind: Minus
+                          lexeme: ~
+                          span:
+                            line: 3
+                            column: 26
+                            length: 1
+                        right:
+                          Binary:
+                            left:
+                              Int: 7
+                            op:
+                              kind: Slash
+                              lexeme: ~
+                              span:
+                                line: 3
+                                column: 30
+                                length: 1
+                            right:
+                              Int: 8
+                    op:
+                      kind: GreaterEqual
+                      lexeme: ~
+                      span:
+                        line: 3
+                        column: 35
+                        length: 2
+                    right:
+                      Int: 7
+              parens:
+                - kind: LeftParen
+                  lexeme: ~
+                  span:
+                    line: 3
+                    column: 12
+                    length: 1
+                - kind: RightParen
+                  lexeme: ~
+                  span:
+                    line: 3
+                    column: 38
+                    length: 1
+              delimiters: []
+          - Return:
+              expr:
+                Int: 0
+              keyword:
+                kind: Return
+                lexeme: ~
+                span:
+                  line: 5
+                  column: 10
+                  length: 6
+
