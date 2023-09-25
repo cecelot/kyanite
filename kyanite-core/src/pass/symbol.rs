@@ -65,7 +65,6 @@ impl From<&File> for SymbolTable {
         for node in &program.nodes {
             self::SymbolTableVisitor::visit(node, &mut table);
         }
-        // dbg!(&table);
         table
     }
 }

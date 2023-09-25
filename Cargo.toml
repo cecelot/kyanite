@@ -3,5 +3,6 @@
 resolver = "2"
 members = [
     "kyanite-core",
-    "kyanite-builtins"
+    "kyanite-builtins",
+    "kyanite-cli"
 ]

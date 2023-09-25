@@ -10,12 +10,12 @@ use crate::{
 pub use compile::Compile;
 
 mod ast;
-pub mod cli;
 mod codegen;
 mod compile;
 mod parse;
 mod pass;
 mod reporting;
+pub mod subprocess;
 mod token;
 
 #[derive(thiserror::Error, Debug)]
@@ -32,6 +32,8 @@ pub enum PipelineError {
     TypeError(usize),
     #[error("(while building ir) {0}")]
     IrError(IrError),
+    #[error("failed to compile (see output)")]
+    CompileError,
 }
 
 #[derive(Debug)]
@@ -91,18 +93,6 @@ impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ast.file)
     }
-}
-
-pub fn run(exec: &str, args: &[&str]) -> (String, String) {
-    let output = std::process::Command::new(exec)
-        .args(args)
-        .output()
-        .unwrap();
-    (
-        std::str::from_utf8(&output.stdout).unwrap().to_owned()
-            + std::str::from_utf8(&output.stderr).unwrap(),
-        format!("{} {}", exec, args.join(" ")),
-    )
 }
 
 #[derive(Debug, Default)]

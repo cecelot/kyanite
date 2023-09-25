@@ -1,15 +1,13 @@
 use std::{fs::File, io::Write, path::Path};
 
-use colored::Colorize;
-
-use crate::Program;
+use crate::{subprocess, PipelineError, Program};
 
 pub trait Compile {
-    fn compile(&self) -> String;
+    fn compile(&self, writer: impl Write) -> Result<String, PipelineError>;
 }
 
 impl Compile for Program {
-    fn compile(&self) -> String {
+    fn compile(&self, mut writer: impl Write) -> Result<String, PipelineError> {
         if !Path::new("kya-dist").exists() {
             std::fs::create_dir("kya-dist").expect("permission to create directories");
         }
@@ -24,14 +22,23 @@ impl Compile for Program {
         } else {
             "target/release"
         };
+        let dir = env!("CARGO_MANIFEST_DIR");
+        let dir = &dir[0..dir.len() - 12];
+        let include = &format!("{}{build}", dir);
 
-        let (_, llvm) = crate::run("llc", &["-filetype=obj", "-o", obj, ir]);
-        println!("{} `{}`", "Finished".green().bold(), llvm);
-        let (_, clang) = crate::run(
-            "clang",
-            &[obj, "-o", exe, "-L", build, "-lkyanite_builtins"],
-        );
-        println!("{} `{}`", "Finished".green().bold(), clang);
-        exe.into()
+        subprocess::handle(
+            "Finished",
+            subprocess::exec("llc", &["-filetype=obj", "-o", obj, ir]),
+            &mut writer,
+        )?;
+        subprocess::handle(
+            "Finished",
+            subprocess::exec(
+                "clang",
+                &[obj, "-o", exe, "-L", include, "-lkyanite_builtins"],
+            ),
+            &mut writer,
+        )?;
+        Ok(exe.into())
     }
 }

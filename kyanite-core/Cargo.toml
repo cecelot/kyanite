@@ -1,12 +1,11 @@
 [package]
-name = "kyanite_core"
+name = "kyanite"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.2", features = ["derive"] }
 colored = "2.0.4"
 inkwell = { version = "0.2.0", features = ["llvm15-0"] }
 insta = { version  = "1.32.0", features = ["yaml"] }
@@ -17,7 +16,3 @@ thiserror = "1.0.48"
 [lib]
 name = "kyanite"
 path = "src/lib.rs"
-
-[[bin]]
-name = "kyanite"
-path = "src/bin/main.rs"
