@@ -1,11 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    fs::File,
-    io::{self, Read},
-};
+use std::{fmt, io};
 
-use crate::reporting::error::PreciseError;
+use crate::{reporting::error::PreciseError, Source};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum TokenKind {
@@ -124,6 +120,16 @@ impl Span {
     }
 }
 
+impl Default for Span {
+    fn default() -> Self {
+        Self {
+            line: 1,
+            column: 0,
+            length: 0,
+        }
+    }
+}
+
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -137,42 +143,36 @@ impl fmt::Display for Span {
     }
 }
 
-pub fn errors(tokens: &[Token]) -> usize {
-    tokens.iter().filter(|t| t.kind == TokenKind::Error).count()
-}
-
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TokenStream {
-    pub(super) raw: String,
-    source: Vec<char>,
+    pub(super) errors: Vec<PreciseError>,
+    pub(super) tokens: Vec<Token>,
+    pub(super) source: Source,
     span: Span,
     start: usize,
     current: usize,
 }
 
-impl From<String> for TokenStream {
-    fn from(source: String) -> Self {
+impl From<Source> for TokenStream {
+    fn from(source: Source) -> Self {
         Self {
-            source: source.chars().collect::<Vec<char>>(),
-            raw: source,
-            span: Span::new(1, 0, 0),
-            start: 0,
-            current: 0,
+            source,
+            ..Default::default()
         }
     }
 }
 
 impl TokenStream {
-    pub fn new(mut file: File) -> Result<Self, io::Error> {
-        let mut source: String = "".into();
-        file.read_to_string(&mut source)?;
-        Ok(Self {
-            source: source.chars().collect::<Vec<char>>(),
-            raw: source,
-            span: Span::new(1, 0, 0),
-            start: 0,
-            current: 0,
-        })
+    pub fn new(source: Source) -> Result<Self, io::Error> {
+        let mut stream = Self::from(source);
+        stream.process();
+        Ok(stream)
+    }
+
+    fn process(&mut self) {
+        while let Some(token) = if !self.eof() { self.token() } else { None } {
+            self.tokens.push(token);
+        }
     }
 
     fn token(&mut self) -> Option<Token> {
@@ -207,19 +207,14 @@ impl TokenStream {
                     '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
                     '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
                     c => {
-                        println!(
-                            "{}",
-                            PreciseError::new(
-                                self.raw
-                                    .lines()
-                                    .nth(self.span.line - 1)
-                                    .expect("span to have valid line number")
-                                    .into(),
-                                self.span,
-                                format!("unexpected character `{c}`"),
-                                "not a token".into(),
-                            )
+                        let error = PreciseError::new(
+                            &self.source,
+                            self.span,
+                            format!("unexpected character `{c}`"),
+                            "not a token".into(),
                         );
+                        println!("{}", error);
+                        self.errors.push(error);
                         Token::new(TokenKind::Error, None, self.span)
                     }
                 }
@@ -229,7 +224,7 @@ impl TokenStream {
     }
 
     fn peek(&self) -> Option<char> {
-        self.source.get(self.current).copied()
+        self.source.chars.get(self.current).copied()
     }
 
     fn string(&mut self) -> Token {
@@ -245,11 +240,7 @@ impl TokenStream {
             println!(
                 "{}",
                 PreciseError::new(
-                    self.raw
-                        .lines()
-                        .nth(self.span.line - 1)
-                        .expect("span to have valid line number")
-                        .into(),
+                    &self.source,
                     self.span,
                     "unterminated string".into(),
                     "opening quote here".into(),
@@ -318,7 +309,7 @@ impl TokenStream {
     }
 
     fn lexeme(&self, start: usize, end: usize) -> String {
-        self.source[start..end].iter().collect()
+        self.source.chars[start..end].iter().collect()
     }
 
     fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {
@@ -365,32 +356,22 @@ impl TokenStream {
     }
 }
 
-impl Iterator for TokenStream {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if !self.eof() {
-            self.token()
-        } else {
-            None
-        }
-    }
-}
-
 macro_rules! assert_tokens {
-    ($($path:expr => $name:ident),*) => {
+    ($($path:expr => $name:ident / $valid:expr),*) => {
         #[cfg(test)]
         mod tests {
-            use std::fs::File;
-
-            use crate::token::TokenStream;
+            use crate::token::{TokenStream, Source};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let stream = TokenStream::new(File::open($path)?)?;
+                    let stream = TokenStream::new(Source::new($path)?)?;
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
-                        insta::assert_yaml_snapshot!(stream.collect::<Vec<_>>());
+                        if $valid {
+                            insta::assert_yaml_snapshot!(stream.tokens);
+                        } else {
+                            insta::assert_yaml_snapshot!(stream.errors);
+                        }
                     });
 
                     Ok(())
@@ -401,10 +382,12 @@ macro_rules! assert_tokens {
 }
 
 assert_tokens! {
-    "examples/hello.kya" => hello_world,
-    "examples/expr.kya" => expr,
-    "examples/calls.kya" => calls,
-    "examples/empty.kya" => empty,
-    "examples/access.kya" => access,
-    "examples/mixed.kya" => mixed
+    "examples/hello.kya" => hello_world / true,
+    "examples/expr.kya" => expr / true,
+    "examples/calls.kya" => calls / true,
+    "examples/empty.kya" => empty / true,
+    "examples/access.kya" => access / true,
+    "examples/mixed.kya" => mixed / true,
+
+    "examples/invalid/tokens.kya" => invalid / false
 }

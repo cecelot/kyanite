@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     codegen::Ir,
     parse::Parser,
-    token::{self, Token, TokenStream},
-    PipelineError,
+    token::{Token, TokenStream},
+    PipelineError, Source,
 };
-use std::{fmt, fs};
+use std::fmt;
 
 pub mod node;
 
@@ -17,25 +17,17 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn from_file(file: fs::File) -> Result<Self, PipelineError> {
-        let stream = TokenStream::new(file).map_err(|_| PipelineError::InvalidUtf8)?;
-        Self::new(stream)
-    }
-
-    pub fn from_string(str: String) -> Result<Self, PipelineError> {
-        let stream = TokenStream::from(str);
+    pub fn from_source(source: Source) -> Result<Self, PipelineError> {
+        let stream = TokenStream::new(source).map_err(|_| PipelineError::InvalidUtf8)?;
         Self::new(stream)
     }
 
     fn new(stream: TokenStream) -> Result<Self, PipelineError> {
-        // TODO: messy clone
-        let raw = stream.raw.clone();
-        let tokens: Vec<Token> = stream.collect();
-        let errors = token::errors(&tokens);
+        let errors = stream.errors.len();
         if errors > 0 {
             return Err(PipelineError::LexError(errors));
         }
-        let mut parser = Parser::new(raw, tokens);
+        let mut parser = Parser::new(stream.source, stream.tokens);
         let file = parser.parse();
         if parser.errors > 0 {
             return Err(PipelineError::ParseError(parser.errors));
@@ -215,14 +207,12 @@ macro_rules! assert_ast {
     ($($path:expr => $name:ident),*) => {
         #[cfg(test)]
         mod tests {
-            use std::fs::File;
-
-            use crate::ast;
+            use crate::{Source, ast};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let ast = ast::Ast::from_file(File::open($path)?)?;
+                    let ast = ast::Ast::from_source(Source::new($path)?)?;
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_yaml_snapshot!(ast);
                     });

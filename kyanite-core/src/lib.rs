@@ -1,4 +1,4 @@
-use std::{fmt, fs::File};
+use std::{fmt, fs::File, io::Read, path::Path};
 
 use codegen::IrError;
 
@@ -20,6 +20,8 @@ mod token;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
+    #[error("file \"{0}\" does not exist")]
+    FileNotFound(String),
     #[error("File is not valid UTF-8")]
     InvalidUtf8,
     #[error("(while lexing source) {0} error(s) encountered")]
@@ -39,21 +41,39 @@ pub struct Program {
 }
 
 impl Program {
+    pub fn from_file<P>(path: P) -> Result<Self, PipelineError>
+    where
+        P: AsRef<Path>,
+    {
+        let source = Source::new(path)?;
+        let ast = ast::Ast::from_source(source)?;
+        Self::new(ast)?.build()
+    }
+
+    pub fn from_string(str: String) -> Result<Self, PipelineError> {
+        let dir = Path::new("/tmp/com.github.alaidriel/kyanite");
+        if !dir.exists() {
+            std::fs::create_dir_all(dir).expect("permission to write to /tmp");
+        }
+        let filename = dir
+            .join("main.kya")
+            .to_str()
+            .ok_or(PipelineError::InvalidUtf8)?
+            .to_string();
+        std::fs::write(
+            &filename,
+            format!("defn main(): int {{\n\t{}\nreturn 0;\n}}", str),
+        )
+        .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
+        let ast = ast::Ast::from_source(Source::new(filename)?).unwrap();
+        Self::new(ast)?.build()
+    }
+
     fn new(ast: ast::Ast) -> Result<Self, PipelineError> {
         Ok(Self {
             ir: Ir::from_ast(&ast).map_err(PipelineError::IrError)?,
             ast,
         })
-    }
-
-    pub fn from_file(file: File) -> Result<Self, PipelineError> {
-        let ast = ast::Ast::from_file(file)?;
-        Self::new(ast)?.build()
-    }
-
-    pub fn from_string(str: String) -> Result<Self, PipelineError> {
-        let ast = ast::Ast::from_string(str)?;
-        Self::new(ast)?.build()
     }
 
     fn build(self) -> Result<Self, PipelineError> {
@@ -83,4 +103,34 @@ pub fn run(exec: &str, args: &[&str]) -> (String, String) {
             + std::str::from_utf8(&output.stderr).unwrap(),
         format!("{} {}", exec, args.join(" ")),
     )
+}
+
+#[derive(Debug, Default)]
+pub struct Source {
+    filename: String,
+    chars: Vec<char>,
+    raw: String,
+}
+
+impl Source {
+    pub fn new<P>(path: P) -> Result<Self, PipelineError>
+    where
+        P: AsRef<Path>,
+    {
+        let filename = path
+            .as_ref()
+            .to_str()
+            .ok_or(PipelineError::InvalidUtf8)?
+            .to_string();
+        let mut raw = String::new();
+        let mut file =
+            File::open(&path).map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
+        file.read_to_string(&mut raw)
+            .map_err(|_| PipelineError::InvalidUtf8)?;
+        Ok(Self {
+            filename,
+            chars: raw.chars().collect(),
+            raw,
+        })
+    }
 }

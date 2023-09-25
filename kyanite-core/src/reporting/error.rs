@@ -1,8 +1,10 @@
 use colored::Colorize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use crate::token::Span;
+use crate::{token::Span, Source};
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PreciseError {
     filename: String,
     heading: String,
@@ -12,14 +14,18 @@ pub struct PreciseError {
 }
 
 impl PreciseError {
-    pub fn new(line: String, span: Span, heading: String, text: String) -> Self {
+    pub fn new(source: &Source, span: Span, heading: String, text: String) -> Self {
         Self {
-            line,
+            line: source
+                .raw
+                .lines()
+                .nth(span.line - 1)
+                .expect("span to have valid line number")
+                .into(),
             span,
             heading,
             text,
-            // TODO: get actual filename
-            filename: String::from("main.kya"),
+            filename: source.filename.clone(),
         }
     }
 

@@ -1,0 +1,5 @@
+@defn main ### (): int {@
+    print ^ ln("Hello, world&\n");
+
+    retur & n 0;
+}

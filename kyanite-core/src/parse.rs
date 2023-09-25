@@ -2,6 +2,7 @@ use crate::{
     ast::{File, Node, Param},
     reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
+    Source,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -17,17 +18,17 @@ pub enum ParseError {
 }
 
 pub struct Parser {
-    raw: String,
     pub(super) errors: usize,
+    source: Source,
     tokens: Vec<Token>,
     current: usize,
     panic: bool,
 }
 
 impl Parser {
-    pub fn new(raw: String, tokens: Vec<Token>) -> Self {
+    pub fn new(source: Source, tokens: Vec<Token>) -> Self {
         Self {
-            raw,
+            source,
             tokens,
             panic: false,
             errors: 0,
@@ -350,12 +351,6 @@ impl Parser {
             ParseError::Unhandled(_, span, _) => span,
             ParseError::UnexpectedEof(span) => span,
         };
-        let line = self
-            .raw
-            .lines()
-            .nth(span.line - 1)
-            .expect("span to have valid line number")
-            .to_string();
         let detail = match e {
             ParseError::Expected(expected, _, _) => format!("expected {} here", expected),
             ParseError::Unhandled(_, _, expected) => {
@@ -370,7 +365,7 @@ impl Parser {
         };
         println!(
             "{}",
-            PreciseError::new(line, span, format!("{}", e), detail)
+            PreciseError::new(&self.source, span, format!("{}", e), detail)
         );
     }
 

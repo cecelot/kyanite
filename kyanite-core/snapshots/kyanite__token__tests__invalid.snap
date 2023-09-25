@@ -1,0 +1,61 @@
+---
+source: kyanite-core/src/token.rs
+expression: stream.errors
+---
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `@`"
+  line: "@defn main ### (): int {@"
+  span:
+    line: 1
+    column: 1
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `#`"
+  line: "@defn main ### (): int {@"
+  span:
+    line: 1
+    column: 12
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `#`"
+  line: "@defn main ### (): int {@"
+  span:
+    line: 1
+    column: 13
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `#`"
+  line: "@defn main ### (): int {@"
+  span:
+    line: 1
+    column: 14
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `@`"
+  line: "@defn main ### (): int {@"
+  span:
+    line: 1
+    column: 25
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `^`"
+  line: "    print ^ ln(\"Hello, world&\\n\");"
+  span:
+    line: 2
+    column: 11
+    length: 1
+  text: not a token
+- filename: examples/invalid/tokens.kya
+  heading: "unexpected character `&`"
+  line: "    retur & n 0;"
+  span:
+    line: 4
+    column: 11
+    length: 1
+  text: not a token
+

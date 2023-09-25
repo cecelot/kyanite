@@ -14,8 +14,8 @@ pub struct Cli {
 pub enum Commands {
     /// Evaluates kyanite code
     Eval {
-        /// The path to the .kya file
-        source: String,
+        /// The source text to evaluate
+        text: String,
     },
     /// Runs a .kya file
     Run {
