@@ -1,0 +1,9 @@
+defn main(): int {
+    println(defn);
+
+    let x: int = 5
+
+    println(x)
+
+    return 0;
+}

@@ -1,0 +1,5 @@
+---
+source: kyanite-core/src/parse.rs
+expression: parser.errors.len()
+---
+0

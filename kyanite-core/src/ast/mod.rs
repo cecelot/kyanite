@@ -29,8 +29,9 @@ impl Ast {
         }
         let mut parser = Parser::new(stream.source, stream.tokens);
         let file = parser.parse();
-        if parser.errors > 0 {
-            return Err(PipelineError::ParseError(parser.errors));
+        let errors = parser.errors.len();
+        if errors > 0 {
+            return Err(PipelineError::ParseError(errors));
         }
         Ok(Self { file })
     }
@@ -225,10 +226,10 @@ macro_rules! assert_ast {
 }
 
 assert_ast!(
-    "examples/hello.kya" => hello_world,
-    "examples/expr.kya" => expr,
-    "examples/calls.kya" => calls,
-    "examples/empty.kya" => empty,
-    "examples/access.kya" => access,
-    "examples/mixed.kya" => mixed
+    "test-cases/hello.kya" => hello_world,
+    "test-cases/expr.kya" => expr,
+    "test-cases/calls.kya" => calls,
+    "test-cases/empty.kya" => empty,
+    "test-cases/access.kya" => access,
+    "test-cases/mixed.kya" => mixed
 );

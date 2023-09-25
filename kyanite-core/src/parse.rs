@@ -10,15 +10,15 @@ pub enum ParseError {
     #[error("unexpected EOF")]
     UnexpectedEof(Span),
 
-    #[error("expected `{0}` but found `{2}`")]
+    #[error("expected {0} but found {2}")]
     Expected(TokenKind, Span, TokenKind),
 
-    #[error("unexpected `{0}`")]
+    #[error("unexpected {0}")]
     Unhandled(TokenKind, Span, &'static [TokenKind]),
 }
 
 pub struct Parser {
-    pub(super) errors: usize,
+    pub(super) errors: Vec<PreciseError>,
     source: Source,
     tokens: Vec<Token>,
     current: usize,
@@ -31,7 +31,7 @@ impl Parser {
             source,
             tokens,
             panic: false,
-            errors: 0,
+            errors: vec![],
             current: 0,
         }
     }
@@ -53,15 +53,10 @@ impl Parser {
                 }
             } {
                 Ok(node) => nodes.push(node),
-                Err(e) => match e {
-                    ParseError::Unhandled(_, _, _) => {
-                        self.advance();
-                        continue;
-                    }
-                    _ => {
-                        self.error(&e);
-                    }
-                },
+                Err(e) => {
+                    self.error(&e);
+                    self.synchronize(false);
+                }
             }
         }
         let file = File::new(nodes);
@@ -114,10 +109,7 @@ impl Parser {
                 Ok(stmt) => stmts.push(stmt),
                 Err(e) => {
                     self.error(&e);
-                    if self.panic {
-                        self.panic = false;
-                        return Err(e);
-                    }
+                    self.synchronize(true);
                 }
             }
         }
@@ -343,9 +335,12 @@ impl Parser {
         }
     }
 
+    fn previous(&self) -> Option<Token> {
+        self.tokens.get(self.current - 1).cloned()
+    }
+
     fn error(&mut self, e: &ParseError) {
         self.panic = true;
-        self.errors += 1;
         let span = *match &e {
             ParseError::Expected(_, span, _) => span,
             ParseError::Unhandled(_, span, _) => span,
@@ -363,14 +358,78 @@ impl Parser {
             }
             ParseError::UnexpectedEof(_) => "unexpected end of file".into(),
         };
-        println!(
-            "{}",
-            PreciseError::new(&self.source, span, format!("{}", e), detail)
-        );
+        let error = PreciseError::new(&self.source, span, format!("{}", e), detail);
+        println!("{}", error);
+        self.errors.push(error);
+    }
+
+    fn synchronize(&mut self, stmt: bool) {
+        self.panic = false;
+
+        if stmt {
+            self.advance();
+        }
+
+        while !self.eof() {
+            if self.previous().unwrap().kind == TokenKind::Semicolon
+                || self.previous().unwrap().span.line < self.peek().unwrap().span.line
+            {
+                return;
+            }
+
+            if matches!(
+                self.peek().unwrap().kind,
+                TokenKind::Let | TokenKind::Defn | TokenKind::Const
+            ) {
+                return;
+            }
+            self.advance();
+        }
     }
 
     fn advance(&mut self) -> Option<Token> {
         self.current += 1;
         self.tokens.get(self.current - 1).cloned()
     }
+}
+
+macro_rules! assert_parse {
+    ($($path:expr => $name:ident / $valid:expr),*) => {
+        #[cfg(test)]
+        mod tests {
+            use crate::{parse::Parser, token::{TokenStream}, Source};
+
+            $(
+                #[test]
+                fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                    let stream = TokenStream::new(Source::new($path)?)?;
+                    let mut parser = Parser::new(stream.source, stream.tokens);
+                    parser.parse();
+                    insta::with_settings!({snapshot_path => "../snapshots"}, {
+                        if $valid {
+                            insta::assert_display_snapshot!(parser.errors.len());
+                        } else {
+                            insta::assert_yaml_snapshot!(parser.errors);
+                        }
+                    });
+
+                    Ok(())
+                }
+            )*
+        }
+    };
+}
+
+assert_parse! {
+    // Ensure valid programs have zero parse errors
+    "test-cases/hello.kya" => hello_world / true,
+    "test-cases/expr.kya" => expr / true,
+    "test-cases/calls.kya" => calls / true,
+    "test-cases/empty.kya" => empty / true,
+    "test-cases/access.kya" => access / true,
+    "test-cases/mixed.kya" => mixed / true,
+
+    "test-cases/parser/simple.kya" => simple / false,
+    "test-cases/parser/toplevel.kya" => toplevel / false,
+    "test-cases/parser/nested.kya" => nested / false
 }

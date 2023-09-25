@@ -1,0 +1,29 @@
+---
+source: kyanite-core/src/parse.rs
+expression: parser.errors
+---
+- filename: test-cases/parser/simple.kya
+  heading: unexpected identifier
+  line: "    foo"
+  span:
+    line: 1
+    column: 7
+    length: 3
+  text: "expected one of `defn`, `const` here"
+- filename: test-cases/parser/simple.kya
+  heading: unexpected identifier
+  line: bar;
+  span:
+    line: 3
+    column: 3
+    length: 3
+  text: "expected one of `defn`, `const` here"
+- filename: test-cases/parser/simple.kya
+  heading: unexpected identifier
+  line: "        baz"
+  span:
+    line: 5
+    column: 11
+    length: 3
+  text: "expected one of `defn`, `const` here"
+

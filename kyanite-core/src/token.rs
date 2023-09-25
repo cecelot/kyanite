@@ -382,12 +382,12 @@ macro_rules! assert_tokens {
 }
 
 assert_tokens! {
-    "examples/hello.kya" => hello_world / true,
-    "examples/expr.kya" => expr / true,
-    "examples/calls.kya" => calls / true,
-    "examples/empty.kya" => empty / true,
-    "examples/access.kya" => access / true,
-    "examples/mixed.kya" => mixed / true,
+    "test-cases/hello.kya" => hello_world / true,
+    "test-cases/expr.kya" => expr / true,
+    "test-cases/calls.kya" => calls / true,
+    "test-cases/empty.kya" => empty / true,
+    "test-cases/access.kya" => access / true,
+    "test-cases/mixed.kya" => mixed / true,
 
-    "examples/invalid/tokens.kya" => invalid / false
+    "test-cases/tokens/varied.kya" => varied / false
 }

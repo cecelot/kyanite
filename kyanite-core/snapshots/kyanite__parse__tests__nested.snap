@@ -1,0 +1,21 @@
+---
+source: kyanite-core/src/parse.rs
+expression: parser.errors
+---
+- filename: test-cases/parser/nested.kya
+  heading: unexpected defn
+  line: "    println(defn);"
+  span:
+    line: 2
+    column: 16
+    length: 4
+  text: "expected one of `identifier`, `literal`, `(` here"
+- filename: test-cases/parser/nested.kya
+  heading: expected ; but found identifier
+  line: "    println(x)"
+  span:
+    line: 6
+    column: 11
+    length: 7
+  text: expected ; here
+

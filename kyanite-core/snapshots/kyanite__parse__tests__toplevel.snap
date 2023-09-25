@@ -1,0 +1,29 @@
+---
+source: kyanite-core/src/parse.rs
+expression: parser.errors
+---
+- filename: test-cases/parser/toplevel.kya
+  heading: unexpected identifier
+  line: foo
+  span:
+    line: 1
+    column: 3
+    length: 3
+  text: "expected one of `defn`, `const` here"
+- filename: test-cases/parser/toplevel.kya
+  heading: expected ; but found defn
+  line: "defn bar(): void {}"
+  span:
+    line: 5
+    column: 4
+    length: 4
+  text: expected ; here
+- filename: test-cases/parser/toplevel.kya
+  heading: unexpected identifier
+  line: "        baz"
+  span:
+    line: 7
+    column: 11
+    length: 3
+  text: "expected one of `defn`, `const` here"
+

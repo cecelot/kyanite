@@ -1,0 +1,7 @@
+foo
+
+const FOO: int = 5
+
+defn bar(): void {}
+
+        baz
