@@ -3,15 +3,9 @@ use kyanite::Program;
 use kyanite_cli::Commands;
 
 fn main() {
-    match which::which("llc") {
-        Ok(_) => (),
-        Err(_) => {
-            println!(
-                "{}: llc not found in PATH; try installing LLVM",
-                "error".bold().red(),
-            );
-            return;
-        }
+    // Check for LLVM
+    if !installed("llc") || !installed("clang") {
+        return;
     }
 
     let cli = kyanite_cli::init();
@@ -23,5 +17,19 @@ fn main() {
     match res {
         Ok(_) => (),
         Err(e) => println!("{}: {}", "error".bold().red(), e),
+    }
+}
+
+fn installed(s: &str) -> bool {
+    match which::which(s) {
+        Ok(_) => true,
+        Err(_) => {
+            println!(
+                "{}: {} not found in PATH; try installing LLVM",
+                "error".bold().red(),
+                s
+            );
+            false
+        }
     }
 }

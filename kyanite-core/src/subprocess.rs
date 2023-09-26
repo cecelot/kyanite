@@ -36,7 +36,7 @@ pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<
                 res.output
             )
             .unwrap();
-            Err(PipelineError::CompileError)
+            Err(PipelineError::CompileError(res.output))
         }
     }
 }

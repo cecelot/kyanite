@@ -33,7 +33,7 @@ pub enum PipelineError {
     #[error("(while building ir) {0}")]
     IrError(IrError),
     #[error("failed to compile (see output)")]
-    CompileError,
+    CompileError(String),
 }
 
 #[derive(Debug)]

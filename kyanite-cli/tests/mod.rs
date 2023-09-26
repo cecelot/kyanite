@@ -6,7 +6,7 @@ fn hello() -> Result<(), Box<dyn std::error::Error>> {
     kyanite_cli::run(Program::from_file("../examples/hello.kya"), &mut output)?;
 
     insta::with_settings!({snapshot_path => "../snapshots"}, {
-        insta::assert_display_snapshot!(String::from_utf8(output).unwrap());
+        insta::assert_display_snapshot!(String::from_utf8(output).unwrap().lines().last().unwrap());
     });
 
     Ok(())

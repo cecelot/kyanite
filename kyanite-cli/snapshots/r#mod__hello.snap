@@ -1,9 +1,5 @@
 ---
 source: kyanite-cli/tests/mod.rs
-expression: "String::from_utf8(output).unwrap()"
+expression: "String::from_utf8(output).unwrap().lines().last().unwrap()"
 ---
-[1;32mFinished[0m `llc -filetype=obj -o kya-dist/main.o kya-dist/main.ll`
-[1;32mFinished[0m `clang kya-dist/main.o -o kya-dist/main -L /Users/aly/Developer/alaidriel/kyanite/target/debug -lkyanite_builtins`
-[1;32mRunning[0m `./kya-dist/main`
 Hello, world!
-
