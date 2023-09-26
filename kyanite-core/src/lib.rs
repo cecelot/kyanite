@@ -67,7 +67,7 @@ impl Program {
             format!("defn main(): int {{\n\t{}\nreturn 0;\n}}", str),
         )
         .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
-        let ast = ast::Ast::from_source(Source::new(filename)?).unwrap();
+        let ast = ast::Ast::from_source(Source::new(filename)?)?;
         Self::new(ast)?.build()
     }
 

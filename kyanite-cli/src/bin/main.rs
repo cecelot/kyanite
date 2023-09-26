@@ -3,6 +3,17 @@ use kyanite::Program;
 use kyanite_cli::Commands;
 
 fn main() {
+    match which::which("llc") {
+        Ok(_) => (),
+        Err(_) => {
+            println!(
+                "{}: llc not found in PATH; try installing LLVM",
+                "error".bold().red(),
+            );
+            return;
+        }
+    }
+
     let cli = kyanite_cli::init();
     let stdout = std::io::stdout();
     let res = match cli.command {

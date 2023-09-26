@@ -11,3 +11,4 @@ colored = "2.0.4"
 kyanite = { path = "../kyanite-core" }
 insta = "1.32.0"
 serde = { version = "1.0.188", features = ["derive"] }
+which = "4.4.2"
