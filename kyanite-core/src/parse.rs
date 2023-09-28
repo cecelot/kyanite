@@ -9,10 +9,8 @@ use crate::{
 pub enum ParseError {
     #[error("unexpected EOF")]
     UnexpectedEof(Span),
-
     #[error("expected {0} but found {2}")]
     Expected(TokenKind, Span, TokenKind),
-
     #[error("unexpected {0}")]
     Unhandled(TokenKind, Span, &'static [TokenKind]),
 }
@@ -272,13 +270,13 @@ impl Parser {
             }
             TokenKind::Literal => {
                 let token = self.advance().unwrap();
-                let lexeme = token.lexeme.unwrap();
+                let lexeme = token.lexeme.as_ref().unwrap();
                 match &lexeme[..] {
-                    "true" | "false" => Node::Bool(lexeme == "true"),
-                    _ if lexeme.starts_with('"') => Node::Str(lexeme),
-                    _ if lexeme.contains('.') => Node::Float(lexeme.parse().unwrap()),
+                    "true" | "false" => Node::Bool(lexeme == "true", token),
+                    _ if lexeme.starts_with('"') => Node::Str(lexeme.clone(), token),
+                    _ if lexeme.contains('.') => Node::Float(lexeme.parse().unwrap(), token),
                     _ if lexeme.chars().next().unwrap().is_ascii_digit() => {
-                        Node::Int(lexeme.parse().unwrap())
+                        Node::Int(lexeme.parse().unwrap(), token)
                     }
                     e => unreachable!("impossible lexeme `{}`", e),
                 }

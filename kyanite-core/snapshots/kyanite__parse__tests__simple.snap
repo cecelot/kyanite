@@ -7,7 +7,7 @@ expression: parser.errors
   line: "    foo"
   span:
     line: 1
-    column: 7
+    column: 5
     length: 3
   text: "expected one of `defn`, `const` here"
 - filename: test-cases/parser/simple.kya
@@ -15,7 +15,7 @@ expression: parser.errors
   line: bar;
   span:
     line: 3
-    column: 3
+    column: 1
     length: 3
   text: "expected one of `defn`, `const` here"
 - filename: test-cases/parser/simple.kya
@@ -23,7 +23,7 @@ expression: parser.errors
   line: "        baz"
   span:
     line: 5
-    column: 11
+    column: 9
     length: 3
   text: "expected one of `defn`, `const` here"
 

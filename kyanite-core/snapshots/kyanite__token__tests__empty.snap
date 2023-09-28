@@ -1,18 +1,18 @@
 ---
 source: kyanite-core/src/token.rs
-expression: "stream.collect::<Vec<_>>()"
+expression: stream.tokens
 ---
 - kind: Defn
   lexeme: ~
   span:
     line: 1
-    column: 4
+    column: 1
     length: 4
 - kind: Identifier
   lexeme: foo
   span:
     line: 1
-    column: 8
+    column: 6
     length: 3
 - kind: LeftParen
   lexeme: ~
@@ -36,7 +36,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: void
   span:
     line: 1
-    column: 16
+    column: 13
     length: 4
 - kind: LeftBrace
   lexeme: ~

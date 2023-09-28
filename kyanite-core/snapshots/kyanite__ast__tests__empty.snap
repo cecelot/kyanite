@@ -1,6 +1,6 @@
 ---
 source: kyanite-core/src/ast/mod.rs
-expression: program.ast
+expression: ast
 ---
 file:
   nodes:
@@ -10,7 +10,7 @@ file:
           lexeme: foo
           span:
             line: 1
-            column: 8
+            column: 6
             length: 3
         params: []
         ty:
@@ -18,7 +18,7 @@ file:
           lexeme: void
           span:
             line: 1
-            column: 16
+            column: 13
             length: 4
         body: []
 

@@ -1,6 +1,6 @@
 ---
 source: kyanite-core/src/ast/mod.rs
-expression: program.ast
+expression: ast
 ---
 file:
   nodes:
@@ -10,7 +10,7 @@ file:
           lexeme: main
           span:
             line: 1
-            column: 9
+            column: 6
             length: 4
         params: []
         ty:
@@ -18,7 +18,7 @@ file:
           lexeme: int
           span:
             line: 1
-            column: 16
+            column: 14
             length: 3
         body:
           - Call:
@@ -29,7 +29,7 @@ file:
                     lexeme: println
                     span:
                       line: 2
-                      column: 11
+                      column: 5
                       length: 7
               args:
                 - Binary:
@@ -38,7 +38,14 @@ file:
                         left:
                           Binary:
                             left:
-                              Float: 5
+                              Float:
+                                - 5
+                                - kind: Literal
+                                  lexeme: "5."
+                                  span:
+                                    line: 2
+                                    column: 13
+                                    length: 2
                             op:
                               kind: Star
                               lexeme: ~
@@ -47,7 +54,14 @@ file:
                                 column: 16
                                 length: 1
                             right:
-                              Float: 100
+                              Float:
+                                - 100
+                                - kind: Literal
+                                  lexeme: "100."
+                                  span:
+                                    line: 2
+                                    column: 18
+                                    length: 4
                         op:
                           kind: Plus
                           lexeme: ~
@@ -56,7 +70,14 @@ file:
                             column: 23
                             length: 1
                         right:
-                          Float: 15
+                          Float:
+                            - 15
+                            - kind: Literal
+                              lexeme: "15."
+                              span:
+                                line: 2
+                                column: 25
+                                length: 3
                     op:
                       kind: Minus
                       lexeme: ~
@@ -67,7 +88,14 @@ file:
                     right:
                       Binary:
                         left:
-                          Float: 7
+                          Float:
+                            - 7
+                            - kind: Literal
+                              lexeme: "7."
+                              span:
+                                line: 2
+                                column: 31
+                                length: 2
                         op:
                           kind: Slash
                           lexeme: ~
@@ -76,7 +104,14 @@ file:
                             column: 34
                             length: 1
                         right:
-                          Float: 8
+                          Float:
+                            - 8
+                            - kind: Literal
+                              lexeme: "8."
+                              span:
+                                line: 2
+                                column: 36
+                                length: 2
               parens:
                 - kind: LeftParen
                   lexeme: ~
@@ -99,7 +134,7 @@ file:
                     lexeme: println
                     span:
                       line: 3
-                      column: 11
+                      column: 5
                       length: 7
               args:
                 - Binary:
@@ -110,7 +145,14 @@ file:
                             left:
                               Binary:
                                 left:
-                                  Int: 5
+                                  Int:
+                                    - 5
+                                    - kind: Literal
+                                      lexeme: "5"
+                                      span:
+                                        line: 3
+                                        column: 13
+                                        length: 1
                                 op:
                                   kind: Star
                                   lexeme: ~
@@ -119,7 +161,14 @@ file:
                                     column: 15
                                     length: 1
                                 right:
-                                  Int: 100
+                                  Int:
+                                    - 100
+                                    - kind: Literal
+                                      lexeme: "100"
+                                      span:
+                                        line: 3
+                                        column: 17
+                                        length: 3
                             op:
                               kind: Plus
                               lexeme: ~
@@ -128,7 +177,14 @@ file:
                                 column: 21
                                 length: 1
                             right:
-                              Int: 15
+                              Int:
+                                - 15
+                                - kind: Literal
+                                  lexeme: "15"
+                                  span:
+                                    line: 3
+                                    column: 23
+                                    length: 2
                         op:
                           kind: Minus
                           lexeme: ~
@@ -139,7 +195,14 @@ file:
                         right:
                           Binary:
                             left:
-                              Int: 7
+                              Int:
+                                - 7
+                                - kind: Literal
+                                  lexeme: "7"
+                                  span:
+                                    line: 3
+                                    column: 28
+                                    length: 1
                             op:
                               kind: Slash
                               lexeme: ~
@@ -148,7 +211,14 @@ file:
                                 column: 30
                                 length: 1
                             right:
-                              Int: 8
+                              Int:
+                                - 8
+                                - kind: Literal
+                                  lexeme: "8"
+                                  span:
+                                    line: 3
+                                    column: 32
+                                    length: 1
                     op:
                       kind: GreaterEqual
                       lexeme: ~
@@ -157,7 +227,14 @@ file:
                         column: 35
                         length: 2
                     right:
-                      Int: 7
+                      Int:
+                        - 7
+                        - kind: Literal
+                          lexeme: "7"
+                          span:
+                            line: 3
+                            column: 37
+                            length: 1
               parens:
                 - kind: LeftParen
                   lexeme: ~
@@ -174,12 +251,19 @@ file:
               delimiters: []
           - Return:
               expr:
-                Int: 0
+                Int:
+                  - 0
+                  - kind: Literal
+                    lexeme: "0"
+                    span:
+                      line: 5
+                      column: 12
+                      length: 1
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 5
-                  column: 10
+                  column: 5
                   length: 6
 

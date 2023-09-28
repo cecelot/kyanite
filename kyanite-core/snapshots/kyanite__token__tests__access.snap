@@ -1,18 +1,18 @@
 ---
 source: kyanite-core/src/token.rs
-expression: "stream.collect::<Vec<_>>()"
+expression: stream.tokens
 ---
 - kind: Defn
   lexeme: ~
   span:
     line: 1
-    column: 4
+    column: 1
     length: 4
 - kind: Identifier
   lexeme: main
   span:
     line: 1
-    column: 9
+    column: 6
     length: 4
 - kind: LeftParen
   lexeme: ~
@@ -36,7 +36,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: int
   span:
     line: 1
-    column: 16
+    column: 14
     length: 3
 - kind: LeftBrace
   lexeme: ~
@@ -48,7 +48,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: println
   span:
     line: 2
-    column: 11
+    column: 5
     length: 7
 - kind: LeftParen
   lexeme: ~
@@ -60,7 +60,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: kyanite
   span:
     line: 2
-    column: 19
+    column: 13
     length: 7
 - kind: Dot
   lexeme: ~
@@ -72,7 +72,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: fs
   span:
     line: 2
-    column: 22
+    column: 21
     length: 2
 - kind: Dot
   lexeme: ~
@@ -84,7 +84,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: read
   span:
     line: 2
-    column: 27
+    column: 24
     length: 4
 - kind: LeftParen
   lexeme: ~
@@ -96,7 +96,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "\"examples/access.kya\""
   span:
     line: 2
-    column: 49
+    column: 29
     length: 21
 - kind: Comma
   lexeme: ~
@@ -108,7 +108,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: kyanite
   span:
     line: 2
-    column: 58
+    column: 52
     length: 7
 - kind: Dot
   lexeme: ~
@@ -120,7 +120,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: fs
   span:
     line: 2
-    column: 61
+    column: 60
     length: 2
 - kind: Dot
   lexeme: ~
@@ -132,7 +132,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: O_READ
   span:
     line: 2
-    column: 68
+    column: 63
     length: 6
 - kind: RightParen
   lexeme: ~
@@ -156,7 +156,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: ~
   span:
     line: 4
-    column: 10
+    column: 5
     length: 6
 - kind: Literal
   lexeme: "0"

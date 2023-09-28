@@ -38,9 +38,7 @@ impl PreciseError {
             &"-->".blue().bold().to_string(), // arrow
             &format!(
                 " {}:{}:{}\n",
-                self.filename,
-                self.span.line,
-                self.span.column - self.span.length + 1
+                self.filename, self.span.line, self.span.column
             ), // filename
         );
 
@@ -55,14 +53,19 @@ impl PreciseError {
 
         // error text
         sidebar(&mut comment, len, false);
-        let mut end = self.span.column + len - 1 - self.span.length + 1;
+        let mut end = self.span.column + len - 1;
         if len > 1 {
             end -= len - 1;
         }
         for _ in 0..end {
             comment.push(' ');
         }
-        comment.push_str(&format!("^ {}", self.text).red().bold().to_string());
+        comment.push_str(
+            &format!("{} {}", "^".repeat(self.span.length), self.text)
+                .red()
+                .bold()
+                .to_string(),
+        );
         comment.push('\n');
 
         // empty line

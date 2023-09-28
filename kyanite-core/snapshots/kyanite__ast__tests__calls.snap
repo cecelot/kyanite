@@ -1,6 +1,6 @@
 ---
 source: kyanite-core/src/ast/mod.rs
-expression: program.ast
+expression: ast
 ---
 file:
   nodes:
@@ -10,7 +10,7 @@ file:
           lexeme: foo
           span:
             line: 1
-            column: 8
+            column: 6
             length: 3
         params:
           - name:
@@ -18,21 +18,21 @@ file:
               lexeme: bar
               span:
                 line: 1
-                column: 12
+                column: 10
                 length: 3
             ty:
               kind: Type
               lexeme: int
               span:
                 line: 1
-                column: 17
+                column: 15
                 length: 3
         ty:
           kind: Type
           lexeme: int
           span:
             line: 1
-            column: 23
+            column: 21
             length: 3
         body:
           - Return:
@@ -43,14 +43,14 @@ file:
                     lexeme: bar
                     span:
                       line: 2
-                      column: 13
+                      column: 11
                       length: 3
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 2
-                  column: 9
+                  column: 4
                   length: 6
     - FuncDecl:
         name:
@@ -58,7 +58,7 @@ file:
           lexeme: bar
           span:
             line: 5
-            column: 8
+            column: 6
             length: 3
         params: []
         ty:
@@ -66,18 +66,25 @@ file:
           lexeme: float
           span:
             line: 5
-            column: 17
+            column: 13
             length: 5
         body:
           - Return:
               expr:
-                Float: 42
+                Float:
+                  - 42
+                  - kind: Literal
+                    lexeme: "42."
+                    span:
+                      line: 6
+                      column: 11
+                      length: 3
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 6
-                  column: 9
+                  column: 4
                   length: 6
     - FuncDecl:
         name:
@@ -85,7 +92,7 @@ file:
           lexeme: main
           span:
             line: 9
-            column: 9
+            column: 6
             length: 4
         params: []
         ty:
@@ -93,7 +100,7 @@ file:
           lexeme: int
           span:
             line: 9
-            column: 16
+            column: 14
             length: 3
         body:
           - Call:
@@ -104,10 +111,17 @@ file:
                     lexeme: println
                     span:
                       line: 10
-                      column: 10
+                      column: 4
                       length: 7
               args:
-                - Str: "\"Hello world!\""
+                - Str:
+                    - "\"Hello world!\""
+                    - kind: Literal
+                      lexeme: "\"Hello world!\""
+                      span:
+                        line: 10
+                        column: 12
+                        length: 14
               parens:
                 - kind: LeftParen
                   lexeme: ~
@@ -130,7 +144,7 @@ file:
                     lexeme: println
                     span:
                       line: 11
-                      column: 10
+                      column: 4
                       length: 7
               args:
                 - Call:
@@ -141,10 +155,17 @@ file:
                           lexeme: foo
                           span:
                             line: 11
-                            column: 14
+                            column: 12
                             length: 3
                     args:
-                      - Int: 72
+                      - Int:
+                          - 72
+                          - kind: Literal
+                            lexeme: "72"
+                            span:
+                              line: 11
+                              column: 16
+                              length: 2
                     parens:
                       - kind: LeftParen
                         lexeme: ~
@@ -181,7 +202,7 @@ file:
                     lexeme: println
                     span:
                       line: 12
-                      column: 10
+                      column: 4
                       length: 7
               args:
                 - Call:
@@ -192,7 +213,7 @@ file:
                           lexeme: bar
                           span:
                             line: 12
-                            column: 14
+                            column: 12
                             length: 3
                     args: []
                     parens:
@@ -231,7 +252,7 @@ file:
                     lexeme: println
                     span:
                       line: 13
-                      column: 10
+                      column: 4
                       length: 7
               args:
                 - Call:
@@ -242,11 +263,25 @@ file:
                           lexeme: max
                           span:
                             line: 13
-                            column: 14
+                            column: 12
                             length: 3
                     args:
-                      - Int: 10
-                      - Int: 300
+                      - Int:
+                          - 10
+                          - kind: Literal
+                            lexeme: "10"
+                            span:
+                              line: 13
+                              column: 16
+                              length: 2
+                      - Int:
+                          - 300
+                          - kind: Literal
+                            lexeme: "300"
+                            span:
+                              line: 13
+                              column: 20
+                              length: 3
                     parens:
                       - kind: LeftParen
                         lexeme: ~
@@ -289,7 +324,7 @@ file:
                     lexeme: println
                     span:
                       line: 14
-                      column: 10
+                      column: 4
                       length: 7
               args:
                 - Call:
@@ -300,11 +335,25 @@ file:
                           lexeme: min
                           span:
                             line: 14
-                            column: 14
+                            column: 12
                             length: 3
                     args:
-                      - Float: 10
-                      - Float: 300
+                      - Float:
+                          - 10
+                          - kind: Literal
+                            lexeme: "10."
+                            span:
+                              line: 14
+                              column: 16
+                              length: 3
+                      - Float:
+                          - 300
+                          - kind: Literal
+                            lexeme: "300."
+                            span:
+                              line: 14
+                              column: 21
+                              length: 4
                     parens:
                       - kind: LeftParen
                         lexeme: ~
@@ -341,12 +390,19 @@ file:
               delimiters: []
           - Return:
               expr:
-                Int: 0
+                Int:
+                  - 0
+                  - kind: Literal
+                    lexeme: "0"
+                    span:
+                      line: 16
+                      column: 11
+                      length: 1
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 16
-                  column: 9
+                  column: 4
                   length: 6
 

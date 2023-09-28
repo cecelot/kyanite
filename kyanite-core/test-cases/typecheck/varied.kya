@@ -1,0 +1,46 @@
+defn foo(a: int, b: int): int {
+    return a + b;
+}
+
+defn bar(a: float, b: int): float {
+    return a + b; % mismatched types for binary op '+'
+}
+
+defn combined(a: int, b: float): int {
+    return a - b + 7; % mismatched types for binary op '-' and '+'
+}
+
+defn complicated(): int {
+    let a: int = 5;
+    let b: int = 7;
+    let c: float = 10.0;
+    let d: float = 12.0;
+    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'
+}
+
+defn within(a: int): int {
+    return a;
+}
+
+defn withinFloat(a: float): float {
+    return a;
+}
+
+defn main() {
+    let a: int = 5;
+    let b: int = 7;
+    foo(a, b);
+    bar(a, b); % mismatched types 'float' and 'int'
+
+    bar(within(17), 3);
+
+    within(withinFloat(1000));
+    within(withinFloat(within("hello"))); % mismatched types 'float' and 'string'
+
+    foo(a, b, 10); % mismatched args
+
+    let baz: float = 6.;
+    within(baz); % mismatched args
+
+    baz + 7;
+}

@@ -48,8 +48,8 @@ impl Program {
         P: AsRef<Path>,
     {
         let source = Source::new(path)?;
-        let ast = ast::Ast::from_source(source)?;
-        Self::new(ast)?.build()
+        let ast = ast::Ast::from_source(source.clone())?;
+        Self::new(ast, &source)
     }
 
     pub fn from_string(str: String) -> Result<Self, PipelineError> {
@@ -67,25 +67,19 @@ impl Program {
             format!("defn main(): int {{\n\t{}\nreturn 0;\n}}", str),
         )
         .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
-        let ast = ast::Ast::from_source(Source::new(filename)?)?;
-        Self::new(ast)?.build()
+        let source = Source::new(filename)?;
+        let ast = ast::Ast::from_source(source.clone())?;
+        Self::new(ast, &source)
     }
 
-    fn new(ast: ast::Ast) -> Result<Self, PipelineError> {
+    fn new(ast: ast::Ast, source: &Source) -> Result<Self, PipelineError> {
+        let symbols = SymbolTable::from(&ast.file);
+        let mut pass = TypeCheckPass::new(symbols, source, &ast.file);
+        pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
             ir: Ir::from_ast(&ast).map_err(PipelineError::IrError)?,
             ast,
         })
-    }
-
-    fn build(self) -> Result<Self, PipelineError> {
-        let symbols = SymbolTable::from(&self.ast.file);
-        let mut pass = TypeCheckPass::new(symbols, &self.ast.file);
-        let errors = pass.run();
-        if errors > 0 {
-            return Err(PipelineError::TypeError(errors));
-        }
-        Ok(self)
     }
 }
 
@@ -95,7 +89,7 @@ impl fmt::Display for Program {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Source {
     filename: String,
     chars: Vec<char>,

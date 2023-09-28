@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     codegen::Ir,
     parse::Parser,
-    token::{Token, TokenStream},
+    token::{Span, Token, TokenStream},
     PipelineError, Source,
 };
 use std::fmt;
@@ -57,6 +57,15 @@ impl fmt::Display for File {
     }
 }
 
+pub trait NodeSpan {
+    fn span(&self) -> Span {
+        Span::new(self.line(), self.start(), self.end() - self.start())
+    }
+    fn start(&self) -> usize;
+    fn end(&self) -> usize;
+    fn line(&self) -> usize;
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Node {
     FuncDecl(node::FuncDecl),
@@ -68,15 +77,98 @@ pub enum Node {
     Binary(node::Binary),
     Unary(node::Unary),
     Ident(node::Ident),
-    Str(String),
-    Int(i64),
-    Float(f64),
-    Bool(bool),
-    #[allow(dead_code)]
+    Str(String, Token),
+    Int(i64, Token),
+    Float(f64, Token),
+    Bool(bool, Token),
     Void,
 }
 
+impl NodeSpan for Node {
+    fn start(&self) -> usize {
+        match self {
+            Node::Assign(assign) => assign.expr.start(),
+            Node::VarDecl(var) => var.expr.start(),
+            Node::ConstantDecl(constant) => constant.expr.start(),
+            Node::Call(call) => call.left.start(),
+            Node::Return(ret) => ret.expr.start(),
+            Node::Binary(binary) => binary.left.start(),
+            Node::Unary(unary) => unary.right.start(),
+            Node::Ident(id) => id.name.span.column,
+            Node::FuncDecl(func) => func.name.span.column,
+            Node::Str(_, token) => token.span.column,
+            Node::Int(_, token) => token.span.column,
+            Node::Float(_, token) => token.span.column,
+            Node::Bool(_, token) => token.span.column,
+            Node::Void => unimplemented!(),
+        }
+    }
+
+    fn end(&self) -> usize {
+        match self {
+            Node::Assign(assign) => assign.expr.end(),
+            Node::VarDecl(var) => var.expr.end(),
+            Node::ConstantDecl(constant) => constant.expr.end(),
+            Node::Call(call) => call.parens.1.span.column + 1,
+            Node::Return(ret) => ret.expr.end(),
+            Node::Binary(binary) => binary.right.end(),
+            Node::Unary(unary) => unary.right.end(),
+            Node::Ident(id) => id.name.span.column + id.name.span.length,
+            Node::FuncDecl(func) => func.name.span.column + func.name.span.length,
+            Node::Str(_, token) => token.span.column + token.span.length,
+            Node::Int(_, token) => token.span.column + token.span.length,
+            Node::Float(_, token) => token.span.column + token.span.length,
+            Node::Bool(_, token) => token.span.column + token.span.length,
+            Node::Void => unimplemented!(),
+        }
+    }
+
+    fn line(&self) -> usize {
+        match self {
+            Node::Assign(assign) => assign.expr.line(),
+            Node::VarDecl(var) => var.expr.line(),
+            Node::ConstantDecl(constant) => constant.expr.line(),
+            Node::Call(call) => call.left.line(),
+            Node::Return(ret) => ret.expr.line(),
+            Node::Binary(binary) => binary.left.line(),
+            Node::Unary(unary) => unary.right.line(),
+            Node::Ident(id) => id.name.span.line,
+            Node::FuncDecl(func) => func.name.span.line,
+            Node::Str(_, token) => token.span.line,
+            Node::Int(_, token) => token.span.line,
+            Node::Float(_, token) => token.span.line,
+            Node::Bool(_, token) => token.span.line,
+            Node::Void => unimplemented!(),
+        }
+    }
+}
+
 impl Node {
+    pub fn ty(&self) -> Type {
+        match self {
+            Node::FuncDecl(func) => {
+                if let Some(ty) = &func.ty {
+                    Type::from(ty)
+                } else {
+                    Type::Void
+                }
+            }
+            Node::ConstantDecl(c) => Type::from(&c.ty),
+            Node::VarDecl(v) => Type::from(&v.ty),
+            Node::Str(..) => Type::Str,
+            Node::Int(..) => Type::Int,
+            Node::Float(..) => Type::Float,
+            Node::Bool(..) => Type::Bool,
+            Node::Void => Type::Void,
+            Node::Assign(assign) => assign.expr.ty(),
+            Node::Return(ret) => ret.expr.ty(),
+            Node::Binary(binary) => binary.left.ty(),
+            Node::Unary(unary) => unary.right.ty(),
+            Node::Call(call) => call.left.ty(),
+            Node::Ident(_) => unimplemented!(""),
+        }
+    }
+
     pub fn func(name: Token, params: Vec<Param>, ty: Option<Token>, body: Vec<Node>) -> Self {
         Self::FuncDecl(node::FuncDecl::new(name, params, ty, body))
     }
@@ -131,10 +223,10 @@ impl fmt::Display for Node {
             Node::Unary(unary) => write!(f, "{}", unary),
             Node::Call(call) => write!(f, "{}", call),
             Node::Ident(id) => write!(f, "{}", id),
-            Node::Float(n) => write!(f, "{}", n),
-            Node::Int(i) => write!(f, "{}", i),
-            Node::Str(s) => write!(f, "{}", s),
-            Node::Bool(b) => write!(f, "{}", b),
+            Node::Float(n, _) => write!(f, "{}", n),
+            Node::Int(i, _) => write!(f, "{}", i),
+            Node::Str(s, _) => write!(f, "{}", s),
+            Node::Bool(b, _) => write!(f, "{}", b),
             Node::Void => write!(f, "void"),
         }
     }
@@ -162,6 +254,19 @@ impl Type {
             Type::Bool => ir.context.bool_type().into(),
             Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
         }
+    }
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ty = match self {
+            Type::Str => "str",
+            Type::Int => "int",
+            Type::Float => "float",
+            Type::Bool => "bool",
+            Type::Void => "void",
+        };
+        write!(f, "{}", ty)
     }
 }
 

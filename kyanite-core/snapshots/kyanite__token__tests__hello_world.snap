@@ -1,18 +1,18 @@
 ---
 source: kyanite-core/src/token.rs
-expression: "stream.collect::<Vec<_>>()"
+expression: stream.tokens
 ---
 - kind: Defn
   lexeme: ~
   span:
     line: 1
-    column: 4
+    column: 1
     length: 4
 - kind: Identifier
   lexeme: main
   span:
     line: 1
-    column: 9
+    column: 6
     length: 4
 - kind: LeftParen
   lexeme: ~
@@ -36,7 +36,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: int
   span:
     line: 1
-    column: 16
+    column: 14
     length: 3
 - kind: LeftBrace
   lexeme: ~
@@ -48,7 +48,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: println
   span:
     line: 2
-    column: 10
+    column: 4
     length: 7
 - kind: LeftParen
   lexeme: ~
@@ -60,7 +60,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "\"Hello, world!\""
   span:
     line: 2
-    column: 26
+    column: 12
     length: 15
 - kind: RightParen
   lexeme: ~
@@ -78,7 +78,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: ~
   span:
     line: 4
-    column: 9
+    column: 4
     length: 6
 - kind: Literal
   lexeme: "0"

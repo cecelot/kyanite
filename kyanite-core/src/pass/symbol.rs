@@ -1,49 +1,33 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+};
 
-use crate::ast::{node, File, Node, Type};
-
-#[derive(Debug)]
-pub struct Function {
-    pub(super) arity: usize,
-    pub(super) ty: Type,
-    pub(super) params: Vec<(String, Type)>,
-}
-
-impl Function {
-    pub fn new(arity: usize, ty: Type, params: Vec<(String, Type)>) -> Self {
-        Self { arity, ty, params }
-    }
-}
+use crate::{
+    ast::{node, File, Node},
+    token::Token,
+};
 
 #[derive(Debug)]
-pub enum Symbol {
-    Function(Function),
-    Variable(Type),
-}
-
-impl Symbol {
-    pub fn ty(&self) -> Type {
-        match self {
-            Symbol::Function(f) => f.ty.clone(),
-            Symbol::Variable(ty) => ty.clone(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct SymbolTable(HashMap<String, Symbol>);
+pub struct SymbolTable(HashMap<Token, Node>);
 
 impl SymbolTable {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
+}
 
-    pub fn get(&self, name: &String) -> Option<&Symbol> {
-        self.0.get(name)
+impl Deref for SymbolTable {
+    type Target = HashMap<Token, Node>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    pub fn insert(&mut self, name: String, symbol: Symbol) {
-        self.0.insert(name, symbol);
+impl DerefMut for SymbolTable {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -53,8 +37,8 @@ impl Default for SymbolTable {
     }
 }
 
-impl From<Vec<(String, Symbol)>> for SymbolTable {
-    fn from(vars: Vec<(String, Symbol)>) -> Self {
+impl From<Vec<(Token, Node)>> for SymbolTable {
+    fn from(vars: Vec<(Token, Node)>) -> Self {
         Self(vars.into_iter().collect())
     }
 }
@@ -76,29 +60,17 @@ trait SymbolTableVisitor {
 impl SymbolTableVisitor for Node {
     fn visit(&self, table: &mut SymbolTable) {
         match self {
-            Node::FuncDecl(fun) => func(fun, table),
-            Node::ConstantDecl(c) => constant(c, table),
+            decl @ Node::FuncDecl(fun) => func(fun, decl.clone(), table),
+            decl @ Node::ConstantDecl(c) => constant(c, decl.clone(), table),
             _ => {}
         }
     }
 }
 
-fn func(fun: &node::FuncDecl, table: &mut SymbolTable) {
-    let params: Vec<(String, Type)> = fun
-        .params
-        .iter()
-        .map(|param| (String::from(&param.name), Type::from(&param.ty)))
-        .collect();
-    table.insert(
-        String::from(&fun.name),
-        Symbol::Function(Function::new(
-            fun.params.len(),
-            Type::from(fun.ty.as_ref()),
-            params,
-        )),
-    );
+fn func(fun: &node::FuncDecl, decl: Node, table: &mut SymbolTable) {
+    table.insert(fun.name.clone(), decl);
 }
 
-fn constant(c: &node::ConstantDecl, table: &mut SymbolTable) {
-    table.insert(String::from(&c.name), Symbol::Variable(Type::from(&c.ty)));
+fn constant(c: &node::ConstantDecl, decl: Node, table: &mut SymbolTable) {
+    table.insert(c.name.clone(), decl);
 }

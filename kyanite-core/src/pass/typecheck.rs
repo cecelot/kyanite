@@ -1,22 +1,26 @@
 use std::ops::Deref;
 
 use crate::{
-    ast::{node, File, Node, Type},
-    token::Token,
+    ast::{node, File, Node, NodeSpan, Type},
+    reporting::error::PreciseError,
+    token::{Span, Token, TokenKind},
+    Source,
 };
 
-use super::symbol::{Symbol, SymbolTable};
+use super::symbol::SymbolTable;
 
 pub struct TypeCheckPass<'a> {
+    source: &'a Source,
     program: &'a File,
     errors: usize,
-    function: Option<String>,
+    function: Option<Token>,
     scopes: Vec<SymbolTable>,
 }
 
 impl<'a> TypeCheckPass<'a> {
-    pub fn new(table: SymbolTable, program: &'a File) -> Self {
+    pub fn new(table: SymbolTable, source: &'a Source, program: &'a File) -> Self {
         Self {
+            source,
             program,
             errors: 0,
             function: None,
@@ -24,11 +28,15 @@ impl<'a> TypeCheckPass<'a> {
         }
     }
 
-    pub fn run(&mut self) -> usize {
+    pub fn run(&mut self) -> Result<(), usize> {
         for node in &self.program.nodes {
             self.check(node);
         }
-        self.errors
+        if self.errors > 0 {
+            Err(self.errors)
+        } else {
+            Ok(())
+        }
     }
 
     fn scope_mut(&mut self) -> &mut SymbolTable {
@@ -43,26 +51,26 @@ impl<'a> TypeCheckPass<'a> {
         self.scopes.pop();
     }
 
-    fn symbol(&self, name: &String) -> Option<&Symbol> {
+    fn symbol(&self, name: &Token) -> Option<&Node> {
         for scope in self.scopes.iter().rev() {
-            if let Some(symbol) = scope.get(name) {
-                return Some(symbol);
+            if let Some(definition) = scope.get(name) {
+                return Some(definition);
             }
         }
         None
     }
 
-    fn error(&mut self, at: &Token, msg: String) {
-        eprintln!("{} at {}", msg, at.span);
+    fn error(&mut self, at: Span, heading: String, text: String) {
+        println!("{}", PreciseError::new(self.source, at, heading, text));
         self.errors += 1;
     }
 
     fn check(&mut self, node: &Node) -> Type {
         match node {
-            Node::Float(_) => Type::Float,
-            Node::Int(_) => Type::Int,
-            Node::Bool(_) => Type::Bool,
-            Node::Str(_) => Type::Str,
+            Node::Float(..) => Type::Float,
+            Node::Int(..) => Type::Int,
+            Node::Bool(..) => Type::Bool,
+            Node::Str(..) => Type::Str,
             Node::ConstantDecl(c) => self.constant(c),
             Node::VarDecl(v) => self.var(v),
             Node::FuncDecl(fun) => self.function(fun),
@@ -79,12 +87,9 @@ impl<'a> TypeCheckPass<'a> {
         let expected = Type::from(&c.ty);
         if got != expected {
             self.error(
-                &c.ty,
-                format!(
-                    "Mismatched types in constant declaration (expected {:?}, got {:?})",
-                    Type::from(&c.ty),
-                    got,
-                ),
+                c.ty.span,
+                "mismatched types in constant declaration".into(),
+                format!("expected {:?} here, got {:?}", Type::from(&c.ty), got),
             );
         }
         expected
@@ -95,27 +100,22 @@ impl<'a> TypeCheckPass<'a> {
         let expected = Type::from(&v.ty);
         if got != expected {
             self.error(
-                &v.ty,
-                format!(
-                    "Mismatched types in variable declaration (expected {:?}, got {:?})",
-                    Type::from(&v.ty),
-                    got,
-                ),
+                v.ty.span,
+                "mismatched types in variable declaration".into(),
+                format!("expected {:?} here, got {:?}", Type::from(&v.ty), got,),
             );
         }
         self.scope_mut()
-            .insert(String::from(&v.name), Symbol::Variable(Type::from(&v.ty)));
+            .insert(v.name.clone(), Node::VarDecl(v.clone()));
         expected
     }
 
     fn function(&mut self, fun: &node::FuncDecl) -> Type {
         self.begin_scope();
-        self.function = Some(String::from(&fun.name));
+        self.function = Some(fun.name.clone());
         for param in &fun.params {
-            self.scope_mut().insert(
-                String::from(&param.name),
-                Symbol::Variable(Type::from(&param.ty)),
-            );
+            self.scope_mut()
+                .insert(param.name.clone(), Node::FuncDecl(fun.clone()));
         }
         for node in &fun.body {
             self.check(node);
@@ -132,16 +132,17 @@ impl<'a> TypeCheckPass<'a> {
                 let symbol = self.symbol(function).unwrap();
                 if got != symbol.ty() {
                     self.error(
-                        &r.keyword,
-                        format!(
-                            "Mismatched types in return (expected {:?}, got {:?})",
-                            symbol.ty(),
-                            got
-                        ),
+                        r.keyword.span,
+                        "mismatched types in return".into(),
+                        format!("expected {} here, got {}", symbol.ty(), got),
                     );
                 }
             }
-            None => self.error(&r.keyword, "Return outside of function".into()),
+            None => self.error(
+                r.keyword.span,
+                "return outside of function".into(),
+                "here".into(),
+            ),
         }
         got
     }
@@ -150,23 +151,29 @@ impl<'a> TypeCheckPass<'a> {
         let lty = self.check(&b.left);
         let rty = self.check(&b.right);
         if lty != rty {
-            self.error(
-                &b.op,
-                format!(
-                    "Mismatched types in '{}' operation ({:?}, {:?})",
-                    b.op, lty, rty
-                ),
-            );
+            let heading = match b.op.kind {
+                TokenKind::Plus => format!("cannot add {} to {}", lty, rty),
+                TokenKind::Minus => format!("cannot subtract {} from {}", rty, lty),
+                TokenKind::Star => format!("cannot multiply {} by {}", lty, rty),
+                TokenKind::Slash => format!("cannot divide {} by {}", lty, rty),
+                _ => unimplemented!(),
+            };
+            self.error(b.op.span, heading, "".into());
         }
         lty
     }
 
     fn ident(&mut self, id: &node::Ident) -> Type {
-        let name = String::from(&id.name);
-        match self.symbol(&name) {
-            Some(Symbol::Variable(ty)) => ty.clone(),
+        match self.symbol(&id.name) {
+            Some(Node::FuncDecl(f)) => {
+                let param = f.params.iter().find(|p| p.name == id.name).unwrap();
+                Type::from(&param.ty)
+            }
+            Some(Node::VarDecl(v)) => Type::from(&v.ty),
+            Some(Node::ConstantDecl(c)) => Type::from(&c.ty),
+            Some(node) => unimplemented!("{:?} is not implemented as an identifier", node),
             _ => {
-                self.error(&id.name, format!("{} is not defined", name));
+                self.error(id.name.span, "is not defined".into(), "".into());
                 Type::Void
             }
         }
@@ -174,49 +181,65 @@ impl<'a> TypeCheckPass<'a> {
 
     fn call(&mut self, call: &node::Call) -> Type {
         let name = match &call.left.deref() {
-            Node::Ident(ident) => String::from(&ident.name),
+            Node::Ident(ident) => ident.name.clone(),
             Node::Binary(_) => todo!(),
             _ => unimplemented!(),
         };
         let (arity, params, ty) = match self.symbol(&name) {
-            Some(Symbol::Function(function)) => {
-                (function.arity, function.params.clone(), function.ty.clone())
-            }
+            Some(Node::FuncDecl(function)) => (
+                function.params.len(),
+                function.params.clone(),
+                function.ty.clone(),
+            ),
             Some(_) => {
-                self.error(&call.parens.0, format!("{} is not a function", name));
+                self.error(
+                    call.parens.0.span,
+                    format!("{} is not a function", name),
+                    "".into(),
+                );
                 return Type::Void;
             }
             _ => {
+                let name = String::from(&name);
                 // TODO: more robust type checking for builtins
                 if name != "println" && name != "max" && name != "min" {
-                    self.error(&call.parens.0, format!("{} is not defined", name));
+                    self.error(
+                        call.parens.0.span,
+                        format!("{} is not defined", name),
+                        "".into(),
+                    );
                 }
                 return Type::Void;
             }
         };
         if arity != call.args.len() {
             self.error(
-                &call.parens.1,
-                format!("Expected {} arguments, got {}", arity, call.args.len()),
+                call.parens.1.span,
+                format!(
+                    "this function takes {} arguments, but {} were provided",
+                    arity,
+                    call.args.len()
+                ),
+                format!("in call to {}", name),
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
-            let ty = self.check(arg);
-            if i < params.len() && ty != params[i].1 {
-                let token = match i {
-                    0 => &call.parens.0,
-                    _ if i == params.len() - 1 => &call.parens.1,
-                    _ => &call.delimiters[i],
-                };
-                self.error(
-                    token,
-                    format!(
-                        "Mismatched type in function parameter: (expected {:?}, got {:?})",
-                        params[i].1, ty
-                    ),
-                );
+            let got = self.check(arg);
+            if i < params.len() {
+                let expected = Type::from(&params[i].ty);
+                if got != expected {
+                    self.error(
+                        arg.span(),
+                        format!("mismatched types in call to {}", name),
+                        format!("expected {}, got {}", expected, got),
+                    );
+                }
             }
         }
-        ty.clone()
+        if let Some(ty) = ty {
+            Type::from(&ty)
+        } else {
+            Type::Void
+        }
     }
 }

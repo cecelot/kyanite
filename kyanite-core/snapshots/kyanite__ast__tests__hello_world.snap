@@ -1,6 +1,6 @@
 ---
 source: kyanite-core/src/ast/mod.rs
-expression: program.ast
+expression: ast
 ---
 file:
   nodes:
@@ -10,7 +10,7 @@ file:
           lexeme: main
           span:
             line: 1
-            column: 9
+            column: 6
             length: 4
         params: []
         ty:
@@ -18,7 +18,7 @@ file:
           lexeme: int
           span:
             line: 1
-            column: 16
+            column: 14
             length: 3
         body:
           - Call:
@@ -29,10 +29,17 @@ file:
                     lexeme: println
                     span:
                       line: 2
-                      column: 10
+                      column: 4
                       length: 7
               args:
-                - Str: "\"Hello, world!\""
+                - Str:
+                    - "\"Hello, world!\""
+                    - kind: Literal
+                      lexeme: "\"Hello, world!\""
+                      span:
+                        line: 2
+                        column: 12
+                        length: 15
               parens:
                 - kind: LeftParen
                   lexeme: ~
@@ -49,12 +56,19 @@ file:
               delimiters: []
           - Return:
               expr:
-                Int: 0
+                Int:
+                  - 0
+                  - kind: Literal
+                    lexeme: "0"
+                    span:
+                      line: 4
+                      column: 11
+                      length: 1
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 4
-                  column: 9
+                  column: 4
                   length: 6
 

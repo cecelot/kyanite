@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt, io};
+use std::{fmt, hash::Hash, io};
 
 use crate::{reporting::error::PreciseError, Source};
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Hash)]
 pub enum TokenKind {
     Identifier,
     Type,
@@ -61,10 +61,10 @@ impl fmt::Display for TokenKind {
             TokenKind::Colon => write!(f, ":"),
             TokenKind::Comma => write!(f, ","),
             TokenKind::Dot => write!(f, "."),
-            TokenKind::Plus => write!(f, "+"),
-            TokenKind::Minus => write!(f, "-"),
-            TokenKind::Star => write!(f, "*"),
-            TokenKind::Slash => write!(f, "/"),
+            TokenKind::Plus => write!(f, "add"),
+            TokenKind::Minus => write!(f, "subtract"),
+            TokenKind::Star => write!(f, "multiply"),
+            TokenKind::Slash => write!(f, "divide"),
             TokenKind::Let => write!(f, "let"),
             TokenKind::Const => write!(f, "const"),
             TokenKind::Defn => write!(f, "defn"),
@@ -78,7 +78,7 @@ impl fmt::Display for TokenKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub lexeme: Option<String>,
@@ -91,6 +91,18 @@ impl Token {
     }
 }
 
+impl PartialEq for Token {
+    fn eq(&self, other: &Self) -> bool {
+        self.lexeme == other.lexeme
+    }
+}
+
+impl Hash for Token {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.lexeme.hash(state)
+    }
+}
+
 impl From<&Token> for String {
     fn from(token: &Token) -> Self {
         token.lexeme.clone().unwrap_or(format!("{}", token.kind))
@@ -99,11 +111,15 @@ impl From<&Token> for String {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
+        write!(
+            f,
+            "{}",
+            self.lexeme.as_ref().unwrap_or(&format!("{}", self.kind))
+        )
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Span {
     pub(super) line: usize,
     pub(super) column: usize,
@@ -170,16 +186,16 @@ impl TokenStream {
     }
 
     fn process(&mut self) {
-        while let Some(token) = if !self.eof() { self.token() } else { None } {
-            self.tokens.push(token);
+        while !self.eof() {
+            self.token();
         }
     }
 
-    fn token(&mut self) -> Option<Token> {
+    fn token(&mut self) {
         self.span.length = 1;
         self.skip_whitespace();
         let token: Option<char> = self.peek();
-        Some(match token {
+        let token = match token {
             Some(token) => {
                 self.consume();
                 match token {
@@ -206,6 +222,12 @@ impl TokenStream {
                     '!' => self.match_next('=', TokenKind::BangEqual, TokenKind::Bang),
                     '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
                     '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
+                    '%' => {
+                        while !self.eof() && self.peek().unwrap() != '\n' {
+                            self.consume();
+                        }
+                        return;
+                    }
                     c => {
                         let error = PreciseError::new(
                             &self.source,
@@ -220,7 +242,8 @@ impl TokenStream {
                 }
             }
             None => Token::new(TokenKind::Eof, None, self.span),
-        })
+        };
+        self.tokens.push(token);
     }
 
     fn peek(&self) -> Option<char> {
@@ -249,11 +272,7 @@ impl TokenStream {
             return Token::new(TokenKind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        Token {
-            span: self.span,
-            kind: TokenKind::Literal,
-            lexeme: Some(lexeme),
-        }
+        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
     }
 
     fn number(&mut self) -> Token {
@@ -275,11 +294,7 @@ impl TokenStream {
 
         let lexeme = self.lexeme(self.start, self.current);
         self.span.length = self.current - self.start;
-        Token {
-            span: self.span,
-            kind: TokenKind::Literal,
-            lexeme: Some(lexeme),
-        }
+        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
     }
 
     fn identifier(&mut self) -> Token {
@@ -294,18 +309,29 @@ impl TokenStream {
 
     fn keyword(&mut self, lexeme: String) -> Token {
         self.span.length = self.current - self.start;
-        match lexeme.as_str() {
-            "let" => Token::new(TokenKind::Let, None, self.span),
-            "const" => Token::new(TokenKind::Const, None, self.span),
-            "defn" => Token::new(TokenKind::Defn, None, self.span),
+        self.adjusted(|stream| match lexeme.as_str() {
+            "let" => Token::new(TokenKind::Let, None, stream.span),
+            "const" => Token::new(TokenKind::Const, None, stream.span),
+            "defn" => Token::new(TokenKind::Defn, None, stream.span),
             "str" | "float" | "int" | "void" | "bool" => {
-                Token::new(TokenKind::Type, Some(lexeme), self.span)
+                Token::new(TokenKind::Type, Some(lexeme), stream.span)
             }
-            "true" => Token::new(TokenKind::Literal, Some(lexeme), self.span),
-            "false" => Token::new(TokenKind::Literal, Some(lexeme), self.span),
-            "return" => Token::new(TokenKind::Return, None, self.span),
-            _ => Token::new(TokenKind::Identifier, Some(lexeme), self.span),
-        }
+            "true" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
+            "false" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
+            "return" => Token::new(TokenKind::Return, None, stream.span),
+            _ => Token::new(TokenKind::Identifier, Some(lexeme), stream.span),
+        })
+    }
+
+    fn adjusted<F>(&mut self, f: F) -> Token
+    where
+        F: FnOnce(&Self) -> Token,
+    {
+        let prev = self.span.column;
+        self.span.column = self.span.column - self.span.length + 1;
+        let token = f(self);
+        self.span.column = prev;
+        token
     }
 
     fn lexeme(&self, start: usize, end: usize) -> String {

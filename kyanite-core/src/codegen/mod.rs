@@ -170,7 +170,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn compile(&mut self, node: &Node) -> Result<BasicValueEnum<'ctx>, IrError> {
         match node {
-            Node::Str(s) => {
+            Node::Str(s, _) => {
                 let bytes = s[1..s.len() - 1].as_bytes().to_vec();
                 let global = self
                     .builder
@@ -178,10 +178,10 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 global.set_initializer(&self.context.const_string(&bytes, true));
                 Ok(global.as_pointer_value().into())
             }
-            Node::Float(f) => Ok(self.context.f64_type().const_float(*f).into()),
+            Node::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
             Node::Call(call) => self.call(call),
             Node::Ident(ident) => self.ident(ident),
-            Node::Int(n) => Ok(self
+            Node::Int(n, _) => Ok(self
                 .context
                 .i64_type()
                 .const_int((*n).try_into().unwrap(), false)

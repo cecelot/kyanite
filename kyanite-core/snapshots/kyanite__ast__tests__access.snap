@@ -10,7 +10,7 @@ file:
           lexeme: main
           span:
             line: 1
-            column: 9
+            column: 6
             length: 4
         params: []
         ty:
@@ -18,7 +18,7 @@ file:
           lexeme: int
           span:
             line: 1
-            column: 16
+            column: 14
             length: 3
         body:
           - Call:
@@ -29,7 +29,7 @@ file:
                     lexeme: println
                     span:
                       line: 2
-                      column: 11
+                      column: 5
                       length: 7
               args:
                 - Binary:
@@ -42,7 +42,7 @@ file:
                               lexeme: kyanite
                               span:
                                 line: 2
-                                column: 19
+                                column: 13
                                 length: 7
                         op:
                           kind: Dot
@@ -58,7 +58,7 @@ file:
                               lexeme: fs
                               span:
                                 line: 2
-                                column: 22
+                                column: 21
                                 length: 2
                     op:
                       kind: Dot
@@ -76,10 +76,17 @@ file:
                               lexeme: read
                               span:
                                 line: 2
-                                column: 27
+                                column: 24
                                 length: 4
                         args:
-                          - Str: "\"examples/access.kya\""
+                          - Str:
+                              - "\"examples/access.kya\""
+                              - kind: Literal
+                                lexeme: "\"examples/access.kya\""
+                                span:
+                                  line: 2
+                                  column: 29
+                                  length: 21
                           - Binary:
                               left:
                                 Binary:
@@ -90,7 +97,7 @@ file:
                                         lexeme: kyanite
                                         span:
                                           line: 2
-                                          column: 58
+                                          column: 52
                                           length: 7
                                   op:
                                     kind: Dot
@@ -106,7 +113,7 @@ file:
                                         lexeme: fs
                                         span:
                                           line: 2
-                                          column: 61
+                                          column: 60
                                           length: 2
                               op:
                                 kind: Dot
@@ -122,7 +129,7 @@ file:
                                     lexeme: O_READ
                                     span:
                                       line: 2
-                                      column: 68
+                                      column: 63
                                       length: 6
                         parens:
                           - kind: LeftParen
@@ -160,12 +167,19 @@ file:
               delimiters: []
           - Return:
               expr:
-                Int: 0
+                Int:
+                  - 0
+                  - kind: Literal
+                    lexeme: "0"
+                    span:
+                      line: 4
+                      column: 12
+                      length: 1
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
                   line: 4
-                  column: 10
+                  column: 5
                   length: 6
 

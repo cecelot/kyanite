@@ -1,18 +1,18 @@
 ---
 source: kyanite-core/src/token.rs
-expression: "stream.collect::<Vec<_>>()"
+expression: stream.tokens
 ---
 - kind: Defn
   lexeme: ~
   span:
     line: 1
-    column: 4
+    column: 1
     length: 4
 - kind: Identifier
   lexeme: main
   span:
     line: 1
-    column: 9
+    column: 6
     length: 4
 - kind: LeftParen
   lexeme: ~
@@ -36,7 +36,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: int
   span:
     line: 1
-    column: 16
+    column: 14
     length: 3
 - kind: LeftBrace
   lexeme: ~
@@ -48,7 +48,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: println
   span:
     line: 2
-    column: 11
+    column: 5
     length: 7
 - kind: LeftParen
   lexeme: ~
@@ -60,7 +60,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "5."
   span:
     line: 2
-    column: 14
+    column: 13
     length: 2
 - kind: Star
   lexeme: ~
@@ -72,7 +72,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "100."
   span:
     line: 2
-    column: 21
+    column: 18
     length: 4
 - kind: Plus
   lexeme: ~
@@ -84,7 +84,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "15."
   span:
     line: 2
-    column: 27
+    column: 25
     length: 3
 - kind: Minus
   lexeme: ~
@@ -96,7 +96,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "7."
   span:
     line: 2
-    column: 32
+    column: 31
     length: 2
 - kind: Slash
   lexeme: ~
@@ -108,7 +108,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "8."
   span:
     line: 2
-    column: 37
+    column: 36
     length: 2
 - kind: RightParen
   lexeme: ~
@@ -126,7 +126,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: println
   span:
     line: 3
-    column: 11
+    column: 5
     length: 7
 - kind: LeftParen
   lexeme: ~
@@ -150,7 +150,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "100"
   span:
     line: 3
-    column: 19
+    column: 17
     length: 3
 - kind: Plus
   lexeme: ~
@@ -162,7 +162,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: "15"
   span:
     line: 3
-    column: 24
+    column: 23
     length: 2
 - kind: Minus
   lexeme: ~
@@ -216,7 +216,7 @@ expression: "stream.collect::<Vec<_>>()"
   lexeme: ~
   span:
     line: 5
-    column: 10
+    column: 5
     length: 6
 - kind: Literal
   lexeme: "0"
