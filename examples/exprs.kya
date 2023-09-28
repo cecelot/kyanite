@@ -1,0 +1,11 @@
+defn main(): int {
+    println(12 * 17 - 7 + 4 / 2 >= 200);
+    println(12. * 17. - 7. + 4. / 2. < 200.);
+
+    println(7 > 12);
+    println(14 <= 14);
+    println(12 == 12);
+    println(12 != 12);
+
+    return 0;
+}

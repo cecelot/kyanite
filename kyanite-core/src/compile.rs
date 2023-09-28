@@ -9,11 +9,11 @@ pub trait Compile {
 impl Compile for Program {
     fn compile(&self, mut writer: impl Write) -> Result<String, PipelineError> {
         if !Path::new("kya-dist").exists() {
-            std::fs::create_dir("kya-dist").expect("permission to create directories");
+            let _ = std::fs::create_dir("kya-dist");
         }
-        let ir = "kya-dist/main.ll";
-        let obj = "kya-dist/main.o";
-        let exe = "kya-dist/main";
+        let ir = &format!("kya-dist/{}.ll", self.filename);
+        let obj = &format!("kya-dist/{}.o", self.filename);
+        let exe = &format!("kya-dist/{}", self.filename);
         let mut file = File::create(ir).expect("well-formed file structure");
         write!(file, "{}", self.ir).unwrap();
 

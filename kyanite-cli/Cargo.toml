@@ -9,6 +9,6 @@ edition = "2021"
 clap = { version = "4.4.2", features = ["derive"] }
 colored = "2.0.4"
 kyanite = { path = "../kyanite-core" }
-insta = "1.32.0"
+insta = { version = "1.32.0", features = ["yaml"] }
 serde = { version = "1.0.188", features = ["derive"] }
 which = "4.4.2"

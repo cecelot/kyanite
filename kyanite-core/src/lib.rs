@@ -38,6 +38,7 @@ pub enum PipelineError {
 
 #[derive(Debug)]
 pub struct Program {
+    filename: String,
     ast: ast::Ast,
     ir: String,
 }
@@ -73,11 +74,18 @@ impl Program {
     }
 
     fn new(ast: ast::Ast, source: &Source) -> Result<Self, PipelineError> {
+        fn strip_prefix(filename: &str) -> String {
+            let chars: Vec<_> = filename.chars().collect();
+            let name: Vec<_> = chars.iter().rev().take_while(|&&c| c != '/').collect();
+            name.iter().rev().copied().copied().collect()
+        }
+
         let symbols = SymbolTable::from(&ast.file);
         let mut pass = TypeCheckPass::new(symbols, source, &ast.file);
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
             ir: Ir::from_ast(&ast).map_err(PipelineError::IrError)?,
+            filename: strip_prefix(&source.filename),
             ast,
         })
     }

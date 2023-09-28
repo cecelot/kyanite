@@ -44,18 +44,20 @@ macro_rules! num_instrs  {
 }
 
 macro_rules! bool_instrs {
-    {$self:ident, $bin:ident, $conversion:ident, $build_fn:ident, $predicate:ident, $($kind:ident => $member:ident),*} => {
-        match $bin.op.kind {
-            $(
-                TokenKind::$kind => {
-                    let left = $self.compile(&$bin.left)?.$conversion();
-                    let right = $self.compile(&$bin.right)?.$conversion();
-                    return Ok($self.builder.$build_fn($predicate::$member, left, right, "tmp").into())
+    {$self:ident, $bin:ident, $conversion:ident, $build_fn:ident, $ty:ident, $predicate:ident, $($kind:ident => $member:ident),*} => {
+        if $bin.left.ty() == Type::$ty {
+            match $bin.op.kind {
+                $(
+                    TokenKind::$kind => {
+                        let left = $self.compile(&$bin.left)?.$conversion();
+                        let right = $self.compile(&$bin.right)?.$conversion();
+                        return Ok($self.builder.$build_fn($predicate::$member, left, right, "tmp").into())
+                    }
+                )*,
+                _ => {
+                    // fallback
                 }
-            )*,
-            _ => {
-                // fallback
-            }
+            };
         }
     }
 }
@@ -204,7 +206,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Slash => build_int_signed_div build_float_div
         }
 
-        bool_instrs! { self, binary, into_int_value, build_int_compare, IntPredicate,
+        bool_instrs! { self, binary, into_int_value, build_int_compare, Int, IntPredicate,
             EqualEqual => EQ,
             BangEqual => NE,
             GreaterEqual => SGE,
@@ -213,7 +215,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Less => SLT
         }
 
-        bool_instrs! { self, binary, into_float_value, build_float_compare, FloatPredicate,
+        bool_instrs! { self, binary, into_float_value, build_float_compare, Float, FloatPredicate,
             EqualEqual => OEQ,
             BangEqual => ONE,
             GreaterEqual => OGE,
