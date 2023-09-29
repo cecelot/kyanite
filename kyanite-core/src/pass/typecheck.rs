@@ -12,7 +12,7 @@ use super::symbol::SymbolTable;
 pub struct TypeCheckPass<'a> {
     source: &'a Source,
     program: &'a File,
-    errors: usize,
+    errors: Vec<PreciseError>,
     function: Option<Token>,
     scopes: Vec<SymbolTable>,
 }
@@ -22,7 +22,7 @@ impl<'a> TypeCheckPass<'a> {
         Self {
             source,
             program,
-            errors: 0,
+            errors: vec![],
             function: None,
             scopes: vec![table],
         }
@@ -32,8 +32,9 @@ impl<'a> TypeCheckPass<'a> {
         for node in &self.program.nodes {
             self.check(node);
         }
-        if self.errors > 0 {
-            Err(self.errors)
+        let len = self.errors.len();
+        if len > 0 {
+            Err(len)
         } else {
             Ok(())
         }
@@ -61,8 +62,9 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
-        println!("{}", PreciseError::new(self.source, at, heading, text));
-        self.errors += 1;
+        let error = PreciseError::new(self.source, at, heading, text);
+        println!("{}", error);
+        self.errors.push(error);
     }
 
     fn check(&mut self, node: &Node) -> Type {
@@ -87,9 +89,9 @@ impl<'a> TypeCheckPass<'a> {
         let expected = Type::from(&c.ty);
         if got != expected {
             self.error(
-                c.ty.span,
-                "mismatched types in constant declaration".into(),
-                format!("expected {:?} here, got {:?}", Type::from(&c.ty), got),
+                c.expr.span(),
+                format!("expected initializer to be of type {}", expected),
+                format!("expression of type {}", got),
             );
         }
         expected
@@ -100,9 +102,9 @@ impl<'a> TypeCheckPass<'a> {
         let expected = Type::from(&v.ty);
         if got != expected {
             self.error(
-                v.ty.span,
-                "mismatched types in variable declaration".into(),
-                format!("expected {:?} here, got {:?}", Type::from(&v.ty), got,),
+                v.expr.span(),
+                format!("expected initializer to be of type {}", expected),
+                format!("expression of type {}", got),
             );
         }
         self.scope_mut()
@@ -132,17 +134,13 @@ impl<'a> TypeCheckPass<'a> {
                 let symbol = self.symbol(function).unwrap();
                 if got != symbol.ty() {
                     self.error(
-                        r.keyword.span,
-                        "mismatched types in return".into(),
-                        format!("expected {} here, got {}", symbol.ty(), got),
+                        r.expr.span(),
+                        format!("expected return type to be {}", symbol.ty()),
+                        format!("expression is of type {}", got),
                     );
                 }
             }
-            None => self.error(
-                r.keyword.span,
-                "return outside of function".into(),
-                "here".into(),
-            ),
+            None => unimplemented!("disallowed by parser"),
         }
         got
     }
@@ -156,7 +154,7 @@ impl<'a> TypeCheckPass<'a> {
                 TokenKind::Minus => format!("cannot subtract {} from {}", rty, lty),
                 TokenKind::Star => format!("cannot multiply {} by {}", lty, rty),
                 TokenKind::Slash => format!("cannot divide {} by {}", lty, rty),
-                _ => unimplemented!(),
+                _ => format!("cannot compare {} and {}", lty, rty),
             };
             self.error(b.op.span, heading, "".into());
         }
@@ -214,13 +212,13 @@ impl<'a> TypeCheckPass<'a> {
         };
         if arity != call.args.len() {
             self.error(
-                call.parens.1.span,
+                call.left.span(),
                 format!(
                     "this function takes {} arguments, but {} were provided",
                     arity,
                     call.args.len()
                 ),
-                format!("in call to {}", name),
+                format!("while calling {} here", name),
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
@@ -230,8 +228,8 @@ impl<'a> TypeCheckPass<'a> {
                 if got != expected {
                     self.error(
                         arg.span(),
-                        format!("mismatched types in call to {}", name),
-                        format!("expected {}, got {}", expected, got),
+                        format!("expected argument of type {}, but found {}", expected, got),
+                        format!("expression of type {}", got),
                     );
                 }
             }
@@ -242,4 +240,33 @@ impl<'a> TypeCheckPass<'a> {
             Type::Void
         }
     }
+}
+
+macro_rules! assert_typecheck {
+    ($($path:expr => $name:ident),*) => {
+        #[cfg(test)]
+        mod tests {
+            use crate::{SymbolTable, pass::typecheck::TypeCheckPass};
+
+            $(
+                #[test]
+                fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                    let source = crate::Source::new($path)?;
+                    let ast = crate::ast::Ast::from_source(source.clone())?;
+                    let symbols = SymbolTable::from(&ast.file);
+                    let mut pass = TypeCheckPass::new(symbols, &source, &ast.file);
+                    let _ = pass.run();
+                    insta::with_settings!({snapshot_path => "../snapshots"}, {
+                        insta::assert_yaml_snapshot!(pass.errors);
+                    });
+
+                    Ok(())
+                }
+            )*
+        }
+    };
+}
+
+assert_typecheck! {
+    "test-cases/typecheck/varied.kya" => varied
 }

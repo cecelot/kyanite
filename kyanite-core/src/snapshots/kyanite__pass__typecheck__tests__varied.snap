@@ -1,0 +1,141 @@
+---
+source: kyanite-core/src/pass/typecheck.rs
+expression: pass.errors
+---
+- filename: test-cases/typecheck/varied.kya
+  heading: expected initializer to be of type int
+  line: "const FOO: int = 5. > 7. * 4.;"
+  span:
+    line: 1
+    column: 18
+    length: 12
+  text: expression of type float
+- filename: test-cases/typecheck/varied.kya
+  heading: cannot add float to int
+  line: "    return a + b; % mismatched types for binary op '+'"
+  span:
+    line: 8
+    column: 14
+    length: 1
+  text: ""
+- filename: test-cases/typecheck/varied.kya
+  heading: cannot subtract float from int
+  line: "    return a - b + 7; % mismatched types for binary op '-' and '+'"
+  span:
+    line: 12
+    column: 14
+    length: 1
+  text: ""
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type int, but found float"
+  line: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
+  span:
+    line: 20
+    column: 31
+    length: 1
+  text: expression of type float
+- filename: test-cases/typecheck/varied.kya
+  heading: cannot add int to float
+  line: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
+  span:
+    line: 20
+    column: 22
+    length: 1
+  text: ""
+- filename: test-cases/typecheck/varied.kya
+  heading: expected initializer to be of type float
+  line: "    let c: float = a * b;"
+  span:
+    line: 34
+    column: 20
+    length: 5
+  text: expression of type int
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type float, but found int"
+  line: "    bar(a, b); % mismatched types 'float' and 'int'"
+  span:
+    line: 36
+    column: 9
+    length: 1
+  text: expression of type int
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type float, but found int"
+  line: "    bar(within(17), 3);"
+  span:
+    line: 38
+    column: 9
+    length: 10
+  text: expression of type int
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type float, but found int"
+  line: "    within(withinFloat(1000));"
+  span:
+    line: 40
+    column: 24
+    length: 4
+  text: expression of type int
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type int, but found float"
+  line: "    within(withinFloat(1000));"
+  span:
+    line: 40
+    column: 12
+    length: 17
+  text: expression of type float
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type int, but found str"
+  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  span:
+    line: 41
+    column: 31
+    length: 7
+  text: expression of type str
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type float, but found int"
+  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  span:
+    line: 41
+    column: 24
+    length: 15
+  text: expression of type int
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type int, but found float"
+  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  span:
+    line: 41
+    column: 12
+    length: 28
+  text: expression of type float
+- filename: test-cases/typecheck/varied.kya
+  heading: "this function takes 2 arguments, but 3 were provided"
+  line: "    foo(a, b, 10); % mismatched args"
+  span:
+    line: 43
+    column: 5
+    length: 3
+  text: while calling foo here
+- filename: test-cases/typecheck/varied.kya
+  heading: "expected argument of type int, but found float"
+  line: "    within(baz); % mismatched args"
+  span:
+    line: 46
+    column: 12
+    length: 3
+  text: expression of type float
+- filename: test-cases/typecheck/varied.kya
+  heading: cannot add float to int
+  line: "    baz + 7;"
+  span:
+    line: 48
+    column: 9
+    length: 1
+  text: ""
+- filename: test-cases/typecheck/varied.kya
+  heading: expected return type to be int
+  line: "    return 12. * 36.; % mismatched types 'int' and 'float'"
+  span:
+    line: 50
+    column: 12
+    length: 9
+  text: expression is of type float
+
