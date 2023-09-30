@@ -6,13 +6,13 @@ use inkwell::{
     module::Module,
     passes::PassManager,
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
-    values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue},
+    values::{AnyValueEnum, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue},
     AddressSpace, FloatPredicate, IntPredicate,
 };
 
 use crate::{
     ast::{self, node, Node, Type},
-    token::{Span, Token, TokenKind},
+    token::TokenKind,
 };
 use builtins::Builtins;
 
@@ -26,10 +26,10 @@ macro_rules! num_instrs  {
                     let left = $self.compile(&$bin.left)?;
                     let right = $self.compile(&$bin.right)?;
                     match (left, right) {
-                        (BasicValueEnum::IntValue(left), BasicValueEnum::IntValue(right)) => {
+                        (AnyValueEnum::IntValue(left), AnyValueEnum::IntValue(right)) => {
                             return Ok($self.builder.$int_instr(left, right, "tmp").into())
                         }
-                        (BasicValueEnum::FloatValue(left), BasicValueEnum::FloatValue(right)) => {
+                        (AnyValueEnum::FloatValue(left), AnyValueEnum::FloatValue(right)) => {
                             return Ok($self.builder.$float_instr(left, right, "tmp").into())
                         }
                         ty => unreachable!("cannot perform numeric operation on {ty:?}"),
@@ -66,12 +66,14 @@ macro_rules! bool_instrs {
 pub enum IrError {
     #[error("Undefined variable {0}")]
     Undefined(String),
-
     #[error("Malformed function")]
     MalformedFunction,
-
     #[error("Undefined function {0}")]
     UndefinedFunction(String),
+    #[error("Malformed function call")]
+    MalformedCall,
+    #[error("Malformed return statement")]
+    MalformedReturn,
 }
 
 pub struct Ir<'a, 'ctx> {
@@ -109,22 +111,43 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             function: None,
         };
 
+        // Inject builtin function declarations
         Builtins::new().build(&mut ir);
 
+        // entrypoint - compile all toplevel nodes
         for node in &ast.file.nodes {
-            match node {
-                Node::FuncDecl(func) => ir.function(func),
-                Node::ConstantDecl(_) => todo!(),
-                _ => unreachable!(
-                    "parser is guaranteed to produce a `FuncDecl` or `ConstantDecl` at toplevel"
-                ),
-            }?;
+            ir.toplevel(node)?;
         }
 
         Ok(ir.module.print_to_string().to_string())
     }
 
+    fn toplevel(&mut self, node: &Node) -> Result<AnyValueEnum<'ctx>, IrError> {
+        match node {
+            Node::FuncDecl(func) => self.function(func).map(|v| v.into()),
+            Node::ConstantDecl(_) => todo!(),
+            _ => unreachable!(
+                "parser is guaranteed to produce a `FuncDecl` or `ConstantDecl` at toplevel"
+            ),
+        }
+    }
+
+    fn compile(&mut self, node: &Node) -> Result<AnyValueEnum<'ctx>, IrError> {
+        match node {
+            Node::Str(s, _) => self.str(s),
+            Node::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
+            Node::Call(call) => self.call(call).map(|v| v.into()),
+            Node::Ident(ident) => self.ident(ident).map(|v| v.into()),
+            Node::Int(n, _) => self.int(n).map(|v| v.into()),
+            Node::Binary(binary) => self.binary(binary).map(|v| v.into()),
+            Node::Return(r) => self.ret(r),
+            _ => todo!("compilation not implemented for {:?}", node),
+        }
+    }
+
+    /// Compiles a function prototype into a `FunctionValue`
     fn prototype(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+        // Collect the function argument types and convert them to LLVM types
         let args: Vec<BasicMetadataTypeEnum> = func
             .params
             .iter()
@@ -132,6 +155,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             .collect();
         let types = args.as_slice();
 
+        // `fn_type` creates a function type with the specified `types` (argument types)
         let fn_ty = if Type::from(func.ty.as_ref()) == Type::Void {
             self.context.void_type().fn_type(types, false)
         } else {
@@ -140,10 +164,12 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .fn_type(types, false)
         };
 
+        // Adds the function to the module as a complete function value
         let val = self
             .module
             .add_function(&String::from(&func.name), fn_ty, None);
 
+        // Iterate through the function arguments and assign names to them
         for (i, arg) in val.get_param_iter().enumerate() {
             match arg {
                 BasicValueEnum::IntValue(_) => arg
@@ -162,40 +188,91 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Ok(val)
     }
 
-    fn block(&mut self, block: &[Node]) -> Result<BasicValueEnum<'ctx>, IrError> {
-        for node in block {
-            self.compile(node)?;
+    /// Compiles a function body into a `FunctionValue`
+    pub fn function(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+        // Compile our function prototype and set as current function
+        let proto = self.prototype(func)?;
+        self.function = Some(proto);
+
+        // Create a block using the function prototype to compile instructions into
+        let entry = self.context.append_basic_block(proto, "entry");
+        // Position the builder at the end of the `entry` block
+        self.builder.position_at_end(entry);
+        // Reserve space for the function arguments
+        self.variables.reserve(func.params.len());
+
+        // Iterate through the function prototype, create allocations for each argument and add it to variables map
+        for (i, arg) in proto.get_param_iter().enumerate() {
+            let name = String::from(&func.params[i].name);
+            let allocation = self.alloca(&name, &arg);
+            self.builder.build_store(allocation, arg);
+            self.variables.insert(
+                String::from(&func.params[i].name),
+                (allocation, Type::from(&func.params[i].ty)),
+            );
         }
 
-        Ok(self.context.i64_type().const_int(0, false).into())
+        // Compile the body of the function
+        self.block(&func.body)?;
+
+        // Add a return statement on behalf of the user if the function returns void
+        if Type::from(func.ty.as_ref()) == Type::Void {
+            self.builder.build_return(None);
+        }
+
+        if let Some(function) = self.function {
+            if function.verify(true) {
+                // Optimize the function
+                self.fpm.run_on(&function);
+
+                return Ok(function);
+            } else {
+                unsafe { function.delete() };
+            }
+        }
+
+        // Failed to produce a valid function
+        Err(IrError::MalformedFunction)
     }
 
-    fn compile(&mut self, node: &Node) -> Result<BasicValueEnum<'ctx>, IrError> {
-        match node {
-            Node::Str(s, _) => {
-                let bytes = s[1..s.len() - 1].as_bytes().to_vec();
-                let global = self
-                    .builder
-                    .build_global_string_ptr(&"0".repeat(bytes.len()), "tmp");
-                global.set_initializer(&self.context.const_string(&bytes, true));
-                Ok(global.as_pointer_value().into())
+    fn block(&mut self, block: &[Node]) -> Result<(), IrError> {
+        for node in block {
+            match self.compile(node) {
+                Ok(_) => {}
+                Err(e) => return Err(e),
             }
-            Node::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
-            Node::Call(call) => self.call(call),
-            Node::Ident(ident) => self.ident(ident),
-            Node::Int(n, _) => Ok(self
-                .context
-                .i64_type()
-                .const_int((*n).try_into().unwrap(), false)
-                .into()),
-            Node::Binary(binary) => self.binary(binary),
-            Node::Return(r) => {
-                let val = self.compile(&r.expr)?;
-                self.builder.build_return(Some(&val));
-                Ok(val)
-            }
-            _ => todo!("compilation not implemented for {:?}", node),
         }
+
+        Ok(())
+    }
+
+    /// Injects a string literal
+    fn str(&mut self, s: &String) -> Result<AnyValueEnum<'ctx>, IrError> {
+        // Figure out the actual bytes of the string excluding the opening and closing quotes
+        let bytes = s[1..s.len() - 1].as_bytes().to_vec();
+        // Create a global string pointer with the appropriate length of zeroed out bytes
+        let global = self
+            .builder
+            .build_global_string_ptr(&"0".repeat(bytes.len()), "tmp");
+        // Set the initializer of the global string pointer to the actual string
+        // (this is kinda hacky, but otherwise character escapes are incorrect)
+        global.set_initializer(&self.context.const_string(&bytes, true));
+        Ok(global.as_pointer_value().into())
+    }
+
+    fn int(&self, n: &i64) -> Result<BasicValueEnum<'ctx>, IrError> {
+        Ok(self
+            .context
+            .i64_type()
+            .const_int((*n).try_into().unwrap(), false)
+            .into())
+    }
+
+    fn ret(&mut self, r: &node::Return) -> Result<AnyValueEnum<'ctx>, IrError> {
+        let any = self.compile(&r.expr)?;
+        let val: BasicValueEnum<'_> = any.try_into().map_err(|_| IrError::MalformedReturn)?;
+        self.builder.build_return(Some(&val));
+        Ok(any)
     }
 
     fn binary(&mut self, binary: &node::Binary) -> Result<BasicValueEnum<'ctx>, IrError> {
@@ -229,31 +306,32 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn call(&mut self, call: &node::Call) -> Result<BasicValueEnum<'ctx>, IrError> {
+        // Collect the arguments and convert them to LLVM types
         let mut args: Vec<BasicMetadataValueEnum> = Vec::with_capacity(call.args.len());
         for arg in &call.args {
-            args.push(self.compile(arg)?.into());
+            args.push(
+                self.compile(arg)?
+                    .try_into()
+                    .map_err(|_| IrError::MalformedCall)?,
+            );
         }
+        // Retreive the name of the function
+        // (this needs to be updated when member access is implemented)
         let name = match *call.left {
             Node::Ident(ref ident) => String::from(&ident.name),
             _ => todo!(),
         };
         match self.get_function(&name, &args) {
-            Some(func) => {
-                match self
-                    .builder
-                    .build_call(func, args.as_slice(), "tmp")
-                    .try_as_basic_value()
-                    .left()
-                {
-                    Some(val) => Ok(match val {
-                        BasicValueEnum::IntValue(_) => val.into_int_value().into(),
-                        BasicValueEnum::FloatValue(_) => val.into_float_value().into(),
-                        BasicValueEnum::PointerValue(_) => val.into_pointer_value().into(),
-                        _ => unimplemented!("return type `{val}` is not implemented"),
-                    }),
-                    None => Ok(self.context.i64_type().const_int(0, false).into()),
-                }
-            }
+            Some(func) => Ok(self
+                .builder
+                .build_call(func, args.as_slice(), "tmp")
+                .try_as_basic_value()
+                .left()
+                .map_or_else(
+                    // Dummy value if the function returns void
+                    || self.context.i64_type().const_int(0, false).into(),
+                    |val| val,
+                )),
             None => Err(IrError::UndefinedFunction(name.to_string())),
         }
     }
@@ -281,6 +359,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         args: &[BasicMetadataValueEnum<'ctx>],
     ) -> Option<FunctionValue<'ctx>> {
         match name {
+            // HACK: handle builtin functions
             "println" => match args.first().unwrap() {
                 BasicMetadataValueEnum::PointerValue(_) => self.module.get_function("println_str"),
                 BasicMetadataValueEnum::IntValue(i) => {
@@ -323,46 +402,5 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             ),
             _ => unimplemented!("alloca is not implemented for {}", arg),
         }
-    }
-
-    pub fn function(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
-        let proto = self.prototype(func)?;
-        self.function = Some(proto);
-
-        let entry = self.context.append_basic_block(proto, "entry");
-        self.builder.position_at_end(entry);
-        self.variables.reserve(func.params.len());
-
-        for (i, arg) in proto.get_param_iter().enumerate() {
-            let name = String::from(&func.params[i].name);
-            let allocation = self.alloca(&name, &arg);
-            self.builder.build_store(allocation, arg);
-            self.variables.insert(
-                String::from(&func.params[i].name),
-                (allocation, Type::from(&func.params[i].ty)),
-            );
-        }
-
-        self.block(&func.body)?;
-        let void = Type::from(&func.ty.clone().unwrap_or(Token {
-            kind: TokenKind::Type,
-            lexeme: Some("void".into()),
-            span: Span::new(0, 0, 0),
-        })) == Type::Void;
-        if void {
-            self.builder.build_return(None);
-        }
-
-        if let Some(function) = self.function {
-            if function.verify(true) {
-                self.fpm.run_on(&function);
-
-                return Ok(function);
-            } else {
-                unsafe { function.delete() };
-            }
-        }
-
-        Err(IrError::MalformedFunction)
     }
 }

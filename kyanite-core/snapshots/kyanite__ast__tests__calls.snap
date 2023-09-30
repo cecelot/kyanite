@@ -89,19 +89,13 @@ file:
     - FuncDecl:
         name:
           kind: Identifier
-          lexeme: main
+          lexeme: helloWorld
           span:
             line: 9
             column: 6
-            length: 4
+            length: 10
         params: []
-        ty:
-          kind: Type
-          lexeme: int
-          span:
-            line: 9
-            column: 14
-            length: 3
+        ty: ~
         body:
           - Call:
               left:
@@ -136,6 +130,48 @@ file:
                     column: 26
                     length: 1
               delimiters: []
+    - FuncDecl:
+        name:
+          kind: Identifier
+          lexeme: main
+          span:
+            line: 13
+            column: 6
+            length: 4
+        params: []
+        ty:
+          kind: Type
+          lexeme: int
+          span:
+            line: 13
+            column: 14
+            length: 3
+        body:
+          - Call:
+              left:
+                Ident:
+                  name:
+                    kind: Identifier
+                    lexeme: helloWorld
+                    span:
+                      line: 14
+                      column: 4
+                      length: 10
+              args: []
+              parens:
+                - kind: LeftParen
+                  lexeme: ~
+                  span:
+                    line: 14
+                    column: 14
+                    length: 1
+                - kind: RightParen
+                  lexeme: ~
+                  span:
+                    line: 14
+                    column: 15
+                    length: 1
+              delimiters: []
           - Call:
               left:
                 Ident:
@@ -143,7 +179,7 @@ file:
                     kind: Identifier
                     lexeme: println
                     span:
-                      line: 11
+                      line: 15
                       column: 4
                       length: 7
               args:
@@ -154,7 +190,7 @@ file:
                           kind: Identifier
                           lexeme: foo
                           span:
-                            line: 11
+                            line: 15
                             column: 12
                             length: 3
                     args:
@@ -163,20 +199,20 @@ file:
                           - kind: Literal
                             lexeme: "72"
                             span:
-                              line: 11
+                              line: 15
                               column: 16
                               length: 2
                     parens:
                       - kind: LeftParen
                         lexeme: ~
                         span:
-                          line: 11
+                          line: 15
                           column: 15
                           length: 1
                       - kind: RightParen
                         lexeme: ~
                         span:
-                          line: 11
+                          line: 15
                           column: 18
                           length: 1
                     delimiters: []
@@ -184,13 +220,13 @@ file:
                 - kind: LeftParen
                   lexeme: ~
                   span:
-                    line: 11
+                    line: 15
                     column: 11
                     length: 1
                 - kind: RightParen
                   lexeme: ~
                   span:
-                    line: 11
+                    line: 15
                     column: 19
                     length: 1
               delimiters: []
@@ -201,7 +237,7 @@ file:
                     kind: Identifier
                     lexeme: println
                     span:
-                      line: 12
+                      line: 16
                       column: 4
                       length: 7
               args:
@@ -212,7 +248,7 @@ file:
                           kind: Identifier
                           lexeme: bar
                           span:
-                            line: 12
+                            line: 16
                             column: 12
                             length: 3
                     args: []
@@ -220,13 +256,13 @@ file:
                       - kind: LeftParen
                         lexeme: ~
                         span:
-                          line: 12
+                          line: 16
                           column: 15
                           length: 1
                       - kind: RightParen
                         lexeme: ~
                         span:
-                          line: 12
+                          line: 16
                           column: 16
                           length: 1
                     delimiters: []
@@ -234,13 +270,13 @@ file:
                 - kind: LeftParen
                   lexeme: ~
                   span:
-                    line: 12
+                    line: 16
                     column: 11
                     length: 1
                 - kind: RightParen
                   lexeme: ~
                   span:
-                    line: 12
+                    line: 16
                     column: 17
                     length: 1
               delimiters: []
@@ -251,7 +287,7 @@ file:
                     kind: Identifier
                     lexeme: println
                     span:
-                      line: 13
+                      line: 17
                       column: 4
                       length: 7
               args:
@@ -262,7 +298,7 @@ file:
                           kind: Identifier
                           lexeme: max
                           span:
-                            line: 13
+                            line: 17
                             column: 12
                             length: 3
                     args:
@@ -271,7 +307,7 @@ file:
                           - kind: Literal
                             lexeme: "10"
                             span:
-                              line: 13
+                              line: 17
                               column: 16
                               length: 2
                       - Int:
@@ -279,40 +315,40 @@ file:
                           - kind: Literal
                             lexeme: "300"
                             span:
-                              line: 13
+                              line: 17
                               column: 20
                               length: 3
                     parens:
                       - kind: LeftParen
                         lexeme: ~
                         span:
-                          line: 13
+                          line: 17
                           column: 15
                           length: 1
                       - kind: RightParen
                         lexeme: ~
                         span:
-                          line: 13
+                          line: 17
                           column: 23
                           length: 1
                     delimiters:
                       - kind: Comma
                         lexeme: ~
                         span:
-                          line: 13
+                          line: 17
                           column: 18
                           length: 1
               parens:
                 - kind: LeftParen
                   lexeme: ~
                   span:
-                    line: 13
+                    line: 17
                     column: 11
                     length: 1
                 - kind: RightParen
                   lexeme: ~
                   span:
-                    line: 13
+                    line: 17
                     column: 24
                     length: 1
               delimiters: []
@@ -323,7 +359,7 @@ file:
                     kind: Identifier
                     lexeme: println
                     span:
-                      line: 14
+                      line: 18
                       column: 4
                       length: 7
               args:
@@ -334,7 +370,7 @@ file:
                           kind: Identifier
                           lexeme: min
                           span:
-                            line: 14
+                            line: 18
                             column: 12
                             length: 3
                     args:
@@ -343,7 +379,7 @@ file:
                           - kind: Literal
                             lexeme: "10."
                             span:
-                              line: 14
+                              line: 18
                               column: 16
                               length: 3
                       - Float:
@@ -351,40 +387,40 @@ file:
                           - kind: Literal
                             lexeme: "300."
                             span:
-                              line: 14
+                              line: 18
                               column: 21
                               length: 4
                     parens:
                       - kind: LeftParen
                         lexeme: ~
                         span:
-                          line: 14
+                          line: 18
                           column: 15
                           length: 1
                       - kind: RightParen
                         lexeme: ~
                         span:
-                          line: 14
+                          line: 18
                           column: 25
                           length: 1
                     delimiters:
                       - kind: Comma
                         lexeme: ~
                         span:
-                          line: 14
+                          line: 18
                           column: 19
                           length: 1
               parens:
                 - kind: LeftParen
                   lexeme: ~
                   span:
-                    line: 14
+                    line: 18
                     column: 11
                     length: 1
                 - kind: RightParen
                   lexeme: ~
                   span:
-                    line: 14
+                    line: 18
                     column: 26
                     length: 1
               delimiters: []
@@ -395,14 +431,14 @@ file:
                   - kind: Literal
                     lexeme: "0"
                     span:
-                      line: 16
+                      line: 20
                       column: 11
                       length: 1
               keyword:
                 kind: Return
                 lexeme: ~
                 span:
-                  line: 16
+                  line: 20
                   column: 4
                   length: 6
 

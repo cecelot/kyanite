@@ -6,8 +6,12 @@ defn bar(): float {
    return 42.;
 }
 
-defn main(): int {
+defn helloWorld() {
    println("Hello world!");
+}
+
+defn main(): int {
+   helloWorld();
    println(foo(72));
    println(bar());
    println(max(10, 300));
