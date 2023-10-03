@@ -200,28 +200,10 @@ expression: stream.tokens
     line: 3
     column: 39
     length: 1
-- kind: Return
-  lexeme: ~
-  span:
-    line: 5
-    column: 5
-    length: 6
-- kind: Literal
-  lexeme: "0"
-  span:
-    line: 5
-    column: 12
-    length: 1
-- kind: Semicolon
-  lexeme: ~
-  span:
-    line: 5
-    column: 13
-    length: 1
 - kind: RightBrace
   lexeme: ~
   span:
-    line: 6
+    line: 4
     column: 1
     length: 1
 

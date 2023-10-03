@@ -159,21 +159,4 @@ file:
                     column: 70
                     length: 1
               delimiters: []
-          - Return:
-              expr:
-                Int:
-                  - 0
-                  - kind: Literal
-                    lexeme: "0"
-                    span:
-                      line: 4
-                      column: 12
-                      length: 1
-              keyword:
-                kind: Return
-                lexeme: ~
-                span:
-                  line: 4
-                  column: 5
-                  length: 6
 
