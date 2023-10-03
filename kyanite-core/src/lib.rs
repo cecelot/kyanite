@@ -63,17 +63,14 @@ impl Program {
             .to_str()
             .ok_or(PipelineError::InvalidUtf8)?
             .to_string();
-        std::fs::write(
-            &filename,
-            format!("defn main(): int {{\n\t{}\nreturn 0;\n}}", str),
-        )
-        .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
+        std::fs::write(&filename, format!("defn main() {{\n\t{}\n}}", str))
+            .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
         let source = Source::new(filename)?;
         let ast = ast::Ast::from_source(source.clone())?;
         Self::new(ast, &source)
     }
 
-    fn new(ast: ast::Ast, source: &Source) -> Result<Self, PipelineError> {
+    fn new(mut ast: ast::Ast, source: &Source) -> Result<Self, PipelineError> {
         fn strip_prefix(filename: &str) -> String {
             let chars: Vec<_> = filename.chars().collect();
             let name: Vec<_> = chars.iter().rev().take_while(|&&c| c != '/').collect();
@@ -84,7 +81,7 @@ impl Program {
         let mut pass = TypeCheckPass::new(symbols, source, &ast.file);
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
-            ir: Ir::from_ast(&ast).map_err(PipelineError::IrError)?,
+            ir: Ir::from_ast(&mut ast).map_err(PipelineError::IrError)?,
             filename: strip_prefix(&source.filename),
             ast,
         })

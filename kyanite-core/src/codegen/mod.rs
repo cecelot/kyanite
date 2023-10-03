@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{self, node, Node, Type},
-    token::TokenKind,
+    token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
 
@@ -88,7 +88,7 @@ pub struct Ir<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn from_ast(ast: &ast::Ast) -> Result<String, IrError> {
+    pub fn from_ast(ast: &mut ast::Ast) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
         let builder = context.create_builder();
@@ -115,14 +115,14 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Builtins::new().build(&mut ir);
 
         // entrypoint - compile all toplevel nodes
-        for node in &ast.file.nodes {
+        for node in &mut ast.file.nodes {
             ir.toplevel(node)?;
         }
 
         Ok(ir.module.print_to_string().to_string())
     }
 
-    fn toplevel(&mut self, node: &Node) -> Result<AnyValueEnum<'ctx>, IrError> {
+    fn toplevel(&mut self, node: &mut Node) -> Result<AnyValueEnum<'ctx>, IrError> {
         match node {
             Node::FuncDecl(func) => self.function(func).map(|v| v.into()),
             Node::ConstantDecl(_) => todo!(),
@@ -188,8 +188,35 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Ok(val)
     }
 
+    /// Wraps the main function
+    pub fn main(&mut self, func: &mut node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+        // Rename the main function to avoid conflicts with the wrapper
+        func.name.lexeme = Some("_main".into());
+        self.function(func)?;
+
+        // TODO: collect CLI arguments
+        let types: &[BasicMetadataTypeEnum] = &[];
+
+        let fn_ty = self.context.i64_type().fn_type(types, false);
+        let val = self.module.add_function("main", fn_ty, None);
+
+        let entry = self.context.append_basic_block(val, "entry");
+        self.builder.position_at_end(entry);
+
+        self.call(&main())?;
+        // TODO: handle non-zero exit codes
+        self.builder
+            .build_return(Some(&self.context.i64_type().const_int(0, false)));
+
+        Ok(val)
+    }
+
     /// Compiles a function body into a `FunctionValue`
-    pub fn function(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+    pub fn function(&mut self, func: &mut node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+        // Special case main function
+        if String::from(&func.name) == "main" {
+            return self.main(func);
+        }
         // Compile our function prototype and set as current function
         let proto = self.prototype(func)?;
         self.function = Some(proto);
@@ -403,4 +430,28 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             _ => unimplemented!("alloca is not implemented for {}", arg),
         }
     }
+}
+
+fn main() -> node::Call {
+    node::Call::new(
+        Box::new(Node::ident(Token {
+            kind: TokenKind::Identifier,
+            lexeme: Some("_main".into()),
+            span: Span::new(0, 0, 0),
+        })),
+        vec![],
+        (
+            Token {
+                kind: TokenKind::LeftParen,
+                lexeme: None,
+                span: Span::new(0, 0, 0),
+            },
+            Token {
+                kind: TokenKind::RightParen,
+                lexeme: None,
+                span: Span::new(0, 0, 0),
+            },
+        ),
+        vec![],
+    )
 }

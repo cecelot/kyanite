@@ -139,13 +139,7 @@ file:
             column: 6
             length: 4
         params: []
-        ty:
-          kind: Type
-          lexeme: int
-          span:
-            line: 13
-            column: 14
-            length: 3
+        ty: ~
         body:
           - Call:
               left:
@@ -424,21 +418,4 @@ file:
                     column: 26
                     length: 1
               delimiters: []
-          - Return:
-              expr:
-                Int:
-                  - 0
-                  - kind: Literal
-                    lexeme: "0"
-                    span:
-                      line: 20
-                      column: 11
-                      length: 1
-              keyword:
-                kind: Return
-                lexeme: ~
-                span:
-                  line: 20
-                  column: 4
-                  length: 6
 

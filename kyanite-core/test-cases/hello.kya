@@ -1,5 +1,3 @@
-defn main(): int {
+defn main() {
    println("Hello, world!");
-
-   return 0;
 }

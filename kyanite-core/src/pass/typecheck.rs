@@ -113,6 +113,17 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn function(&mut self, fun: &node::FuncDecl) -> Type {
+        if String::from(&fun.name) == "main" {
+            if let Some(ty) = &fun.ty {
+                if String::from(ty) != "void" {
+                    self.error(
+                        ty.span,
+                        "main function must return void".into(),
+                        "try changing or removing this type".into(),
+                    );
+                }
+            }
+        }
         self.begin_scope();
         self.function = Some(fun.name.clone());
         for param in &fun.params {

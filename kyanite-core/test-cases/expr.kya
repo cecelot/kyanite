@@ -1,6 +1,4 @@
-defn main(): int {
+defn main() {
     println(5. * 100. + 15. - 7. / 8.);
     println(5 * 100 + 15 - 7 / 8 >= 7);
-
-    return 0;
 }

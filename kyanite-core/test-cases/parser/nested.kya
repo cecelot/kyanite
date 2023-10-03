@@ -1,4 +1,4 @@
-defn main(): int {
+defn main() {
     println(defn);
 
     let x: int = 5

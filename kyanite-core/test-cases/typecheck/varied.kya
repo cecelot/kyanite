@@ -28,7 +28,7 @@ defn withinFloat(a: float): float {
     return a;
 }
 
-defn main(): int {
+defn main() {
     let a: int = 5;
     let b: int = 7;
     let c: float = a * b;

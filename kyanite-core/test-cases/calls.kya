@@ -10,12 +10,10 @@ defn helloWorld() {
    println("Hello world!");
 }
 
-defn main(): int {
+defn main() {
    helloWorld();
    println(foo(72));
    println(bar());
    println(max(10, 300));
    println(min(10., 300.));
-
-   return 0;
 }

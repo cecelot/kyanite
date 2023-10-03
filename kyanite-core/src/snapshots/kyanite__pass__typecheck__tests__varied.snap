@@ -131,7 +131,7 @@ expression: pass.errors
     length: 1
   text: ""
 - filename: test-cases/typecheck/varied.kya
-  heading: expected return type to be int
+  heading: expected return type to be void
   line: "    return 12. * 36.; % mismatched types 'int' and 'float'"
   span:
     line: 50

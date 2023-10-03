@@ -242,23 +242,11 @@ expression: stream.tokens
     line: 8
     column: 11
     length: 1
-- kind: Colon
-  lexeme: ~
-  span:
-    line: 8
-    column: 12
-    length: 1
-- kind: Type
-  lexeme: int
-  span:
-    line: 8
-    column: 14
-    length: 3
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 8
-    column: 18
+    column: 13
     length: 1
 - kind: Let
   lexeme: ~

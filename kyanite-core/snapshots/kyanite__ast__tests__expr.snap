@@ -13,13 +13,7 @@ file:
             column: 6
             length: 4
         params: []
-        ty:
-          kind: Type
-          lexeme: int
-          span:
-            line: 1
-            column: 14
-            length: 3
+        ty: ~
         body:
           - Call:
               left:
