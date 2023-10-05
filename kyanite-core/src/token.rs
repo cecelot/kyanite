@@ -252,6 +252,7 @@ impl TokenStream {
 
     fn string(&mut self) -> Token {
         self.start = self.current;
+        let oquote = self.span;
         let mut peeked = self.peek();
         while !self.eof() && peeked.unwrap() != '"' {
             self.consume();
@@ -260,19 +261,20 @@ impl TokenStream {
         self.consume(); // don't forget the closing quote
         self.span.length = self.current - self.start + 1;
         if self.eof() {
-            println!(
-                "{}",
-                PreciseError::new(
-                    &self.source,
-                    self.span,
-                    "unterminated string".into(),
-                    "opening quote here".into(),
-                )
+            let error = PreciseError::new(
+                &self.source,
+                oquote,
+                "unterminated string".into(),
+                "opening quote here".into(),
             );
+            println!("{}", error);
+            self.errors.push(error);
             return Token::new(TokenKind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
+        self.adjusted(|stream: &TokenStream| {
+            Token::new(TokenKind::Literal, Some(lexeme), stream.span)
+        })
     }
 
     fn number(&mut self) -> Token {
