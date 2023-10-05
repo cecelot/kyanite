@@ -1,0 +1,4 @@
+defn main() {
+    let foo: int = 5;
+    println(foo);
+}

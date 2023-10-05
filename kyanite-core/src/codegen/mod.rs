@@ -74,6 +74,8 @@ pub enum IrError {
     MalformedCall,
     #[error("Malformed return statement")]
     MalformedReturn,
+    #[error("Malformed variable declaration expression")]
+    MalformedVarDecl,
 }
 
 pub struct Ir<'a, 'ctx> {
@@ -141,6 +143,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Node::Int(n, _) => self.int(n).map(|v| v.into()),
             Node::Binary(binary) => self.binary(binary).map(|v| v.into()),
             Node::Return(r) => self.ret(r),
+            Node::VarDecl(var) => self.var(var),
             _ => todo!("compilation not implemented for {:?}", node),
         }
     }
@@ -300,6 +303,21 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let val: BasicValueEnum<'_> = any.try_into().map_err(|_| IrError::MalformedReturn)?;
         self.builder.build_return(Some(&val));
         Ok(any)
+    }
+
+    fn var(&mut self, var: &node::VarDecl) -> Result<AnyValueEnum<'ctx>, IrError> {
+        let ty = Type::from(&var.ty);
+        let name = String::from(&var.name);
+
+        let value = self
+            .compile(&var.expr)?
+            .try_into()
+            .map_err(|_| IrError::MalformedVarDecl)?;
+        let alloca = self.alloca(&name, &value);
+        self.builder.build_store(alloca, value);
+        self.variables.insert(name, (alloca, ty));
+
+        Ok(value.into())
     }
 
     fn binary(&mut self, binary: &node::Binary) -> Result<BasicValueEnum<'ctx>, IrError> {
