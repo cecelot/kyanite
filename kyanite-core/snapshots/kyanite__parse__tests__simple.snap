@@ -4,7 +4,7 @@ expression: parser.errors
 ---
 - filename: test-cases/parser/simple.kya
   heading: unexpected identifier
-  line: "    foo"
+  source: "    foo"
   span:
     line: 1
     column: 5
@@ -12,7 +12,7 @@ expression: parser.errors
   text: "expected one of `defn`, `const` here"
 - filename: test-cases/parser/simple.kya
   heading: unexpected identifier
-  line: bar;
+  source: bar;
   span:
     line: 3
     column: 1
@@ -20,7 +20,7 @@ expression: parser.errors
   text: "expected one of `defn`, `const` here"
 - filename: test-cases/parser/simple.kya
   heading: unexpected identifier
-  line: "        baz"
+  source: "        baz"
   span:
     line: 5
     column: 9

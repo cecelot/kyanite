@@ -4,7 +4,7 @@ expression: pass.errors
 ---
 - filename: test-cases/typecheck/varied.kya
   heading: expected initializer to be of type int
-  line: "const FOO: int = 5. > 7. * 4.;"
+  source: "const FOO: int = 5. > 7. * 4.;"
   span:
     line: 1
     column: 18
@@ -12,7 +12,7 @@ expression: pass.errors
   text: expression of type float
 - filename: test-cases/typecheck/varied.kya
   heading: cannot add float to int
-  line: "    return a + b; % mismatched types for binary op '+'"
+  source: "    return a + b; % mismatched types for binary op '+'"
   span:
     line: 8
     column: 14
@@ -20,7 +20,7 @@ expression: pass.errors
   text: ""
 - filename: test-cases/typecheck/varied.kya
   heading: cannot subtract float from int
-  line: "    return a - b + 7; % mismatched types for binary op '-' and '+'"
+  source: "    return a - b + 7; % mismatched types for binary op '-' and '+'"
   span:
     line: 12
     column: 14
@@ -28,7 +28,7 @@ expression: pass.errors
   text: ""
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type int, but found float"
-  line: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
+  source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
   span:
     line: 20
     column: 31
@@ -36,7 +36,7 @@ expression: pass.errors
   text: expression of type float
 - filename: test-cases/typecheck/varied.kya
   heading: cannot add int to float
-  line: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
+  source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'"
   span:
     line: 20
     column: 22
@@ -44,7 +44,7 @@ expression: pass.errors
   text: ""
 - filename: test-cases/typecheck/varied.kya
   heading: expected initializer to be of type float
-  line: "    let c: float = a * b;"
+  source: "    let c: float = a * b;"
   span:
     line: 34
     column: 20
@@ -52,7 +52,7 @@ expression: pass.errors
   text: expression of type int
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type float, but found int"
-  line: "    bar(a, b); % mismatched types 'float' and 'int'"
+  source: "    bar(a, b); % mismatched types 'float' and 'int'"
   span:
     line: 36
     column: 9
@@ -60,7 +60,7 @@ expression: pass.errors
   text: expression of type int
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type float, but found int"
-  line: "    bar(within(17), 3);"
+  source: "    bar(within(17), 3);"
   span:
     line: 38
     column: 9
@@ -68,7 +68,7 @@ expression: pass.errors
   text: expression of type int
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type float, but found int"
-  line: "    within(withinFloat(1000));"
+  source: "    within(withinFloat(1000));"
   span:
     line: 40
     column: 24
@@ -76,7 +76,7 @@ expression: pass.errors
   text: expression of type int
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type int, but found float"
-  line: "    within(withinFloat(1000));"
+  source: "    within(withinFloat(1000));"
   span:
     line: 40
     column: 12
@@ -84,7 +84,7 @@ expression: pass.errors
   text: expression of type float
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type int, but found str"
-  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
   span:
     line: 41
     column: 31
@@ -92,7 +92,7 @@ expression: pass.errors
   text: expression of type str
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type float, but found int"
-  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
   span:
     line: 41
     column: 24
@@ -100,7 +100,7 @@ expression: pass.errors
   text: expression of type int
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type int, but found float"
-  line: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
+  source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'"
   span:
     line: 41
     column: 12
@@ -108,7 +108,7 @@ expression: pass.errors
   text: expression of type float
 - filename: test-cases/typecheck/varied.kya
   heading: "this function takes 2 arguments, but 3 were provided"
-  line: "    foo(a, b, 10); % mismatched args"
+  source: "    foo(a, b, 10); % mismatched args"
   span:
     line: 43
     column: 5
@@ -116,7 +116,7 @@ expression: pass.errors
   text: while calling foo here
 - filename: test-cases/typecheck/varied.kya
   heading: "expected argument of type int, but found float"
-  line: "    within(baz); % mismatched args"
+  source: "    within(baz); % mismatched args"
   span:
     line: 46
     column: 12
@@ -124,7 +124,7 @@ expression: pass.errors
   text: expression of type float
 - filename: test-cases/typecheck/varied.kya
   heading: cannot add float to int
-  line: "    baz + 7;"
+  source: "    baz + 7;"
   span:
     line: 48
     column: 9
@@ -132,7 +132,7 @@ expression: pass.errors
   text: ""
 - filename: test-cases/typecheck/varied.kya
   heading: expected return type to be void
-  line: "    return 12. * 36.; % mismatched types 'int' and 'float'"
+  source: "    return 12. * 36.; % mismatched types 'int' and 'float'"
   span:
     line: 50
     column: 12

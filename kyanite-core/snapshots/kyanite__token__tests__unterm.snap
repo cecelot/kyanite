@@ -4,7 +4,7 @@ expression: stream.errors
 ---
 - filename: test-cases/tokens/unterm.kya
   heading: unterminated string
-  line: "    println(\"hello world);"
+  source: "    println(\"hello world);"
   span:
     line: 2
     column: 13

@@ -4,7 +4,7 @@ expression: parser.errors
 ---
 - filename: test-cases/parser/nested.kya
   heading: unexpected defn
-  line: "    println(defn);"
+  source: "    println(defn);"
   span:
     line: 2
     column: 13
@@ -12,7 +12,7 @@ expression: parser.errors
   text: "expected one of `identifier`, `literal`, `(` here"
 - filename: test-cases/parser/nested.kya
   heading: expected ; but found identifier
-  line: "    println(x)"
+  source: "    println(x)"
   span:
     line: 6
     column: 5

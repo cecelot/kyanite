@@ -4,7 +4,7 @@ expression: stream.errors
 ---
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `@`"
-  line: "@defn main ### (): int {@"
+  source: "@defn main ### (): int {@"
   span:
     line: 1
     column: 1
@@ -12,7 +12,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  source: "@defn main ### (): int {@"
   span:
     line: 1
     column: 12
@@ -20,7 +20,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  source: "@defn main ### (): int {@"
   span:
     line: 1
     column: 13
@@ -28,7 +28,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  source: "@defn main ### (): int {@"
   span:
     line: 1
     column: 14
@@ -36,7 +36,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `@`"
-  line: "@defn main ### (): int {@"
+  source: "@defn main ### (): int {@"
   span:
     line: 1
     column: 25
@@ -44,7 +44,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `^`"
-  line: "    print ^ ln(\"Hello, world&\\n\");"
+  source: "    print ^ ln(\"Hello, world&\\n\");"
   span:
     line: 2
     column: 11
@@ -52,7 +52,7 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `&`"
-  line: "    retur & n 0;"
+  source: "    retur & n 0;"
   span:
     line: 4
     column: 11

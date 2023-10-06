@@ -8,15 +8,16 @@ use crate::{token::Span, Source};
 pub struct PreciseError {
     filename: String,
     heading: String,
-    line: String,
+    source: String,
     span: Span,
     text: String,
 }
 
 impl PreciseError {
     pub fn new(source: &Source, span: Span, heading: String, text: String) -> Self {
+        let filename = source.filename.clone();
         Self {
-            line: source
+            source: source
                 .raw
                 .lines()
                 .nth(span.line - 1)
@@ -25,57 +26,54 @@ impl PreciseError {
             span,
             heading,
             text,
-            filename: source.filename.clone(),
+            filename,
         }
+    }
+
+    fn aligned<F>(&self, comment: &mut String, rest: F)
+    where
+        F: FnOnce(&mut String),
+    {
+        let num: String = self.span.line.to_string();
+        comment.push_str(&format!(
+            "{}{}",
+            " ".repeat(num.len() + 1),
+            "|".blue().bold()
+        ));
+        rest(comment);
+        comment.push('\n');
     }
 
     fn build(&self) -> String {
-        let num = self.span.line.to_string();
-        let len = num.len();
+        let num: String = self.span.line.to_string();
         let mut comment = format!(
             "{}{}{}",
-            &" ".repeat(len - 1),             // padding
-            &"-->".blue().bold().to_string(), // arrow
+            &"-".repeat(num.len() + 1).blue().bold(),
+            &">".blue().bold(),
             &format!(
                 " {}:{}:{}\n",
                 self.filename, self.span.line, self.span.column
-            ), // filename
+            ),
         );
-
-        // empty line
-        sidebar(&mut comment, len, true);
-
-        // line information
-        comment.push_str(&num.blue().bold().to_string());
-        comment.push_str(&" | ".blue().bold().to_string());
-        comment.push_str(&self.line);
-        comment.push('\n');
-
-        // error text
-        sidebar(&mut comment, len, false);
-        for _ in 0..self.span.column {
-            comment.push(' ');
-        }
-        comment.push_str(
-            &format!("{} {}", "^".repeat(self.span.length), self.text)
-                .red()
-                .bold()
-                .to_string(),
-        );
-        comment.push('\n');
-
-        // empty line
-        sidebar(&mut comment, len, true);
+        self.aligned(&mut comment, |_| {});
+        comment.push_str(&format!(
+            "{} {} {}\n",
+            self.span.line.to_string().blue().bold(),
+            "|".blue().bold(),
+            self.source
+        ));
+        self.aligned(&mut comment, |s| {
+            s.push_str(&" ".repeat(self.span.column));
+            s.push_str(
+                &format!("{} {}", "^".repeat(self.span.length), self.text)
+                    .red()
+                    .bold()
+                    .to_string(),
+            );
+        });
+        self.aligned(&mut comment, |_| {});
 
         comment
-    }
-}
-
-fn sidebar(comment: &mut String, len: usize, newline: bool) {
-    comment.push_str(&" ".repeat(len + 1));
-    comment.push_str(&"|".blue().bold().to_string());
-    if newline {
-        comment.push('\n');
     }
 }
 
