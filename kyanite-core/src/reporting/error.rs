@@ -53,8 +53,7 @@ impl PreciseError {
 
         // error text
         sidebar(&mut comment, len, false);
-        let end = self.span.column + len - 1 - if len > 1 { len - 1 } else { 0 };
-        for _ in 0..end {
+        for _ in 0..self.span.column {
             comment.push(' ');
         }
         comment.push_str(
