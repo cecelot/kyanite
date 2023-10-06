@@ -417,5 +417,7 @@ assert_tokens! {
     "test-cases/access.kya" => access / true,
     "test-cases/mixed.kya" => mixed / true,
 
-    "test-cases/tokens/varied.kya" => varied / false
+    "test-cases/tokens/varied.kya" => varied / false,
+    "test-cases/tokens/loooong.kya" => loooong / false,
+    "test-cases/tokens/unterm.kya" => unterm / false
 }

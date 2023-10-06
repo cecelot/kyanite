@@ -1,0 +1,13 @@
+---
+source: kyanite-core/src/token.rs
+expression: stream.errors
+---
+- filename: test-cases/tokens/loooong.kya
+  heading: unterminated string
+  line: "    println(\"hello world);"
+  span:
+    line: 102
+    column: 13
+    length: 1
+  text: opening quote here
+
