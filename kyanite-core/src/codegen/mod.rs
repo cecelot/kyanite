@@ -144,6 +144,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Node::Binary(binary) => self.binary(binary).map(|v| v.into()),
             Node::Return(r) => self.ret(r),
             Node::VarDecl(var) => self.var(var),
+            Node::Unary(unary) => self.unary(unary).map(|v| v.into()),
             _ => todo!("compilation not implemented for {:?}", node),
         }
     }
@@ -348,6 +349,22 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
         // finally fail if still not implemented (should be type error)
         unimplemented!("binary operation not implemented for {:?}", binary.op.kind)
+    }
+
+    fn unary(&mut self, unary: &node::Unary) -> Result<BasicValueEnum<'ctx>, IrError> {
+        let expr = self.compile(&unary.right)?;
+        Ok(match unary.op.kind {
+            TokenKind::Minus => match expr {
+                AnyValueEnum::IntValue(i) => i.const_neg().into(),
+                AnyValueEnum::FloatValue(f) => f.const_neg().into(),
+                _ => unimplemented!("cannot perform `-` on {expr:?}"),
+            },
+            TokenKind::Bang => match expr {
+                AnyValueEnum::IntValue(i) => i.const_not().into(),
+                _ => unimplemented!("cannot perform `!` on {expr:?}"),
+            },
+            _ => unimplemented!("unary operation not implemented for {:?}", unary.op.kind),
+        })
     }
 
     fn call(&mut self, call: &node::Call) -> Result<BasicValueEnum<'ctx>, IrError> {

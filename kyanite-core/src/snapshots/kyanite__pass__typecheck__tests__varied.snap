@@ -9,7 +9,7 @@ expression: pass.errors
     line: 1
     column: 18
     length: 12
-  text: expression of type float
+  text: expression of type bool
 - filename: test-cases/typecheck/varied.kya
   heading: cannot add float to int
   source: "    return a + b; % mismatched types for binary op '+'"

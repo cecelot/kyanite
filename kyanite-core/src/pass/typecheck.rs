@@ -80,7 +80,35 @@ impl<'a> TypeCheckPass<'a> {
             Node::Binary(b) => self.binary(b),
             Node::Ident(id) => self.ident(id),
             Node::Call(call) => self.call(call),
+            Node::Unary(unary) => self.unary(unary),
             e => todo!("{:?}", e),
+        }
+    }
+
+    fn unary(&mut self, unary: &node::Unary) -> Type {
+        let got = self.check(&unary.right);
+        match unary.op.kind {
+            TokenKind::Minus => {
+                if !matches!(got, Type::Int | Type::Float) {
+                    self.error(
+                        unary.right.span(),
+                        format!("cannot negate {}", got),
+                        format!("expression of type {}", got),
+                    );
+                }
+                got
+            }
+            TokenKind::Bang => {
+                if got != Type::Bool {
+                    self.error(
+                        unary.right.span(),
+                        format!("cannot invert {}", got),
+                        format!("expression of type {}", got),
+                    );
+                }
+                Type::Bool
+            }
+            _ => unimplemented!(),
         }
     }
 
@@ -169,7 +197,14 @@ impl<'a> TypeCheckPass<'a> {
             };
             self.error(b.op.span, heading, "".into());
         }
-        lty
+        if matches!(
+            b.op.kind,
+            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash
+        ) {
+            lty
+        } else {
+            Type::Bool
+        }
     }
 
     fn ident(&mut self, id: &node::Ident) -> Type {

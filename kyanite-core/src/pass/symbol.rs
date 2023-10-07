@@ -37,12 +37,6 @@ impl Default for SymbolTable {
     }
 }
 
-impl From<Vec<(Token, Node)>> for SymbolTable {
-    fn from(vars: Vec<(Token, Node)>) -> Self {
-        Self(vars.into_iter().collect())
-    }
-}
-
 impl From<&File> for SymbolTable {
     fn from(program: &File) -> Self {
         let mut table = Self::new();

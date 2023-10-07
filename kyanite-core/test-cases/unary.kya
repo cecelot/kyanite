@@ -1,0 +1,7 @@
+defn main() {
+    println(!true);
+    println(!false);
+    println(-5);
+    println(-5.);
+    println(-0.15 + 1.7 * 2.3 > 5.);
+}

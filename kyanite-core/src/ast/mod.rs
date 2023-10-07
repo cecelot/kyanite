@@ -93,7 +93,7 @@ impl NodeSpan for Node {
             Node::Call(call) => call.left.start(),
             Node::Return(ret) => ret.expr.start(),
             Node::Binary(binary) => binary.left.start(),
-            Node::Unary(unary) => unary.right.start(),
+            Node::Unary(unary) => unary.op.span.column,
             Node::Ident(id) => id.name.span.column,
             Node::FuncDecl(func) => func.name.span.column,
             Node::Str(_, token) => token.span.column,
