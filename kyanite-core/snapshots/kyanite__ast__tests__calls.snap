@@ -52,6 +52,7 @@ file:
                   line: 2
                   column: 4
                   length: 6
+        external: false
     - FuncDecl:
         name:
           kind: Identifier
@@ -86,6 +87,7 @@ file:
                   line: 6
                   column: 4
                   length: 6
+        external: false
     - FuncDecl:
         name:
           kind: Identifier
@@ -130,6 +132,7 @@ file:
                     column: 26
                     length: 1
               delimiters: []
+        external: false
     - FuncDecl:
         name:
           kind: Identifier
@@ -418,4 +421,5 @@ file:
                     column: 26
                     length: 1
               delimiters: []
+        external: false
 

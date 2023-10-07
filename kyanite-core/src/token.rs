@@ -36,6 +36,7 @@ pub enum TokenKind {
     Const,
     Defn,
     Return,
+    Extern,
     // Error
     Error,
 
@@ -68,6 +69,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Let => write!(f, "let"),
             TokenKind::Const => write!(f, "const"),
             TokenKind::Defn => write!(f, "defn"),
+            TokenKind::Extern => write!(f, "extern"),
             TokenKind::Return => write!(f, "return"),
             TokenKind::Identifier => write!(f, "identifier"),
             TokenKind::Type => write!(f, "type"),
@@ -179,10 +181,17 @@ impl From<Source> for TokenStream {
 }
 
 impl TokenStream {
-    pub fn new(source: Source) -> Result<Self, io::Error> {
+    pub fn from_source(source: Source) -> Result<Self, io::Error> {
         let mut stream = Self::from(source);
         stream.process();
         Ok(stream)
+    }
+
+    pub fn from_string(source: String) -> Result<Self, io::Error> {
+        Self::from_source(Source {
+            chars: source.chars().collect(),
+            ..Default::default()
+        })
     }
 
     fn process(&mut self) {
@@ -321,6 +330,7 @@ impl TokenStream {
             "true" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
             "false" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
             "return" => Token::new(TokenKind::Return, None, stream.span),
+            "extern" => Token::new(TokenKind::Extern, None, stream.span),
             _ => Token::new(TokenKind::Identifier, Some(lexeme), stream.span),
         })
     }
@@ -393,7 +403,7 @@ macro_rules! assert_tokens {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let stream = TokenStream::new(Source::new($path)?)?;
+                    let stream = TokenStream::from_source(Source::new($path)?)?;
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
                         if $valid {
                             insta::assert_yaml_snapshot!(stream.tokens);

@@ -18,7 +18,12 @@ pub struct Ast {
 
 impl Ast {
     pub fn from_source(source: Source) -> Result<Self, PipelineError> {
-        let stream = TokenStream::new(source).map_err(|_| PipelineError::InvalidUtf8)?;
+        let stream = TokenStream::from_source(source).map_err(|_| PipelineError::InvalidUtf8)?;
+        Self::new(stream)
+    }
+
+    pub fn from_string(source: String) -> Result<Self, PipelineError> {
+        let stream = TokenStream::from_string(source).map_err(|_| PipelineError::InvalidUtf8)?;
         Self::new(stream)
     }
 
@@ -169,8 +174,14 @@ impl Node {
         }
     }
 
-    pub fn func(name: Token, params: Vec<Param>, ty: Option<Token>, body: Vec<Node>) -> Self {
-        Self::FuncDecl(node::FuncDecl::new(name, params, ty, body))
+    pub fn func(
+        name: Token,
+        params: Vec<Param>,
+        ty: Option<Token>,
+        body: Vec<Node>,
+        external: bool,
+    ) -> Self {
+        Self::FuncDecl(node::FuncDecl::new(name, params, ty, body, external))
     }
 
     pub fn assign(target: Node, expr: Node) -> Self {

@@ -150,6 +150,7 @@ file:
                   line: 5
                   column: 5
                   length: 6
+        external: false
     - FuncDecl:
         name:
           kind: Identifier
@@ -256,4 +257,5 @@ file:
                     line: 11
                     column: 15
                     length: 1
+        external: false
 

@@ -38,7 +38,8 @@ impl Parser {
         let mut nodes: Vec<Node> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
-                TokenKind::Defn => self.function(),
+                TokenKind::Defn => self.function(false),
+                TokenKind::Extern => self.function(true),
                 TokenKind::Const => self.constant(),
                 TokenKind::Eof => break,
                 _ => {
@@ -64,7 +65,11 @@ impl Parser {
         }
     }
 
-    fn function(&mut self) -> Result<Node, ParseError> {
+    fn function(&mut self, external: bool) -> Result<Node, ParseError> {
+        if external {
+            self.consume(TokenKind::Extern)?;
+        }
+
         self.consume(TokenKind::Defn)?;
         let name = self.consume(TokenKind::Identifier)?;
 
@@ -78,11 +83,14 @@ impl Parser {
             ty = Some(self.consume(TokenKind::Type)?);
         }
 
-        self.consume(TokenKind::LeftBrace)?;
-        let body = self.block()?;
-        self.consume(TokenKind::RightBrace)?;
-
-        Ok(Node::func(name, params, ty, body))
+        if external {
+            Ok(Node::func(name, params, ty, vec![], external))
+        } else {
+            self.consume(TokenKind::LeftBrace)?;
+            let body = self.block()?;
+            self.consume(TokenKind::RightBrace)?;
+            Ok(Node::func(name, params, ty, body, external))
+        }
     }
 
     fn params(&mut self) -> Result<Vec<Param>, ParseError> {
@@ -400,7 +408,7 @@ macro_rules! assert_parse {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let stream = TokenStream::new(Source::new($path)?)?;
+                    let stream = TokenStream::from_source(Source::new($path)?)?;
                     let mut parser = Parser::new(stream.source, stream.tokens);
                     parser.parse();
                     insta::with_settings!({snapshot_path => "../snapshots"}, {

@@ -11,15 +11,23 @@ pub struct FuncDecl {
     pub params: Vec<Param>,
     pub ty: Option<Token>,
     pub body: Vec<Node>,
+    pub external: bool,
 }
 
 impl FuncDecl {
-    pub fn new(name: Token, params: Vec<Param>, ty: Option<Token>, body: Vec<Node>) -> Self {
+    pub fn new(
+        name: Token,
+        params: Vec<Param>,
+        ty: Option<Token>,
+        body: Vec<Node>,
+        external: bool,
+    ) -> Self {
         Self {
             name,
             params,
             ty,
             body,
+            external,
         }
     }
 }

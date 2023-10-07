@@ -114,7 +114,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         };
 
         // Inject builtin function declarations
-        Builtins::new().build(&mut ir);
+        Builtins::new(&mut ir)?;
 
         // entrypoint - compile all toplevel nodes
         for node in &mut ast.file.nodes {
@@ -223,6 +223,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         }
         // Compile our function prototype and set as current function
         let proto = self.prototype(func)?;
+        if func.external {
+            return Ok(proto);
+        }
         self.function = Some(proto);
 
         // Create a block using the function prototype to compile instructions into
