@@ -1,24 +1,63 @@
 use std::ops::Deref;
 
 use crate::{
-    ast::{node, File, Node, NodeSpan, Type},
+    ast::{node, Decl, Expr, NodeSpan, Stmt, Type},
     reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
     Source,
 };
 
-use super::symbol::SymbolTable;
+use super::symbol::{Binding, SymbolTable};
 
 pub struct TypeCheckPass<'a> {
     source: &'a Source,
-    program: &'a File,
+    program: &'a Vec<Decl>,
     errors: Vec<PreciseError>,
     function: Option<Token>,
     scopes: Vec<SymbolTable>,
 }
 
+trait Check {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type;
+}
+
+impl Check for Decl {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+        match self {
+            Decl::Function(fun) => pass.function(fun),
+            Decl::Constant(c) => pass.constant(c),
+        }
+    }
+}
+
+impl Check for Stmt {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+        match self {
+            Stmt::Return(r) => pass.ret(r),
+            Stmt::Expr(e) => e.check(pass),
+            Stmt::Var(v) => pass.var(v),
+            Stmt::Assign(_) => Type::Void,
+        }
+    }
+}
+
+impl Check for Expr {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+        match self {
+            Expr::Binary(b) => pass.binary(b),
+            Expr::Unary(u) => pass.unary(u),
+            Expr::Call(c) => pass.call(c),
+            Expr::Ident(i) => pass.ident(i),
+            Expr::Bool(..) => Type::Bool,
+            Expr::Int(..) => Type::Int,
+            Expr::Float(..) => Type::Float,
+            Expr::Str(..) => Type::Str,
+        }
+    }
+}
+
 impl<'a> TypeCheckPass<'a> {
-    pub fn new(table: SymbolTable, source: &'a Source, program: &'a File) -> Self {
+    pub fn new(table: SymbolTable, source: &'a Source, program: &'a Vec<Decl>) -> Self {
         Self {
             source,
             program,
@@ -29,8 +68,8 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     pub fn run(&mut self) -> Result<(), usize> {
-        for node in &self.program.nodes {
-            self.check(node);
+        for node in self.program {
+            node.check(self);
         }
         let len = self.errors.len();
         if len > 0 {
@@ -52,7 +91,7 @@ impl<'a> TypeCheckPass<'a> {
         self.scopes.pop();
     }
 
-    fn symbol(&self, name: &Token) -> Option<&Node> {
+    fn symbol(&self, name: &Token) -> Option<&Binding> {
         for scope in self.scopes.iter().rev() {
             if let Some(definition) = scope.get(name) {
                 return Some(definition);
@@ -67,26 +106,8 @@ impl<'a> TypeCheckPass<'a> {
         self.errors.push(error);
     }
 
-    fn check(&mut self, node: &Node) -> Type {
-        match node {
-            Node::Float(..) => Type::Float,
-            Node::Int(..) => Type::Int,
-            Node::Bool(..) => Type::Bool,
-            Node::Str(..) => Type::Str,
-            Node::ConstantDecl(c) => self.constant(c),
-            Node::VarDecl(v) => self.var(v),
-            Node::FuncDecl(fun) => self.function(fun),
-            Node::Return(r) => self.ret(r),
-            Node::Binary(b) => self.binary(b),
-            Node::Ident(id) => self.ident(id),
-            Node::Call(call) => self.call(call),
-            Node::Unary(unary) => self.unary(unary),
-            e => todo!("{:?}", e),
-        }
-    }
-
     fn unary(&mut self, unary: &node::Unary) -> Type {
-        let got = self.check(&unary.right);
+        let got = unary.right.check(self);
         match unary.op.kind {
             TokenKind::Minus => {
                 if !matches!(got, Type::Int | Type::Float) {
@@ -113,7 +134,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn constant(&mut self, c: &node::ConstantDecl) -> Type {
-        let got = self.check(&c.expr);
+        let got = c.expr.check(self);
         let expected = Type::from(&c.ty);
         if got != expected {
             self.error(
@@ -126,7 +147,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn var(&mut self, v: &node::VarDecl) -> Type {
-        let got = self.check(&v.expr);
+        let got = v.expr.check(self);
         let expected = Type::from(&v.ty);
         if got != expected {
             self.error(
@@ -136,7 +157,7 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         self.scope_mut()
-            .insert(v.name.clone(), Node::VarDecl(v.clone()));
+            .insert(v.name.clone(), Binding::Variable(v.clone()));
         expected
     }
 
@@ -156,10 +177,10 @@ impl<'a> TypeCheckPass<'a> {
         self.function = Some(fun.name.clone());
         for param in &fun.params {
             self.scope_mut()
-                .insert(param.name.clone(), Node::FuncDecl(fun.clone()));
+                .insert(param.name.clone(), Binding::Function(fun.clone()));
         }
         for node in &fun.body {
-            self.check(node);
+            node.check(self);
         }
         self.end_scope();
         self.function = None;
@@ -167,7 +188,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn ret(&mut self, r: &node::Return) -> Type {
-        let got = self.check(&r.expr);
+        let got = r.expr.check(self);
         match &self.function {
             Some(function) => {
                 let symbol = self.symbol(function).unwrap();
@@ -185,8 +206,8 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn binary(&mut self, b: &node::Binary) -> Type {
-        let lty = self.check(&b.left);
-        let rty = self.check(&b.right);
+        let lty = b.left.check(self);
+        let rty = b.right.check(self);
         if lty != rty {
             let heading = match b.op.kind {
                 TokenKind::Plus => format!("cannot add {} to {}", lty, rty),
@@ -209,13 +230,12 @@ impl<'a> TypeCheckPass<'a> {
 
     fn ident(&mut self, id: &node::Ident) -> Type {
         match self.symbol(&id.name) {
-            Some(Node::FuncDecl(f)) => {
+            Some(Binding::Function(f)) => {
                 let param = f.params.iter().find(|p| p.name == id.name).unwrap();
                 Type::from(&param.ty)
             }
-            Some(Node::VarDecl(v)) => Type::from(&v.ty),
-            Some(Node::ConstantDecl(c)) => Type::from(&c.ty),
-            Some(node) => unimplemented!("{:?} is not implemented as an identifier", node),
+            Some(Binding::Variable(v)) => Type::from(&v.ty),
+            Some(Binding::Constant(c)) => Type::from(&c.ty),
             _ => {
                 self.error(id.name.span, "is not defined".into(), "".into());
                 Type::Void
@@ -225,12 +245,12 @@ impl<'a> TypeCheckPass<'a> {
 
     fn call(&mut self, call: &node::Call) -> Type {
         let name = match &call.left.deref() {
-            Node::Ident(ident) => ident.name.clone(),
-            Node::Binary(_) => todo!("member access"),
+            Expr::Ident(ident) => ident.name.clone(),
+            Expr::Binary(_) => todo!("member access"),
             _ => unimplemented!(),
         };
         let (arity, params, ty) = match self.symbol(&name) {
-            Some(Node::FuncDecl(function)) => (
+            Some(Binding::Function(function)) => (
                 function.params.len(),
                 function.params.clone(),
                 function.ty.clone(),
@@ -268,7 +288,7 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
-            let got = self.check(arg);
+            let got = arg.check(self);
             if i < params.len() {
                 let expected = Type::from(&params[i].ty);
                 if got != expected {
@@ -299,8 +319,8 @@ macro_rules! assert_typecheck {
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = crate::Source::new($path)?;
                     let ast = crate::ast::Ast::from_source(source.clone())?;
-                    let symbols = SymbolTable::from(&ast.file);
-                    let mut pass = TypeCheckPass::new(symbols, &source, &ast.file);
+                    let symbols = SymbolTable::from(&ast.nodes);
+                    let mut pass = TypeCheckPass::new(symbols, &source, &ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
                         insta::assert_yaml_snapshot!(pass.errors);

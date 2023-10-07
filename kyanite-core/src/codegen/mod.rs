@@ -11,7 +11,7 @@ use inkwell::{
 };
 
 use crate::{
-    ast::{self, node, Node, Type},
+    ast::{init, node, Ast, Decl, Expr, Stmt, Type},
     token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
@@ -23,8 +23,8 @@ macro_rules! num_instrs  {
         match $bin.op.kind {
             $(
                 TokenKind::$kind => {
-                    let left = $self.compile(&$bin.left)?;
-                    let right = $self.compile(&$bin.right)?;
+                    let left = $self.expr(&$bin.left)?;
+                    let right = $self.expr(&$bin.right)?;
                     match (left, right) {
                         (AnyValueEnum::IntValue(left), AnyValueEnum::IntValue(right)) => {
                             return Ok($self.builder.$int_instr(left, right, "tmp").into())
@@ -49,8 +49,8 @@ macro_rules! bool_instrs {
             match $bin.op.kind {
                 $(
                     TokenKind::$kind => {
-                        let left = $self.compile(&$bin.left)?.$conversion();
-                        let right = $self.compile(&$bin.right)?.$conversion();
+                        let left = $self.expr(&$bin.left)?.$conversion();
+                        let right = $self.expr(&$bin.right)?.$conversion();
                         return Ok($self.builder.$build_fn($predicate::$member, left, right, "tmp").into())
                     }
                 )*,
@@ -92,7 +92,7 @@ pub struct Ir<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn from_ast(ast: &mut ast::Ast) -> Result<String, IrError> {
+    pub fn from_ast(ast: &mut Ast) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
         let builder = context.create_builder();
@@ -119,38 +119,39 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Builtins::new(&mut ir)?;
 
         // entrypoint - compile all toplevel nodes
-        for node in &mut ast.file.nodes {
-            ir.toplevel(node)?;
+        for node in &mut ast.nodes {
+            ir.decl(node)?;
         }
 
         Ok(ir.module.print_to_string().to_string())
     }
 
-    fn toplevel(&mut self, node: &mut Node) -> Result<AnyValueEnum<'ctx>, IrError> {
-        match node {
-            Node::FuncDecl(func) => self.function(func).map(|v| v.into()),
-            Node::ConstantDecl(_) => todo!(),
-            _ => unreachable!(
-                "parser is guaranteed to produce a `FuncDecl` or `ConstantDecl` at toplevel"
-            ),
+    fn decl(&mut self, decl: &mut Decl) -> Result<AnyValueEnum<'ctx>, IrError> {
+        match decl {
+            Decl::Function(func) => self.function(func).map(|v| v.into()),
+            Decl::Constant(_) => todo!(),
         }
     }
 
-    fn compile(&mut self, node: &Node) -> Result<AnyValueEnum<'ctx>, IrError> {
-        match node {
-            Node::Str(s, _) => self.str(s),
-            Node::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
-            Node::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
-            Node::Call(call) => self.call(call).map(|v| v.into()),
-            Node::Ident(ident) => self.ident(ident).map(|v| v.into()),
-            Node::Int(n, _) => self.int(n).map(|v| v.into()),
-            Node::Binary(binary) => self.binary(binary).map(|v| v.into()),
-            Node::Return(r) => self.ret(r),
-            Node::VarDecl(var) => self.var(var),
-            Node::Unary(unary) => self.unary(unary).map(|v| v.into()),
-            Node::Assign(assign) => self.assign(assign).map(|v| v.into()),
-            Node::FuncDecl(..) => unimplemented!(),
-            Node::ConstantDecl(..) => unimplemented!(),
+    fn stmt(&mut self, stmt: &Stmt) -> Result<AnyValueEnum<'ctx>, IrError> {
+        match stmt {
+            Stmt::Assign(assign) => self.assign(assign).map(|v| v.into()),
+            Stmt::Expr(expr) => self.expr(expr),
+            Stmt::Return(r) => self.ret(r),
+            Stmt::Var(var) => self.var(var),
+        }
+    }
+
+    fn expr(&mut self, expr: &Expr) -> Result<AnyValueEnum<'ctx>, IrError> {
+        match expr {
+            Expr::Str(s, _) => self.str(s),
+            Expr::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
+            Expr::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
+            Expr::Call(call) => self.call(call).map(|v| v.into()),
+            Expr::Ident(ident) => self.ident(ident).map(|v| v.into()),
+            Expr::Int(n, _) => self.int(n).map(|v| v.into()),
+            Expr::Binary(binary) => self.binary(binary).map(|v| v.into()),
+            Expr::Unary(unary) => self.unary(unary).map(|v| v.into()),
         }
     }
 
@@ -274,9 +275,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Err(IrError::MalformedFunction)
     }
 
-    fn block(&mut self, block: &[Node]) -> Result<(), IrError> {
+    fn block(&mut self, block: &[Stmt]) -> Result<(), IrError> {
         for node in block {
-            match self.compile(node) {
+            match self.stmt(node) {
                 Ok(_) => {}
                 Err(e) => return Err(e),
             }
@@ -308,7 +309,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn ret(&mut self, r: &node::Return) -> Result<AnyValueEnum<'ctx>, IrError> {
-        let any = self.compile(&r.expr)?;
+        let any = self.expr(&r.expr)?;
         let val: BasicValueEnum<'_> = any.try_into().map_err(|_| IrError::MalformedReturn)?;
         self.builder.build_return(Some(&val));
         Ok(any)
@@ -319,7 +320,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let name = String::from(&var.name);
 
         let value = self
-            .compile(&var.expr)?
+            .expr(&var.expr)?
             .try_into()
             .map_err(|_| IrError::MalformedVarDecl)?;
         let alloca = self.alloca(&name, &value);
@@ -330,14 +331,14 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn assign(&mut self, assign: &node::Assign) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let name = match *assign.target {
-            Node::Ident(ref ident) => String::from(&ident.name),
-            Node::Binary(_) => todo!("member access"),
+        let name = match assign.target {
+            Expr::Ident(ref ident) => String::from(&ident.name),
+            Expr::Binary(_) => todo!("member access"),
             _ => unimplemented!(),
         };
         // Compile the right-hand-side of assignment to an expression
         let value: BasicValueEnum<'_> = self
-            .compile(&assign.expr)?
+            .expr(&assign.expr)?
             .try_into()
             .map_err(|_| IrError::MalformedAssignment)?;
         // Retreive the pointer to the variable in question
@@ -381,7 +382,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn unary(&mut self, unary: &node::Unary) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let expr = self.compile(&unary.right)?;
+        let expr = self.expr(&unary.right)?;
         Ok(match unary.op.kind {
             TokenKind::Minus => match expr {
                 AnyValueEnum::IntValue(i) => i.const_neg().into(),
@@ -401,7 +402,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let mut args: Vec<BasicMetadataValueEnum> = Vec::with_capacity(call.args.len());
         for arg in &call.args {
             args.push(
-                self.compile(arg)?
+                self.expr(arg)?
                     .try_into()
                     .map_err(|_| IrError::MalformedCall)?,
             );
@@ -409,8 +410,8 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // Retreive the name of the function
         // (this needs to be updated when member access is implemented)
         let name = match *call.left {
-            Node::Ident(ref ident) => String::from(&ident.name),
-            Node::Binary(_) => todo!("member access"),
+            Expr::Ident(ref ident) => String::from(&ident.name),
+            Expr::Binary(_) => todo!("member access"),
             _ => unimplemented!(),
         };
         match self.get_function(&name, &args) {
@@ -499,7 +500,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
 fn main() -> node::Call {
     node::Call::new(
-        Box::new(Node::ident(Token {
+        Box::new(init::ident(Token {
             kind: TokenKind::Identifier,
             lexeme: Some("_main".into()),
             span: Span::new(0, 0, 0),

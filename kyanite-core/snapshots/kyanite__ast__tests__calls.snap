@@ -2,104 +2,104 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-file:
-  nodes:
-    - FuncDecl:
-        name:
-          kind: Identifier
-          lexeme: foo
-          span:
-            line: 1
-            column: 6
-            length: 3
-        params:
-          - name:
-              kind: Identifier
-              lexeme: bar
+nodes:
+  - Function:
+      name:
+        kind: Identifier
+        lexeme: foo
+        span:
+          line: 1
+          column: 6
+          length: 3
+      params:
+        - name:
+            kind: Identifier
+            lexeme: bar
+            span:
+              line: 1
+              column: 10
+              length: 3
+          ty:
+            kind: Type
+            lexeme: int
+            span:
+              line: 1
+              column: 15
+              length: 3
+      ty:
+        kind: Type
+        lexeme: int
+        span:
+          line: 1
+          column: 21
+          length: 3
+      body:
+        - Return:
+            expr:
+              Ident:
+                name:
+                  kind: Identifier
+                  lexeme: bar
+                  span:
+                    line: 2
+                    column: 11
+                    length: 3
+            keyword:
+              kind: Return
+              lexeme: ~
               span:
-                line: 1
-                column: 10
-                length: 3
-            ty:
-              kind: Type
-              lexeme: int
+                line: 2
+                column: 4
+                length: 6
+      external: false
+  - Function:
+      name:
+        kind: Identifier
+        lexeme: bar
+        span:
+          line: 5
+          column: 6
+          length: 3
+      params: []
+      ty:
+        kind: Type
+        lexeme: float
+        span:
+          line: 5
+          column: 13
+          length: 5
+      body:
+        - Return:
+            expr:
+              Float:
+                - 42
+                - kind: Literal
+                  lexeme: "42."
+                  span:
+                    line: 6
+                    column: 11
+                    length: 3
+            keyword:
+              kind: Return
+              lexeme: ~
               span:
-                line: 1
-                column: 15
-                length: 3
-        ty:
-          kind: Type
-          lexeme: int
-          span:
-            line: 1
-            column: 21
-            length: 3
-        body:
-          - Return:
-              expr:
-                Ident:
-                  name:
-                    kind: Identifier
-                    lexeme: bar
-                    span:
-                      line: 2
-                      column: 11
-                      length: 3
-              keyword:
-                kind: Return
-                lexeme: ~
-                span:
-                  line: 2
-                  column: 4
-                  length: 6
-        external: false
-    - FuncDecl:
-        name:
-          kind: Identifier
-          lexeme: bar
-          span:
-            line: 5
-            column: 6
-            length: 3
-        params: []
-        ty:
-          kind: Type
-          lexeme: float
-          span:
-            line: 5
-            column: 13
-            length: 5
-        body:
-          - Return:
-              expr:
-                Float:
-                  - 42
-                  - kind: Literal
-                    lexeme: "42."
-                    span:
-                      line: 6
-                      column: 11
-                      length: 3
-              keyword:
-                kind: Return
-                lexeme: ~
-                span:
-                  line: 6
-                  column: 4
-                  length: 6
-        external: false
-    - FuncDecl:
-        name:
-          kind: Identifier
-          lexeme: helloWorld
-          span:
-            line: 9
-            column: 6
-            length: 10
-        params: []
-        ty: ~
-        body:
-          - Call:
+                line: 6
+                column: 4
+                length: 6
+      external: false
+  - Function:
+      name:
+        kind: Identifier
+        lexeme: helloWorld
+        span:
+          line: 9
+          column: 6
+          length: 10
+      params: []
+      ty: ~
+      body:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -132,19 +132,20 @@ file:
                     column: 26
                     length: 1
               delimiters: []
-        external: false
-    - FuncDecl:
-        name:
-          kind: Identifier
-          lexeme: main
-          span:
-            line: 13
-            column: 6
-            length: 4
-        params: []
-        ty: ~
-        body:
-          - Call:
+      external: false
+  - Function:
+      name:
+        kind: Identifier
+        lexeme: main
+        span:
+          line: 13
+          column: 6
+          length: 4
+      params: []
+      ty: ~
+      body:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -169,7 +170,8 @@ file:
                     column: 15
                     length: 1
               delimiters: []
-          - Call:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -227,7 +229,8 @@ file:
                     column: 19
                     length: 1
               delimiters: []
-          - Call:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -277,7 +280,8 @@ file:
                     column: 17
                     length: 1
               delimiters: []
-          - Call:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -349,7 +353,8 @@ file:
                     column: 24
                     length: 1
               delimiters: []
-          - Call:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -421,5 +426,5 @@ file:
                     column: 26
                     length: 1
               delimiters: []
-        external: false
+      external: false
 

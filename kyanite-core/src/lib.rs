@@ -1,4 +1,4 @@
-use std::{fmt, fs::File, io::Read, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 use codegen::IrError;
 
@@ -41,7 +41,6 @@ pub enum PipelineError {
 #[derive(Debug)]
 pub struct Program {
     filename: String,
-    ast: ast::Ast,
     ir: String,
 }
 
@@ -62,20 +61,13 @@ impl Program {
             name.iter().rev().copied().copied().collect()
         }
 
-        let symbols = SymbolTable::from(&ast.file);
-        let mut pass = TypeCheckPass::new(symbols, source, &ast.file);
+        let symbols = SymbolTable::from(&ast.nodes);
+        let mut pass = TypeCheckPass::new(symbols, source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
             ir: Ir::from_ast(&mut ast).map_err(PipelineError::IrError)?,
             filename: strip_prefix(&source.filename),
-            ast,
         })
-    }
-}
-
-impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ast.file)
     }
 }
 

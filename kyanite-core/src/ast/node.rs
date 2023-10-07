@@ -3,14 +3,14 @@ use std::fmt;
 
 use crate::{ast::Type, token::Token};
 
-use super::{Node, Param};
+use super::{Expr, Param, Stmt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
     pub ty: Option<Token>,
-    pub body: Vec<Node>,
+    pub body: Vec<Stmt>,
     pub external: bool,
 }
 
@@ -19,7 +19,7 @@ impl FuncDecl {
         name: Token,
         params: Vec<Param>,
         ty: Option<Token>,
-        body: Vec<Node>,
+        body: Vec<Stmt>,
         external: bool,
     ) -> Self {
         Self {
@@ -56,12 +56,12 @@ impl fmt::Display for FuncDecl {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assign {
-    pub target: Box<Node>,
-    pub expr: Box<Node>,
+    pub target: Expr,
+    pub expr: Expr,
 }
 
 impl Assign {
-    pub fn new(target: Box<Node>, expr: Box<Node>) -> Self {
+    pub fn new(target: Expr, expr: Expr) -> Self {
         Self { target, expr }
     }
 }
@@ -76,11 +76,11 @@ impl fmt::Display for Assign {
 pub struct VarDecl {
     pub name: Token,
     pub ty: Token,
-    pub expr: Box<Node>,
+    pub expr: Expr,
 }
 
 impl VarDecl {
-    pub fn new(name: Token, ty: Token, expr: Box<Node>) -> Self {
+    pub fn new(name: Token, ty: Token, expr: Expr) -> Self {
         Self { name, ty, expr }
     }
 }
@@ -101,11 +101,11 @@ impl fmt::Display for VarDecl {
 pub struct ConstantDecl {
     pub name: Token,
     pub ty: Token,
-    pub expr: Box<Node>,
+    pub expr: Expr,
 }
 
 impl ConstantDecl {
-    pub fn new(name: Token, ty: Token, expr: Box<Node>) -> Self {
+    pub fn new(name: Token, ty: Token, expr: Expr) -> Self {
         Self { name, ty, expr }
     }
 }
@@ -124,16 +124,16 @@ impl fmt::Display for ConstantDecl {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Call {
-    pub left: Box<Node>,
-    pub args: Vec<Node>,
+    pub left: Box<Expr>,
+    pub args: Vec<Expr>,
     pub parens: (Token, Token),
     pub delimiters: Vec<Token>,
 }
 
 impl Call {
     pub fn new(
-        left: Box<Node>,
-        args: Vec<Node>,
+        left: Box<Expr>,
+        args: Vec<Expr>,
         parens: (Token, Token),
         delimiters: Vec<Token>,
     ) -> Self {
@@ -161,12 +161,12 @@ impl fmt::Display for Call {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Return {
-    pub expr: Box<Node>,
+    pub expr: Expr,
     pub keyword: Token,
 }
 
 impl Return {
-    pub fn new(expr: Box<Node>, keyword: Token) -> Self {
+    pub fn new(expr: Expr, keyword: Token) -> Self {
         Self { expr, keyword }
     }
 }
@@ -180,11 +180,11 @@ impl fmt::Display for Return {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Unary {
     pub op: Token,
-    pub right: Box<Node>,
+    pub right: Box<Expr>,
 }
 
 impl Unary {
-    pub fn new(op: Token, right: Box<Node>) -> Self {
+    pub fn new(op: Token, right: Box<Expr>) -> Self {
         Self { op, right }
     }
 }
@@ -197,13 +197,13 @@ impl fmt::Display for Unary {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Binary {
-    pub left: Box<Node>,
+    pub left: Box<Expr>,
     pub op: Token,
-    pub right: Box<Node>,
+    pub right: Box<Expr>,
 }
 
 impl Binary {
-    pub fn new(left: Box<Node>, op: Token, right: Box<Node>) -> Self {
+    pub fn new(left: Box<Expr>, op: Token, right: Box<Expr>) -> Self {
         Self { left, op, right }
     }
 }

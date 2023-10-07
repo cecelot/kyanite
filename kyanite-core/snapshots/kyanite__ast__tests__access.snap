@@ -2,20 +2,20 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-file:
-  nodes:
-    - FuncDecl:
-        name:
-          kind: Identifier
-          lexeme: main
-          span:
-            line: 1
-            column: 6
-            length: 4
-        params: []
-        ty: ~
-        body:
-          - Call:
+nodes:
+  - Function:
+      name:
+        kind: Identifier
+        lexeme: main
+        span:
+          line: 1
+          column: 6
+          length: 4
+      params: []
+      ty: ~
+      body:
+        - Expr:
+            Call:
               left:
                 Ident:
                   name:
@@ -159,5 +159,5 @@ file:
                     column: 70
                     length: 1
               delimiters: []
-        external: false
+      external: false
 
