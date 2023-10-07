@@ -86,7 +86,6 @@ pub enum Node {
     Int(i64, Token),
     Float(f64, Token),
     Bool(bool, Token),
-    Void,
 }
 
 impl NodeSpan for Node {
@@ -105,7 +104,6 @@ impl NodeSpan for Node {
             Node::Int(_, token) => token.span.column,
             Node::Float(_, token) => token.span.column,
             Node::Bool(_, token) => token.span.column,
-            Node::Void => unimplemented!(),
         }
     }
 
@@ -124,7 +122,6 @@ impl NodeSpan for Node {
             Node::Int(_, token) => token.span.column + token.span.length,
             Node::Float(_, token) => token.span.column + token.span.length,
             Node::Bool(_, token) => token.span.column + token.span.length,
-            Node::Void => unimplemented!(),
         }
     }
 
@@ -143,7 +140,6 @@ impl NodeSpan for Node {
             Node::Int(_, token) => token.span.line,
             Node::Float(_, token) => token.span.line,
             Node::Bool(_, token) => token.span.line,
-            Node::Void => unimplemented!(),
         }
     }
 }
@@ -164,7 +160,6 @@ impl Node {
             Node::Int(..) => Type::Int,
             Node::Float(..) => Type::Float,
             Node::Bool(..) => Type::Bool,
-            Node::Void => Type::Void,
             Node::Assign(assign) => assign.expr.ty(),
             Node::Return(ret) => ret.expr.ty(),
             Node::Binary(binary) => binary.left.ty(),
@@ -238,7 +233,6 @@ impl fmt::Display for Node {
             Node::Int(i, _) => write!(f, "{}", i),
             Node::Str(s, _) => write!(f, "{}", s),
             Node::Bool(b, _) => write!(f, "{}", b),
-            Node::Void => write!(f, "void"),
         }
     }
 }

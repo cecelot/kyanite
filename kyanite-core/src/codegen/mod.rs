@@ -76,6 +76,8 @@ pub enum IrError {
     MalformedReturn,
     #[error("Malformed variable declaration expression")]
     MalformedVarDecl,
+    #[error("Malformed assignment expression")]
+    MalformedAssignment,
 }
 
 pub struct Ir<'a, 'ctx> {
@@ -137,6 +139,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     fn compile(&mut self, node: &Node) -> Result<AnyValueEnum<'ctx>, IrError> {
         match node {
             Node::Str(s, _) => self.str(s),
+            Node::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
             Node::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
             Node::Call(call) => self.call(call).map(|v| v.into()),
             Node::Ident(ident) => self.ident(ident).map(|v| v.into()),
@@ -145,7 +148,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Node::Return(r) => self.ret(r),
             Node::VarDecl(var) => self.var(var),
             Node::Unary(unary) => self.unary(unary).map(|v| v.into()),
-            _ => todo!("compilation not implemented for {:?}", node),
+            Node::Assign(assign) => self.assign(assign).map(|v| v.into()),
+            Node::FuncDecl(..) => unimplemented!(),
+            Node::ConstantDecl(..) => unimplemented!(),
         }
     }
 
@@ -324,6 +329,27 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Ok(value.into())
     }
 
+    fn assign(&mut self, assign: &node::Assign) -> Result<BasicValueEnum<'ctx>, IrError> {
+        let name = match *assign.target {
+            Node::Ident(ref ident) => String::from(&ident.name),
+            Node::Binary(_) => todo!("member access"),
+            _ => unimplemented!(),
+        };
+        // Compile the right-hand-side of assignment to an expression
+        let value: BasicValueEnum<'_> = self
+            .compile(&assign.expr)?
+            .try_into()
+            .map_err(|_| IrError::MalformedAssignment)?;
+        // Retreive the pointer to the variable in question
+        let (var, _) = match self.variables.get(&name) {
+            Some(var) => var,
+            None => return Err(IrError::Undefined(name)),
+        };
+        // Store the updated value in the variable
+        self.builder.build_store(*var, value);
+        Ok(self.context.i64_type().const_zero().into())
+    }
+
     fn binary(&mut self, binary: &node::Binary) -> Result<BasicValueEnum<'ctx>, IrError> {
         num_instrs! { self, binary,
             Plus => build_int_add build_float_add,
@@ -384,7 +410,8 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // (this needs to be updated when member access is implemented)
         let name = match *call.left {
             Node::Ident(ref ident) => String::from(&ident.name),
-            _ => todo!(),
+            Node::Binary(_) => todo!("member access"),
+            _ => unimplemented!(),
         };
         match self.get_function(&name, &args) {
             Some(func) => Ok(self

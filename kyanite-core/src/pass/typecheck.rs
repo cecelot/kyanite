@@ -226,7 +226,7 @@ impl<'a> TypeCheckPass<'a> {
     fn call(&mut self, call: &node::Call) -> Type {
         let name = match &call.left.deref() {
             Node::Ident(ident) => ident.name.clone(),
-            Node::Binary(_) => todo!(),
+            Node::Binary(_) => todo!("member access"),
             _ => unimplemented!(),
         };
         let (arity, params, ty) = match self.symbol(&name) {
