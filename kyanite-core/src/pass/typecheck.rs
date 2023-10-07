@@ -26,6 +26,7 @@ impl Check for Decl {
         match self {
             Decl::Function(fun) => pass.function(fun),
             Decl::Constant(c) => pass.constant(c),
+            Decl::Record(_) => todo!(),
         }
     }
 }
@@ -48,6 +49,7 @@ impl Check for Expr {
             Expr::Unary(u) => pass.unary(u),
             Expr::Call(c) => pass.call(c),
             Expr::Ident(i) => pass.ident(i),
+            Expr::Init(..) => todo!(),
             Expr::Bool(..) => Type::Bool,
             Expr::Int(..) => Type::Int,
             Expr::Float(..) => Type::Float,

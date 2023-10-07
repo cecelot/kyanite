@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Binding {
+    Record(node::RecordDecl),
     Function(node::FuncDecl),
     Constant(node::ConstantDecl),
     Variable(node::VarDecl),
@@ -19,6 +20,7 @@ pub enum Binding {
 impl Binding {
     pub fn ty(&self) -> Type {
         match self {
+            Self::Record(..) => todo!("user-defined types"),
             Self::Function(fun) => Type::from(fun.ty.as_ref()),
             Self::Constant(c) => Type::from(&c.ty),
             Self::Variable(v) => Type::from(&v.ty),
@@ -74,6 +76,7 @@ impl SymbolTableVisitor for Decl {
         match self {
             Decl::Function(fun) => func(fun, table),
             Decl::Constant(c) => constant(c, table),
+            Decl::Record(rec) => record(rec, table),
         }
     }
 }
@@ -84,4 +87,8 @@ fn func(fun: &node::FuncDecl, table: &mut SymbolTable) {
 
 fn constant(c: &node::ConstantDecl, table: &mut SymbolTable) {
     table.insert(c.name.clone(), Binding::Constant(c.clone()));
+}
+
+fn record(rec: &node::RecordDecl, table: &mut SymbolTable) {
+    table.insert(rec.name.clone(), Binding::Record(rec.clone()));
 }

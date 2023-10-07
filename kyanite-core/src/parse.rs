@@ -1,5 +1,5 @@
 use crate::{
-    ast::{init, Decl, Expr, Param, Stmt},
+    ast::{init, Decl, Expr, Field, Initializer, Param, Stmt},
     reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
     Source,
@@ -38,6 +38,7 @@ impl Parser {
         let mut nodes: Vec<Decl> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
+                TokenKind::Rec => self.record(),
                 TokenKind::Fun => self.function(false),
                 TokenKind::Extern => self.function(true),
                 TokenKind::Const => self.constant(),
@@ -59,6 +60,15 @@ impl Parser {
             }
         }
         nodes
+    }
+
+    fn record(&mut self) -> Result<Decl, ParseError> {
+        self.consume(TokenKind::Rec)?;
+        let name = self.consume(TokenKind::Identifier)?;
+        self.consume(TokenKind::LeftBrace)?;
+        let fields = self.fields()?;
+        self.consume(TokenKind::RightBrace)?;
+        Ok(init::record(name, fields))
     }
 
     fn function(&mut self, external: bool) -> Result<Decl, ParseError> {
@@ -96,11 +106,25 @@ impl Parser {
             self.consume(TokenKind::Colon)?;
             let ty = self.consume(TokenKind::Type)?;
             params.push(Param::new(name, ty));
-            if self.peek()?.kind == TokenKind::Comma {
+            if self.peek()?.kind != TokenKind::RightParen {
                 self.consume(TokenKind::Comma)?;
             }
         }
         Ok(params)
+    }
+
+    fn fields(&mut self) -> Result<Vec<Field>, ParseError> {
+        let mut fields: Vec<Field> = vec![];
+        while self.peek()?.kind != TokenKind::RightBrace {
+            let name = self.consume(TokenKind::Identifier)?;
+            self.consume(TokenKind::Colon)?;
+            let ty = self.consume(TokenKind::Type)?;
+            fields.push(Field::new(name, ty));
+            if self.peek()?.kind != TokenKind::RightBrace {
+                self.consume(TokenKind::Comma)?;
+            }
+        }
+        Ok(fields)
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, ParseError> {
@@ -288,8 +312,12 @@ impl Parser {
                 }
             }
             TokenKind::Identifier => {
-                let token = self.advance().unwrap();
-                init::ident(token)
+                let name = self.advance().unwrap();
+                if self.peek()?.kind == TokenKind::Colon {
+                    self.init(name)?
+                } else {
+                    init::ident(name)
+                }
             }
             _ => Err(ParseError::Unhandled(
                 self.peek()?.kind,
@@ -301,6 +329,24 @@ impl Parser {
                 ],
             ))?,
         })
+    }
+
+    fn init(&mut self, name: Token) -> Result<Expr, ParseError> {
+        self.consume(TokenKind::Colon)?;
+        self.consume(TokenKind::Init)?;
+        self.consume(TokenKind::LeftParen)?;
+        let mut initializers: Vec<Initializer> = vec![];
+        while self.peek()?.kind != TokenKind::RightParen {
+            let name = self.consume(TokenKind::Identifier)?;
+            self.consume(TokenKind::Colon)?;
+            let value = self.expression()?;
+            initializers.push(Initializer::new(name, value));
+            if self.peek()?.kind != TokenKind::RightParen {
+                self.consume(TokenKind::Comma)?;
+            }
+        }
+        self.consume(TokenKind::RightParen)?;
+        Ok(init::init(name, initializers))
     }
 
     fn consume(&mut self, kind: TokenKind) -> Result<Token, ParseError> {

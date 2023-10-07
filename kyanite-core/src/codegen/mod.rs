@@ -130,6 +130,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         match decl {
             Decl::Function(func) => self.function(func).map(|v| v.into()),
             Decl::Constant(_) => todo!(),
+            Decl::Record(_) => todo!(),
         }
     }
 
@@ -152,6 +153,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Expr::Int(n, _) => self.int(n).map(|v| v.into()),
             Expr::Binary(binary) => self.binary(binary).map(|v| v.into()),
             Expr::Unary(unary) => self.unary(unary).map(|v| v.into()),
+            Expr::Init(..) => todo!(),
         }
     }
 

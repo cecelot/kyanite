@@ -38,6 +38,9 @@ pub enum TokenKind {
     Return,
     Extern,
 
+    Rec,
+    Init,
+
     Error,
 
     Eof,
@@ -71,6 +74,8 @@ impl fmt::Display for TokenKind {
             TokenKind::Fun => write!(f, "fun"),
             TokenKind::Extern => write!(f, "extern"),
             TokenKind::Return => write!(f, "return"),
+            TokenKind::Rec => write!(f, "rec"),
+            TokenKind::Init => write!(f, "init"),
             TokenKind::Identifier => write!(f, "identifier"),
             TokenKind::Type => write!(f, "type"),
             TokenKind::Literal => write!(f, "literal"),
@@ -331,6 +336,8 @@ impl TokenStream {
             "false" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
             "return" => Token::new(TokenKind::Return, None, stream.span),
             "extern" => Token::new(TokenKind::Extern, None, stream.span),
+            "rec" => Token::new(TokenKind::Rec, None, stream.span),
+            "init" => Token::new(TokenKind::Init, None, stream.span),
             _ => Token::new(TokenKind::Identifier, Some(lexeme), stream.span),
         })
     }

@@ -1,7 +1,5 @@
 /target
 .direnv
 
-complete.kya
-
 # kyanite
 kya-dist
