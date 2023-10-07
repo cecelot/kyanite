@@ -4,6 +4,8 @@ use std::{io::Write, path::PathBuf};
 
 use kyanite::{Compile, PipelineError, Program};
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// The kyanite CLI.
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -15,16 +17,13 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Evaluates kyanite code
-    Eval {
-        /// The source text to evaluate
-        text: String,
-    },
     /// Runs a .kya file
     Run {
         /// The path to the .kya file
         path: PathBuf,
     },
+    /// Prints the kyanite version
+    Version,
 }
 
 /// Parses the command-line args and configures the logging level.

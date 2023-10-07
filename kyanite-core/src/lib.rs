@@ -18,6 +18,8 @@ mod reporting;
 pub mod subprocess;
 mod token;
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
     #[error("file \"{0}\" does not exist")]
@@ -49,23 +51,6 @@ impl Program {
         P: AsRef<Path>,
     {
         let source = Source::new(path)?;
-        let ast = ast::Ast::from_source(source.clone())?;
-        Self::new(ast, &source)
-    }
-
-    pub fn from_string(str: String) -> Result<Self, PipelineError> {
-        let dir = Path::new("/tmp/com.github.alaidriel/kyanite");
-        if !dir.exists() {
-            std::fs::create_dir_all(dir).expect("permission to write to /tmp");
-        }
-        let filename = dir
-            .join("main.kya")
-            .to_str()
-            .ok_or(PipelineError::InvalidUtf8)?
-            .to_string();
-        std::fs::write(&filename, format!("defn main() {{\n\t{}\n}}", str))
-            .map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
-        let source = Source::new(filename)?;
         let ast = ast::Ast::from_source(source.clone())?;
         Self::new(ast, &source)
     }
