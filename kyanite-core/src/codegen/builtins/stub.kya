@@ -1,10 +1,10 @@
-extern defn println_str(s: str)
-extern defn println_int(i: int)
-extern defn println_float(f: float)
-extern defn println_bool(b: bool)
+extern fun println_str(s: str)
+extern fun println_int(i: int)
+extern fun println_float(f: float)
+extern fun println_bool(b: bool)
 
-extern defn max_int(a: int, b: int): int
-extern defn min_int(a: int, b: int): int
+extern fun max_int(a: int, b: int): int
+extern fun min_int(a: int, b: int): int
 
-extern defn max_float(a: float, b: float): float
-extern defn min_float(a: float, b: float): float
+extern fun max_float(a: float, b: float): float
+extern fun min_float(a: float, b: float): float

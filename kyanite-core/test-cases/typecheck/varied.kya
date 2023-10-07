@@ -1,18 +1,18 @@
 const FOO: int = 5. > 7. * 4.;
 
-defn foo(a: int, b: int): int {
+fun foo(a: int, b: int): int {
     return a + b;
 }
 
-defn bar(a: float, b: int): float {
+fun bar(a: float, b: int): float {
     return a + b; % mismatched types for binary op '+'
 }
 
-defn combined(a: int, b: float): int {
+fun combined(a: int, b: float): int {
     return a - b + 7; % mismatched types for binary op '-' and '+'
 }
 
-defn complicated(): int {
+fun complicated(): int {
     let a: int = 5;
     let b: int = 7;
     let c: float = 10.0;
@@ -20,15 +20,15 @@ defn complicated(): int {
     return foo(a, b) + bar(c, d); % mismatched types for binary op '+'
 }
 
-defn within(a: int): int {
+fun within(a: int): int {
     return a;
 }
 
-defn withinFloat(a: float): float {
+fun withinFloat(a: float): float {
     return a;
 }
 
-defn main() {
+fun main() {
     let a: int = 5;
     let b: int = 7;
     let c: float = a * b;

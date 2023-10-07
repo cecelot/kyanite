@@ -9,7 +9,7 @@ nodes:
         lexeme: foo
         span:
           line: 1
-          column: 6
+          column: 5
           length: 3
       params:
         - name:
@@ -17,21 +17,21 @@ nodes:
             lexeme: bar
             span:
               line: 1
-              column: 10
+              column: 9
               length: 3
           ty:
             kind: Type
             lexeme: int
             span:
               line: 1
-              column: 15
+              column: 14
               length: 3
       ty:
         kind: Type
         lexeme: int
         span:
           line: 1
-          column: 21
+          column: 20
           length: 3
       body:
         - Return:
@@ -58,7 +58,7 @@ nodes:
         lexeme: bar
         span:
           line: 5
-          column: 6
+          column: 5
           length: 3
       params: []
       ty:
@@ -66,7 +66,7 @@ nodes:
         lexeme: float
         span:
           line: 5
-          column: 13
+          column: 12
           length: 5
       body:
         - Return:
@@ -93,7 +93,7 @@ nodes:
         lexeme: helloWorld
         span:
           line: 9
-          column: 6
+          column: 5
           length: 10
       params: []
       ty: ~
@@ -139,7 +139,7 @@ nodes:
         lexeme: main
         span:
           line: 13
-          column: 6
+          column: 5
           length: 4
       params: []
       ty: ~

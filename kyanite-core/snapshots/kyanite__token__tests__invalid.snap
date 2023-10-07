@@ -4,7 +4,7 @@ expression: stream.errors
 ---
 - filename: examples/invalid/tokens.kya
   heading: "unexpected character `@`"
-  line: "@defn main ### (): int {@"
+  line: "@fun main ### (): int {@"
   span:
     line: 1
     column: 1
@@ -12,7 +12,7 @@ expression: stream.errors
   text: not a token
 - filename: examples/invalid/tokens.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  line: "@fun main ### (): int {@"
   span:
     line: 1
     column: 12
@@ -20,7 +20,7 @@ expression: stream.errors
   text: not a token
 - filename: examples/invalid/tokens.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  line: "@fun main ### (): int {@"
   span:
     line: 1
     column: 13
@@ -28,7 +28,7 @@ expression: stream.errors
   text: not a token
 - filename: examples/invalid/tokens.kya
   heading: "unexpected character `#`"
-  line: "@defn main ### (): int {@"
+  line: "@fun main ### (): int {@"
   span:
     line: 1
     column: 14
@@ -36,7 +36,7 @@ expression: stream.errors
   text: not a token
 - filename: examples/invalid/tokens.kya
   heading: "unexpected character `@`"
-  line: "@defn main ### (): int {@"
+  line: "@fun main ### (): int {@"
   span:
     line: 1
     column: 25

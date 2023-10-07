@@ -1,16 +1,16 @@
-defn foo(bar: int): int {
+fun foo(bar: int): int {
    return bar;
 }
 
-defn bar(): float {
+fun bar(): float {
    return 42.;
 }
 
-defn helloWorld() {
+fun helloWorld() {
    println("Hello world!");
 }
 
-defn main() {
+fun main() {
    helloWorld();
    println(foo(72));
    println(bar());

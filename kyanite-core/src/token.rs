@@ -8,7 +8,7 @@ pub enum TokenKind {
     Identifier,
     Type,
     Literal,
-    // Punctuation
+
     LeftParen,
     RightParen,
     LeftBrace,
@@ -17,12 +17,12 @@ pub enum TokenKind {
     Colon,
     Comma,
     Dot,
-    // Math
+
     Plus,
     Minus,
     Star,
     Slash,
-    // Logic
+
     Equal,
     EqualEqual,
     Bang,
@@ -31,13 +31,13 @@ pub enum TokenKind {
     GreaterEqual,
     Less,
     LessEqual,
-    // Keywords
+
     Let,
     Const,
-    Defn,
+    Fun,
     Return,
     Extern,
-    // Error
+
     Error,
 
     Eof,
@@ -68,7 +68,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Slash => write!(f, "divide"),
             TokenKind::Let => write!(f, "let"),
             TokenKind::Const => write!(f, "const"),
-            TokenKind::Defn => write!(f, "defn"),
+            TokenKind::Fun => write!(f, "fun"),
             TokenKind::Extern => write!(f, "extern"),
             TokenKind::Return => write!(f, "return"),
             TokenKind::Identifier => write!(f, "identifier"),
@@ -323,7 +323,7 @@ impl TokenStream {
         self.adjusted(|stream| match lexeme.as_str() {
             "let" => Token::new(TokenKind::Let, None, stream.span),
             "const" => Token::new(TokenKind::Const, None, stream.span),
-            "defn" => Token::new(TokenKind::Defn, None, stream.span),
+            "fun" => Token::new(TokenKind::Fun, None, stream.span),
             "str" | "float" | "int" | "void" | "bool" => {
                 Token::new(TokenKind::Type, Some(lexeme), stream.span)
             }

@@ -34,7 +34,7 @@ impl FuncDecl {
 
 impl fmt::Display for FuncDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "defn {}(", String::from(&self.name))?;
+        write!(f, "fun {}(", String::from(&self.name))?;
         for (i, param) in self.params.iter().enumerate() {
             write!(
                 f,

@@ -44,89 +44,89 @@ expression: stream.tokens
     line: 1
     column: 22
     length: 1
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 3
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: mulByTwo
   span:
     line: 3
-    column: 6
+    column: 5
     length: 8
 - kind: LeftParen
   lexeme: ~
   span:
     line: 3
-    column: 14
+    column: 13
     length: 1
 - kind: Identifier
   lexeme: lhs
   span:
     line: 3
-    column: 15
+    column: 14
     length: 3
 - kind: Colon
   lexeme: ~
   span:
     line: 3
-    column: 18
+    column: 17
     length: 1
 - kind: Type
   lexeme: float
   span:
     line: 3
-    column: 20
+    column: 19
     length: 5
 - kind: Comma
   lexeme: ~
   span:
     line: 3
-    column: 25
+    column: 24
     length: 1
 - kind: Identifier
   lexeme: rhs
   span:
     line: 3
-    column: 27
+    column: 26
     length: 3
 - kind: Colon
   lexeme: ~
   span:
     line: 3
-    column: 30
+    column: 29
     length: 1
 - kind: Type
   lexeme: int
   span:
     line: 3
-    column: 32
+    column: 31
     length: 3
 - kind: RightParen
   lexeme: ~
   span:
     line: 3
-    column: 35
+    column: 34
     length: 1
 - kind: Colon
   lexeme: ~
   span:
     line: 3
-    column: 36
+    column: 35
     length: 1
 - kind: Type
   lexeme: float
   span:
     line: 3
-    column: 38
+    column: 37
     length: 5
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 3
-    column: 44
+    column: 43
     length: 1
 - kind: Let
   lexeme: ~
@@ -218,35 +218,35 @@ expression: stream.tokens
     line: 6
     column: 1
     length: 1
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 8
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: main
   span:
     line: 8
-    column: 6
+    column: 5
     length: 4
 - kind: LeftParen
   lexeme: ~
   span:
     line: 8
-    column: 10
+    column: 9
     length: 1
 - kind: RightParen
   lexeme: ~
   span:
     line: 8
-    column: 11
+    column: 10
     length: 1
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 8
-    column: 13
+    column: 12
     length: 1
 - kind: Let
   lexeme: ~

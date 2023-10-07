@@ -1,11 +1,11 @@
 const FOO: float = 5.;
 
-defn mulByTwo(lhs: float, rhs: int): float {
+fun mulByTwo(lhs: float, rhs: int): float {
     let rhs: float = 8.;
     return lhs * rhs + FOO;
 }
 
-defn main() {
+fun main() {
     let a: float = 5.;
     let b: int = 7;
     mulByTwo(a, b);

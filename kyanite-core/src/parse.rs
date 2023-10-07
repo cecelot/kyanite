@@ -38,7 +38,7 @@ impl Parser {
         let mut nodes: Vec<Decl> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
-                TokenKind::Defn => self.function(false),
+                TokenKind::Fun => self.function(false),
                 TokenKind::Extern => self.function(true),
                 TokenKind::Const => self.constant(),
                 TokenKind::Eof => break,
@@ -47,7 +47,7 @@ impl Parser {
                     Err(ParseError::Unhandled(
                         token.kind,
                         token.span,
-                        &[TokenKind::Defn, TokenKind::Const],
+                        &[TokenKind::Fun, TokenKind::Const],
                     ))
                 }
             } {
@@ -66,7 +66,7 @@ impl Parser {
             self.consume(TokenKind::Extern)?;
         }
 
-        self.consume(TokenKind::Defn)?;
+        self.consume(TokenKind::Fun)?;
         let name = self.consume(TokenKind::Identifier)?;
 
         self.consume(TokenKind::LeftParen)?;
@@ -383,7 +383,7 @@ impl Parser {
 
             if matches!(
                 self.peek().unwrap().kind,
-                TokenKind::Let | TokenKind::Defn | TokenKind::Const
+                TokenKind::Let | TokenKind::Fun | TokenKind::Const
             ) {
                 return;
             }

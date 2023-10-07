@@ -1,1 +1,1 @@
-defn foo(): void {}
+fun foo(): void {}

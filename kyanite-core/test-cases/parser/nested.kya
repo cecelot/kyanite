@@ -1,5 +1,5 @@
-defn main() {
-    println(defn);
+fun main() {
+    println(fun);
 
     let x: int = 5
 

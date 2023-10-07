@@ -1,4 +1,4 @@
-defn main() {
+fun main() {
     println(12 * 17 - 7 + 4 / 2 >= 200);
     println(12. * 17. - 7. + 4. / 2. < 200.);
 

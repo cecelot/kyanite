@@ -2,53 +2,53 @@
 source: kyanite-core/src/token.rs
 expression: stream.tokens
 ---
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 1
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: foo
   span:
     line: 1
-    column: 6
+    column: 5
     length: 3
 - kind: LeftParen
   lexeme: ~
   span:
     line: 1
-    column: 9
+    column: 8
     length: 1
 - kind: RightParen
   lexeme: ~
   span:
     line: 1
-    column: 10
+    column: 9
     length: 1
 - kind: Colon
   lexeme: ~
   span:
     line: 1
-    column: 11
+    column: 10
     length: 1
 - kind: Type
   lexeme: void
   span:
     line: 1
-    column: 13
+    column: 12
     length: 4
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 1
-    column: 18
+    column: 17
     length: 1
 - kind: RightBrace
   lexeme: ~
   span:
     line: 1
-    column: 19
+    column: 18
     length: 1
 - kind: Eof
   lexeme: ~

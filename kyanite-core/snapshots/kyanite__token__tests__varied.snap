@@ -4,7 +4,7 @@ expression: stream.errors
 ---
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `@`"
-  source: "@defn main ### (): int {@"
+  source: "@fun main ### (): int {@"
   span:
     line: 1
     column: 1
@@ -12,7 +12,15 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `#`"
-  source: "@defn main ### (): int {@"
+  source: "@fun main ### (): int {@"
+  span:
+    line: 1
+    column: 11
+    length: 1
+  text: not a token
+- filename: test-cases/tokens/varied.kya
+  heading: "unexpected character `#`"
+  source: "@fun main ### (): int {@"
   span:
     line: 1
     column: 12
@@ -20,26 +28,18 @@ expression: stream.errors
   text: not a token
 - filename: test-cases/tokens/varied.kya
   heading: "unexpected character `#`"
-  source: "@defn main ### (): int {@"
+  source: "@fun main ### (): int {@"
   span:
     line: 1
     column: 13
     length: 1
   text: not a token
 - filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `#`"
-  source: "@defn main ### (): int {@"
-  span:
-    line: 1
-    column: 14
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
   heading: "unexpected character `@`"
-  source: "@defn main ### (): int {@"
+  source: "@fun main ### (): int {@"
   span:
     line: 1
-    column: 25
+    column: 24
     length: 1
   text: not a token
 - filename: test-cases/tokens/varied.kya

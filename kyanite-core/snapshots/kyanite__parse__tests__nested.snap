@@ -3,12 +3,12 @@ source: kyanite-core/src/parse.rs
 expression: parser.errors
 ---
 - filename: test-cases/parser/nested.kya
-  heading: unexpected defn
-  source: "    println(defn);"
+  heading: unexpected fun
+  source: "    println(fun);"
   span:
     line: 2
     column: 13
-    length: 4
+    length: 3
   text: "expected one of `identifier`, `literal`, `(` here"
 - filename: test-cases/parser/nested.kya
   heading: expected ; but found identifier

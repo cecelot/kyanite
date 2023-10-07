@@ -2,65 +2,65 @@
 source: kyanite-core/src/token.rs
 expression: stream.tokens
 ---
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 1
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: foo
   span:
     line: 1
-    column: 6
+    column: 5
     length: 3
 - kind: LeftParen
   lexeme: ~
   span:
     line: 1
-    column: 9
+    column: 8
     length: 1
 - kind: Identifier
   lexeme: bar
   span:
     line: 1
-    column: 10
+    column: 9
     length: 3
 - kind: Colon
   lexeme: ~
   span:
     line: 1
-    column: 13
+    column: 12
     length: 1
 - kind: Type
   lexeme: int
   span:
     line: 1
-    column: 15
+    column: 14
     length: 3
 - kind: RightParen
   lexeme: ~
   span:
     line: 1
-    column: 18
+    column: 17
     length: 1
 - kind: Colon
   lexeme: ~
   span:
     line: 1
-    column: 19
+    column: 18
     length: 1
 - kind: Type
   lexeme: int
   span:
     line: 1
-    column: 21
+    column: 20
     length: 3
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 1
-    column: 25
+    column: 24
     length: 1
 - kind: Return
   lexeme: ~
@@ -86,47 +86,47 @@ expression: stream.tokens
     line: 3
     column: 1
     length: 1
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 5
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: bar
   span:
     line: 5
-    column: 6
+    column: 5
     length: 3
 - kind: LeftParen
   lexeme: ~
   span:
     line: 5
-    column: 9
+    column: 8
     length: 1
 - kind: RightParen
   lexeme: ~
   span:
     line: 5
-    column: 10
+    column: 9
     length: 1
 - kind: Colon
   lexeme: ~
   span:
     line: 5
-    column: 11
+    column: 10
     length: 1
 - kind: Type
   lexeme: float
   span:
     line: 5
-    column: 13
+    column: 12
     length: 5
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 5
-    column: 19
+    column: 18
     length: 1
 - kind: Return
   lexeme: ~
@@ -152,35 +152,35 @@ expression: stream.tokens
     line: 7
     column: 1
     length: 1
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 9
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: helloWorld
   span:
     line: 9
-    column: 6
+    column: 5
     length: 10
 - kind: LeftParen
   lexeme: ~
   span:
     line: 9
-    column: 16
+    column: 15
     length: 1
 - kind: RightParen
   lexeme: ~
   span:
     line: 9
-    column: 17
+    column: 16
     length: 1
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 9
-    column: 19
+    column: 18
     length: 1
 - kind: Identifier
   lexeme: println
@@ -218,35 +218,35 @@ expression: stream.tokens
     line: 11
     column: 1
     length: 1
-- kind: Defn
+- kind: Fun
   lexeme: ~
   span:
     line: 13
     column: 1
-    length: 4
+    length: 3
 - kind: Identifier
   lexeme: main
   span:
     line: 13
-    column: 6
+    column: 5
     length: 4
 - kind: LeftParen
   lexeme: ~
   span:
     line: 13
-    column: 10
+    column: 9
     length: 1
 - kind: RightParen
   lexeme: ~
   span:
     line: 13
-    column: 11
+    column: 10
     length: 1
 - kind: LeftBrace
   lexeme: ~
   span:
     line: 13
-    column: 13
+    column: 12
     length: 1
 - kind: Identifier
   lexeme: helloWorld

@@ -2,6 +2,6 @@ foo
 
 const FOO: int = 5
 
-defn bar(): void {}
+fun bar(): void {}
 
         baz
