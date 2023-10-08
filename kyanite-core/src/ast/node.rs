@@ -85,11 +85,16 @@ impl ConstantDecl {
 pub struct Init {
     pub name: Token,
     pub initializers: Vec<Initializer>,
+    pub parens: (Token, Token),
 }
 
 impl Init {
-    pub fn new(name: Token, initializers: Vec<Initializer>) -> Self {
-        Self { name, initializers }
+    pub fn new(name: Token, initializers: Vec<Initializer>, parens: (Token, Token)) -> Self {
+        Self {
+            name,
+            initializers,
+            parens,
+        }
     }
 }
 
@@ -114,6 +119,17 @@ impl Call {
             parens,
             delimiters,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Access {
+    pub chain: Vec<Expr>,
+}
+
+impl Access {
+    pub fn new(chain: Vec<Expr>) -> Self {
+        Self { chain }
     }
 }
 

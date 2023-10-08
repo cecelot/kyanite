@@ -32,7 +32,7 @@ expression: stream.tokens
     line: 1
     column: 10
     length: 1
-- kind: Type
+- kind: Identifier
   lexeme: void
   span:
     line: 1

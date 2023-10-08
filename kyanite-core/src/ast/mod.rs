@@ -70,6 +70,7 @@ pub enum Stmt {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expr {
     Call(node::Call),
+    Access(node::Access),
     Binary(node::Binary),
     Unary(node::Unary),
     Ident(node::Ident),
@@ -112,6 +113,7 @@ impl NodeSpan for Stmt {
 impl NodeSpan for Expr {
     fn start(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.first().unwrap().start(),
             Expr::Call(call) => call.left.start(),
             Expr::Binary(binary) => binary.left.start(),
             Expr::Unary(unary) => unary.op.span.column,
@@ -120,12 +122,13 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.column,
             Expr::Float(_, token) => token.span.column,
             Expr::Bool(_, token) => token.span.column,
-            Expr::Init(..) => todo!(),
+            Expr::Init(init) => init.name.span.column,
         }
     }
 
     fn end(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.last().unwrap().end(),
             Expr::Call(call) => call.parens.1.span.column + 1,
             Expr::Binary(binary) => binary.right.end(),
             Expr::Unary(unary) => unary.right.end(),
@@ -134,12 +137,13 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.column + token.span.length,
             Expr::Float(_, token) => token.span.column + token.span.length,
             Expr::Bool(_, token) => token.span.column + token.span.length,
-            Expr::Init(..) => todo!(),
+            Expr::Init(init) => init.parens.1.span.column + 1,
         }
     }
 
     fn line(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.first().unwrap().line(),
             Expr::Call(call) => call.left.line(),
             Expr::Binary(binary) => binary.left.line(),
             Expr::Unary(unary) => unary.right.line(),
@@ -148,7 +152,7 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.line,
             Expr::Float(_, token) => token.span.line,
             Expr::Bool(_, token) => token.span.line,
-            Expr::Init(..) => todo!(),
+            Expr::Init(init) => init.name.span.line,
         }
     }
 }
@@ -165,6 +169,7 @@ impl Expr {
             Expr::Call(call) => call.left.ty(),
             Expr::Ident(_) => unimplemented!(""),
             Expr::Init(..) => todo!(),
+            Expr::Access(..) => todo!(),
         }
     }
 }
@@ -176,6 +181,7 @@ pub enum Type {
     Float,
     Bool,
     Void,
+    Custom(String),
 }
 
 impl Type {
@@ -189,6 +195,9 @@ impl Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
+            Type::Custom(name) => {
+                unimplemented!("user-defined type `{}` is not a `BasicTypeEnum`", name)
+            }
             Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
         }
     }
@@ -202,6 +211,7 @@ impl fmt::Display for Type {
             Type::Float => "float",
             Type::Bool => "bool",
             Type::Void => "void",
+            Type::Custom(name) => name,
         };
         write!(f, "{}", ty)
     }
@@ -220,7 +230,7 @@ impl From<&Token> for Type {
             "float" => Self::Float,
             "bool" => Self::Bool,
             "void" => Self::Void,
-            _ => unreachable!("type lexeme must be one of `str`, `int`, `float`, `bool`, `void`"),
+            name => Self::Custom(name.to_string()),
         }
     }
 }

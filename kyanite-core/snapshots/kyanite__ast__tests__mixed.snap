@@ -12,7 +12,7 @@ nodes:
           column: 7
           length: 3
       ty:
-        kind: Type
+        kind: Identifier
         lexeme: float
         span:
           line: 1
@@ -44,7 +44,7 @@ nodes:
               column: 14
               length: 3
           ty:
-            kind: Type
+            kind: Identifier
             lexeme: float
             span:
               line: 3
@@ -58,14 +58,14 @@ nodes:
               column: 26
               length: 3
           ty:
-            kind: Type
+            kind: Identifier
             lexeme: int
             span:
               line: 3
               column: 31
               length: 3
       ty:
-        kind: Type
+        kind: Identifier
         lexeme: float
         span:
           line: 3
@@ -81,7 +81,7 @@ nodes:
                 column: 9
                 length: 3
             ty:
-              kind: Type
+              kind: Identifier
               lexeme: float
               span:
                 line: 4
@@ -170,7 +170,7 @@ nodes:
                 column: 9
                 length: 1
             ty:
-              kind: Type
+              kind: Identifier
               lexeme: float
               span:
                 line: 9
@@ -194,7 +194,7 @@ nodes:
                 column: 9
                 length: 1
             ty:
-              kind: Type
+              kind: Identifier
               lexeme: int
               span:
                 line: 10

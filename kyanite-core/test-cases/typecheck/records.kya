@@ -1,0 +1,41 @@
+rec Person {
+    name: str,
+    favorite: int,
+    foo: Foo
+}
+
+rec Foo {
+    bar: Bar
+}
+
+rec Bar {
+    baz: bool
+}
+
+fun main() {
+    let alaina: Person = Person:init(
+        name: "Alaina",
+        favorite: 7,
+        foo: Foo:init(
+            bar: Bar:init(baz: true)
+        ),
+        hello: "world"
+    );
+
+    alaina = 5;
+
+    alaina.name = "Eloise";
+    alaina.foo.bar.baz = Bar:init(baz: false);
+
+    let name: int = alaina.name;
+    let favorite: int = alaina.faavorite;
+
+    let bar: Bar = alaina.foo.barr;
+    let baz: Baz = alaina.foo.bar.baaz;
+
+    let bar: Bar = alaina.foo.bar;
+    let baz: Baz = alaina.foo.bar;
+    let baz: Baz = alaina.foo.bar.baz;
+
+    foo.baz;
+}

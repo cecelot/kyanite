@@ -6,8 +6,12 @@ pub fn record(name: Token, fields: Vec<Field>) -> Decl {
     Decl::Record(node::RecordDecl::new(name, fields))
 }
 
-pub fn init(name: Token, initializers: Vec<Initializer>) -> Expr {
-    Expr::Init(node::Init::new(name, initializers))
+pub fn init(name: Token, initializers: Vec<Initializer>, parens: (Token, Token)) -> Expr {
+    Expr::Init(node::Init::new(name, initializers, parens))
+}
+
+pub fn access(accesses: Vec<Expr>) -> Expr {
+    Expr::Access(node::Access::new(accesses))
 }
 
 pub fn func(

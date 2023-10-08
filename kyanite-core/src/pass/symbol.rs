@@ -20,7 +20,7 @@ pub enum Binding {
 impl Binding {
     pub fn ty(&self) -> Type {
         match self {
-            Self::Record(..) => todo!("user-defined types"),
+            Self::Record(rec) => Type::from(&rec.name),
             Self::Function(fun) => Type::from(fun.ty.as_ref()),
             Self::Constant(c) => Type::from(&c.ty),
             Self::Variable(v) => Type::from(&v.ty),

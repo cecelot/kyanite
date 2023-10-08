@@ -146,6 +146,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     fn expr(&mut self, expr: &Expr) -> Result<AnyValueEnum<'ctx>, IrError> {
         match expr {
             Expr::Str(s, _) => self.str(s),
+            Expr::Access(..) => todo!(),
             Expr::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
             Expr::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
             Expr::Call(call) => self.call(call).map(|v| v.into()),

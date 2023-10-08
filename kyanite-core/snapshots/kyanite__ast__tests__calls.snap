@@ -20,14 +20,14 @@ nodes:
               column: 9
               length: 3
           ty:
-            kind: Type
+            kind: Identifier
             lexeme: int
             span:
               line: 1
               column: 14
               length: 3
       ty:
-        kind: Type
+        kind: Identifier
         lexeme: int
         span:
           line: 1
@@ -62,7 +62,7 @@ nodes:
           length: 3
       params: []
       ty:
-        kind: Type
+        kind: Identifier
         lexeme: float
         span:
           line: 5

@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, hash::Hash, io};
 
-use crate::{reporting::error::PreciseError, Source};
+use crate::{ast::Type, reporting::error::PreciseError, Source};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Hash)]
 pub enum TokenKind {
     Identifier,
-    Type,
     Literal,
 
     LeftParen,
@@ -77,7 +76,6 @@ impl fmt::Display for TokenKind {
             TokenKind::Rec => write!(f, "rec"),
             TokenKind::Init => write!(f, "init"),
             TokenKind::Identifier => write!(f, "identifier"),
-            TokenKind::Type => write!(f, "type"),
             TokenKind::Literal => write!(f, "literal"),
             TokenKind::Error => write!(f, "error"),
             TokenKind::Eof => write!(f, "eof"),
@@ -113,6 +111,16 @@ impl Hash for Token {
 impl From<&Token> for String {
     fn from(token: &Token) -> Self {
         token.lexeme.clone().unwrap_or(format!("{}", token.kind))
+    }
+}
+
+impl From<&Type> for Token {
+    fn from(ty: &Type) -> Self {
+        Token::new(
+            TokenKind::Identifier,
+            Some(format!("{}", ty)),
+            Default::default(),
+        )
     }
 }
 
@@ -329,9 +337,6 @@ impl TokenStream {
             "let" => Token::new(TokenKind::Let, None, stream.span),
             "const" => Token::new(TokenKind::Const, None, stream.span),
             "fun" => Token::new(TokenKind::Fun, None, stream.span),
-            "str" | "float" | "int" | "void" | "bool" => {
-                Token::new(TokenKind::Type, Some(lexeme), stream.span)
-            }
             "true" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
             "false" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
             "return" => Token::new(TokenKind::Return, None, stream.span),

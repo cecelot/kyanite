@@ -86,7 +86,7 @@ impl Parser {
         let mut ty: Option<Token> = None;
         if self.peek()?.kind == TokenKind::Colon {
             self.consume(TokenKind::Colon)?;
-            ty = Some(self.consume(TokenKind::Type)?);
+            ty = Some(self.consume(TokenKind::Identifier)?);
         }
 
         if external {
@@ -104,7 +104,7 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RightParen {
             let name = self.consume(TokenKind::Identifier)?;
             self.consume(TokenKind::Colon)?;
-            let ty = self.consume(TokenKind::Type)?;
+            let ty = self.consume(TokenKind::Identifier)?;
             params.push(Param::new(name, ty));
             if self.peek()?.kind != TokenKind::RightParen {
                 self.consume(TokenKind::Comma)?;
@@ -118,7 +118,7 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RightBrace {
             let name = self.consume(TokenKind::Identifier)?;
             self.consume(TokenKind::Colon)?;
-            let ty = self.consume(TokenKind::Type)?;
+            let ty = self.consume(TokenKind::Identifier)?;
             fields.push(Field::new(name, ty));
             if self.peek()?.kind != TokenKind::RightBrace {
                 self.consume(TokenKind::Comma)?;
@@ -146,7 +146,7 @@ impl Parser {
         self.consume(TokenKind::Const)?;
         let name = self.consume(TokenKind::Identifier)?;
         self.consume(TokenKind::Colon)?;
-        let ty = self.consume(TokenKind::Type)?;
+        let ty = self.consume(TokenKind::Identifier)?;
         self.consume(TokenKind::Equal)?;
         let value = self.expression()?;
         self.consume(TokenKind::Semicolon)?;
@@ -157,7 +157,7 @@ impl Parser {
         self.consume(TokenKind::Let)?;
         let name = self.consume(TokenKind::Identifier)?;
         self.consume(TokenKind::Colon)?;
-        let ty = self.consume(TokenKind::Type)?;
+        let ty = self.consume(TokenKind::Identifier)?;
         self.consume(TokenKind::Equal)?;
         let value = self.expression()?;
         self.consume(TokenKind::Semicolon)?;
@@ -260,12 +260,15 @@ impl Parser {
     }
 
     fn access(&mut self) -> Result<Expr, ParseError> {
-        let mut item = self.call()?;
+        let item = self.call()?;
+        let mut chain: Vec<Expr> = vec![item.clone()];
 
         while self.peek()?.kind == TokenKind::Dot {
-            let token = self.consume(TokenKind::Dot)?;
-            let right = self.call()?;
-            item = init::binary(item, token, right);
+            self.consume(TokenKind::Dot)?;
+            chain.push(self.call()?);
+            if self.peek()?.kind != TokenKind::Dot {
+                return Ok(init::access(chain));
+            }
         }
 
         Ok(item)
@@ -334,7 +337,7 @@ impl Parser {
     fn init(&mut self, name: Token) -> Result<Expr, ParseError> {
         self.consume(TokenKind::Colon)?;
         self.consume(TokenKind::Init)?;
-        self.consume(TokenKind::LeftParen)?;
+        let left = self.consume(TokenKind::LeftParen)?;
         let mut initializers: Vec<Initializer> = vec![];
         while self.peek()?.kind != TokenKind::RightParen {
             let name = self.consume(TokenKind::Identifier)?;
@@ -345,8 +348,8 @@ impl Parser {
                 self.consume(TokenKind::Comma)?;
             }
         }
-        self.consume(TokenKind::RightParen)?;
-        Ok(init::init(name, initializers))
+        let right = self.consume(TokenKind::RightParen)?;
+        Ok(init::init(name, initializers, (left, right)))
     }
 
     fn consume(&mut self, kind: TokenKind) -> Result<Token, ParseError> {

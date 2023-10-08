@@ -32,7 +32,7 @@ expression: stream.tokens
     line: 1
     column: 12
     length: 1
-- kind: Type
+- kind: Identifier
   lexeme: int
   span:
     line: 1
@@ -50,7 +50,7 @@ expression: stream.tokens
     line: 1
     column: 18
     length: 1
-- kind: Type
+- kind: Identifier
   lexeme: int
   span:
     line: 1
@@ -116,7 +116,7 @@ expression: stream.tokens
     line: 5
     column: 10
     length: 1
-- kind: Type
+- kind: Identifier
   lexeme: float
   span:
     line: 5
