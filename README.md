@@ -1,21 +1,21 @@
-# kyanite
+# Kyanite
 
-(WIP) A statically typed, compiled programming language
+Languages are cool! Compilers are cool! How do they work? That's why this project exists: Kyanite (name is a WIP) is a statically-typed, compiled programming language to learn more about how PLs are created. The current (only) backend is LLVM, but I may pursue adding a custom backend in the future.
 
-## Structure
-This is the structure of the project, for the sake of keeping my sanity and justifying it to myself.
+## Documentation
 
-**`kyanite-core/src`**: the main frontend for kyanite
-- `ast`: An abstract syntax tree containing type information for a .kya program
-- `bin`: The entrypoint for the compilation interface
-- `cli`: Used by `clap` to parse command-line arguments into a Rust struct
-- `codegen`: Converts a .kya AST to LLVM IR
-    - `codegen/builtins`: Declares external kyanite builtins and produces appropriate LLVM IR `declare` blocks
-- `pass`: Creates a symbol table and type checks a .kya program
+TODO (including a language reference)
 
----
+In the meantime, there are some working samples to try out in the `examples/` folder.
 
-- `parse.rs`: Parses a .kya program to an AST
-- `token.rs`: Creates a stream of tokens from an input .kya file
+## Explore
 
-**`kyanite-builtins/src`**: a collection of builtin functions implemented in Rust which are always available to .kya programs via dynamic links (`libkyanite_builtins.dylib`)
+**Note:** Only macOS is tested; there are unresolved issues on Linux related to linking `libkyanite_builtins` (the shared library for hacking together builtin functions for debug purposes)
+
+The project is a standard Rust workspace; the entrypoint is found within `kyanite-cli`. The recommended way to run `.kya` programs is with Nix:
+
+```sh
+nix develop -c cargo run -- run <filename>
+```
+
+Other methods may also work, but are untested. Note that LLVM (for `llc`) and clang are additional required dependencies.
