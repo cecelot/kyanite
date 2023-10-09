@@ -96,7 +96,7 @@ pub struct Ir<'a, 'ctx> {
     fpm: &'a PassManager<FunctionValue<'ctx>>,
 
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
-    records: HashMap<String, (StructType<'ctx>, RecordDecl)>,
+    pub records: HashMap<String, (StructType<'ctx>, RecordDecl)>,
     function: Option<FunctionValue<'ctx>>,
 
     symbols: SymbolTable,
@@ -274,10 +274,8 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             .get(&String::from(&Token::from(&ty)))
             .cloned()
             .unwrap();
-        let mut field_ty = match Type::from(&rec.fields[indices[0].0 as usize].ty) {
-            Type::Custom(name) => self.records.get(&name).unwrap().0.as_basic_type_enum(),
-            _ => Type::from(&rec.fields[indices[0].0 as usize].ty).as_llvm_basic_type(self),
-        };
+        let mut field_ty =
+            Type::from(&rec.fields[indices[0].0 as usize].ty).as_llvm_basic_type(self);
         let mut gep = self
             .builder
             .build_struct_gep(ty, ptr, indices[0].0, "tmp")
@@ -288,10 +286,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .builder
                 .build_struct_gep(field_ty, gep, index, "tmp")
                 .unwrap();
-            field_ty = match ty {
-                Type::Custom(name) => self.records.get(name).unwrap().0.as_basic_type_enum(),
-                _ => ty.as_llvm_basic_type(self),
-            };
+            field_ty = ty.as_llvm_basic_type(self);
         }
         (gep, field_ty)
     }

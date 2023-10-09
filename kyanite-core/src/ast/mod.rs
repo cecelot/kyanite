@@ -195,9 +195,12 @@ impl Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
-            Type::Custom(name) => {
-                unimplemented!("user-defined type `{}` is not a `BasicTypeEnum`", name)
-            }
+            Type::Custom(name) => ir
+                .records
+                .get(name)
+                .expect("called before all records built")
+                .0
+                .into(),
             Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
         }
     }
