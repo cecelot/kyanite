@@ -401,6 +401,10 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             self.builder.build_return(None);
         }
 
+        // Once we've compiled the function, we can discard the variables map
+        // since none of them should remain valid
+        self.variables.clear();
+
         if let Some(function) = self.function {
             if function.verify(true) {
                 // Optimize the function
