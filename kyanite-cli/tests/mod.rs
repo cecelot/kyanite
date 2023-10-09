@@ -21,5 +21,6 @@ macro_rules! assert_output {
 assert_output! {
     "../examples/hello.kya" => hello,
     "../examples/exprs.kya" => exprs,
-    "../examples/decls.kya" => decls
+    "../examples/decls.kya" => decls,
+    "../examples/functions.kya" => functions
 }

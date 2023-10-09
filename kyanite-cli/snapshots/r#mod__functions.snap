@@ -1,0 +1,9 @@
+---
+source: kyanite-cli/tests/mod.rs
+expression: lines
+---
+- "5"
+- "500"
+- "17"
+- "83"
+
