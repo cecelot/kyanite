@@ -28,7 +28,7 @@ impl Binding {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SymbolTable(HashMap<Token, Binding>);
 
 impl SymbolTable {

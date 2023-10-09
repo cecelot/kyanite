@@ -124,6 +124,12 @@ impl From<&Type> for Token {
     }
 }
 
+impl From<String> for Token {
+    fn from(lexeme: String) -> Self {
+        Token::new(TokenKind::Identifier, Some(lexeme), Default::default())
+    }
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

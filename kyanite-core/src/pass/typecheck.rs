@@ -213,7 +213,7 @@ impl<'a> TypeCheckPass<'a> {
                         format!("`{}` is not a field of `{}`", initializer.name, init.name),
                         "".into(),
                     );
-                    break;
+                    continue;
                 }
             };
             if got != expected {
@@ -238,29 +238,29 @@ impl<'a> TypeCheckPass<'a> {
             Err(TypeError::NotProperty(ident.name.clone(), ty))
         }
         let mut ty = access.chain[0].check(self)?;
-        let mut binding = self.symbol(&Token::from(&ty)).cloned();
+        let mut binding = match self.symbol(&Token::from(&ty)).cloned() {
+            Some(binding) => binding,
+            None => return Err(TypeError::Undefined),
+        };
         for (i, pair) in access.chain.windows(2).enumerate() {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
                 // TODO: implement member functions
-                let rec = cast!(binding, r, Some(Binding::Record(ref r)));
+                let rec = cast!(binding, r, Binding::Record(ref r));
                 let ident = cast!(left, i, Expr::Ident(i));
                 let field = rec.fields.iter().find(|f| f.name == ident.name);
                 if let Some(field) = field {
-                    binding = self.symbol(&field.ty).cloned()
+                    binding = self.symbol(&field.ty).cloned().unwrap()
                 } else {
                     return err(self, ident, ty);
                 }
             }
-            if binding.is_none() {
-                return Err(TypeError::Undefined);
-            }
             // TODO: implement member functions (same as above)
-            let rec = cast!(binding, r, Some(Binding::Record(ref r)));
+            let rec = cast!(binding, r, Binding::Record(ref r));
             let ident = cast!(right, i, Expr::Ident(i));
             let field = rec.fields.iter().find(|f| f.name == ident.name);
             if let Some(field) = field {
-                ty = Type::from(&field.ty)
+                ty = Type::from(&field.ty);
             } else {
                 return err(self, ident, ty);
             }

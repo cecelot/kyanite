@@ -4,7 +4,7 @@ use crate::token::Token;
 
 use super::{Expr, Field, Initializer, Param, Stmt};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RecordDecl {
     pub name: Token,
     pub fields: Vec<Field>,

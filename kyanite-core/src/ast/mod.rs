@@ -167,9 +167,9 @@ impl Expr {
             Expr::Binary(binary) => binary.left.ty(),
             Expr::Unary(unary) => unary.right.ty(),
             Expr::Call(call) => call.left.ty(),
-            Expr::Ident(_) => unimplemented!(""),
-            Expr::Init(..) => todo!(),
-            Expr::Access(..) => todo!(),
+            Expr::Ident(_) => unimplemented!(),
+            Expr::Init(..) => unimplemented!(),
+            Expr::Access(..) => unimplemented!(),
         }
     }
 }
@@ -203,17 +203,22 @@ impl Type {
     }
 }
 
+impl From<&Type> for String {
+    fn from(ty: &Type) -> Self {
+        match ty {
+            Type::Str => "str".to_string(),
+            Type::Int => "int".to_string(),
+            Type::Float => "float".to_string(),
+            Type::Bool => "bool".to_string(),
+            Type::Void => "void".to_string(),
+            Type::Custom(name) => name.clone(),
+        }
+    }
+}
+
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ty = match self {
-            Type::Str => "str",
-            Type::Int => "int",
-            Type::Float => "float",
-            Type::Bool => "bool",
-            Type::Void => "void",
-            Type::Custom(name) => name,
-        };
-        write!(f, "{}", ty)
+        write!(f, "{}", String::from(self))
     }
 }
 

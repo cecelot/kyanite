@@ -62,10 +62,10 @@ impl Program {
         }
 
         let symbols = SymbolTable::from(&ast.nodes);
-        let mut pass = TypeCheckPass::new(symbols, source, &ast.nodes);
+        let mut pass = TypeCheckPass::new(symbols.clone(), source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
-            ir: Ir::from_ast(&mut ast).map_err(PipelineError::IrError)?,
+            ir: Ir::from_ast(&mut ast, symbols).map_err(PipelineError::IrError)?,
             filename: strip_prefix(&source.filename),
         })
     }
