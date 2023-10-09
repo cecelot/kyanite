@@ -1,6 +1,18 @@
 use crate::token::Token;
 
-use super::{node, Decl, Expr, Param, Stmt};
+use super::{node, Decl, Expr, Field, Initializer, Param, Stmt};
+
+pub fn record(name: Token, fields: Vec<Field>) -> Decl {
+    Decl::Record(node::RecordDecl::new(name, fields))
+}
+
+pub fn init(name: Token, initializers: Vec<Initializer>, parens: (Token, Token)) -> Expr {
+    Expr::Init(node::Init::new(name, initializers, parens))
+}
+
+pub fn access(accesses: Vec<Expr>) -> Expr {
+    Expr::Access(node::Access::new(accesses))
+}
 
 pub fn func(
     name: Token,

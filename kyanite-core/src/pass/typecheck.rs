@@ -1,13 +1,63 @@
 use std::ops::Deref;
 
 use crate::{
-    ast::{node, Decl, Expr, NodeSpan, Stmt, Type},
+    ast::{
+        node::{self, Ident},
+        Decl, Expr, NodeSpan, Stmt, Type,
+    },
     reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
     Source,
 };
 
 use super::symbol::{Binding, SymbolTable};
+
+macro_rules! symbol {
+    ($self:ident, $name:expr, $ty:ident, $s:literal) => {
+        match $self.symbol(&$name) {
+            Some(Binding::$ty(v)) => v.clone(),
+            Some(_) => {
+                $self.error(
+                    $name.span,
+                    format!("`{}` is not a {}", $name, $s),
+                    "".into(),
+                );
+                return Err(TypeError::NotType($name.clone(), $s));
+            }
+            None => {
+                let name = String::from(&$name);
+                if name != "println" && name != "max" && name == "min" {
+                    $self.error($name.span, format!("`{}` is not defined", $name), "".into());
+                    return Err(TypeError::Undefined);
+                }
+                return Ok(Type::Void);
+            }
+        }
+    };
+}
+
+macro_rules! cast {
+    ($id:expr, $res:expr, $pattern:pat) => {
+        match $id {
+            $pattern => $res,
+            _ => unimplemented!(),
+        }
+    };
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum TypeError {
+    #[error("undefined variable")]
+    Undefined,
+    #[error("`{0}` is not a {1}")]
+    NotType(Token, &'static str),
+    #[error("cannot {0} {1}")]
+    UnaryMismatch(&'static str, Type),
+    #[error("expected {0}, got {1}")]
+    Mismatch(Type, Type),
+    #[error("{0} is not a property of {1}")]
+    NotProperty(Token, Type),
+}
 
 pub struct TypeCheckPass<'a> {
     source: &'a Source,
@@ -18,40 +68,43 @@ pub struct TypeCheckPass<'a> {
 }
 
 trait Check {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type;
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError>;
 }
 
 impl Check for Decl {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
         match self {
             Decl::Function(fun) => pass.function(fun),
             Decl::Constant(c) => pass.constant(c),
+            Decl::Record(_) => Ok(Type::Void),
         }
     }
 }
 
 impl Check for Stmt {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
         match self {
             Stmt::Return(r) => pass.ret(r),
             Stmt::Expr(e) => e.check(pass),
             Stmt::Var(v) => pass.var(v),
-            Stmt::Assign(_) => Type::Void,
+            Stmt::Assign(a) => pass.assign(a),
         }
     }
 }
 
 impl Check for Expr {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Type {
+    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
         match self {
             Expr::Binary(b) => pass.binary(b),
             Expr::Unary(u) => pass.unary(u),
             Expr::Call(c) => pass.call(c),
             Expr::Ident(i) => pass.ident(i),
-            Expr::Bool(..) => Type::Bool,
-            Expr::Int(..) => Type::Int,
-            Expr::Float(..) => Type::Float,
-            Expr::Str(..) => Type::Str,
+            Expr::Access(access) => pass.access(access),
+            Expr::Init(init) => pass.init(init),
+            Expr::Bool(..) => Ok(Type::Bool),
+            Expr::Int(..) => Ok(Type::Int),
+            Expr::Float(..) => Ok(Type::Float),
+            Expr::Str(..) => Ok(Type::Str),
         }
     }
 }
@@ -69,7 +122,7 @@ impl<'a> TypeCheckPass<'a> {
 
     pub fn run(&mut self) -> Result<(), usize> {
         for node in self.program {
-            node.check(self);
+            let _ = node.check(self);
         }
         let len = self.errors.len();
         if len > 0 {
@@ -106,8 +159,8 @@ impl<'a> TypeCheckPass<'a> {
         self.errors.push(error);
     }
 
-    fn unary(&mut self, unary: &node::Unary) -> Type {
-        let got = unary.right.check(self);
+    fn unary(&mut self, unary: &node::Unary) -> Result<Type, TypeError> {
+        let got = unary.right.check(self)?;
         match unary.op.kind {
             TokenKind::Minus => {
                 if !matches!(got, Type::Int | Type::Float) {
@@ -116,8 +169,9 @@ impl<'a> TypeCheckPass<'a> {
                         format!("cannot negate {}", got),
                         format!("expression of type {}", got),
                     );
+                    return Err(TypeError::UnaryMismatch("negate", got));
                 }
-                got
+                Ok(got)
             }
             TokenKind::Bang => {
                 if got != Type::Bool {
@@ -126,15 +180,96 @@ impl<'a> TypeCheckPass<'a> {
                         format!("cannot invert {}", got),
                         format!("expression of type {}", got),
                     );
+                    return Err(TypeError::UnaryMismatch("invert", got));
                 }
-                Type::Bool
+                Ok(Type::Bool)
             }
             _ => unimplemented!(),
         }
     }
 
-    fn constant(&mut self, c: &node::ConstantDecl) -> Type {
-        let got = c.expr.check(self);
+    fn assign(&mut self, a: &node::Assign) -> Result<Type, TypeError> {
+        let expected = a.target.check(self)?;
+        let got = a.expr.check(self)?;
+        if got != expected {
+            self.error(
+                a.expr.span(),
+                format!("expected expression of type {}", expected),
+                format!("expression of type {}", got),
+            );
+        }
+        Ok(Type::Void)
+    }
+
+    fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {
+        let rec = symbol!(self, init.name, Record, "record");
+        for initializer in &init.initializers {
+            let got = initializer.expr.check(self)?;
+            let expected = match rec.fields.iter().find(|f| f.name == initializer.name) {
+                Some(field) => Type::from(&field.ty),
+                None => {
+                    self.error(
+                        initializer.name.span,
+                        format!("`{}` is not a field of `{}`", initializer.name, init.name),
+                        "".into(),
+                    );
+                    continue;
+                }
+            };
+            if got != expected {
+                self.error(
+                    initializer.expr.span(),
+                    format!("expected initializer to be of type {}", expected),
+                    format!("expression of type {}", got),
+                );
+            }
+        }
+        Ok(Type::from(&init.name))
+    }
+
+    // TODO: make this prettier
+    fn access(&mut self, access: &node::Access) -> Result<Type, TypeError> {
+        fn err(pass: &mut TypeCheckPass<'_>, ident: &Ident, ty: Type) -> Result<Type, TypeError> {
+            pass.error(
+                ident.name.span,
+                format!("`{}` is not a property of `{}`", ident.name, ty),
+                "".into(),
+            );
+            Err(TypeError::NotProperty(ident.name.clone(), ty))
+        }
+        let mut ty = access.chain[0].check(self)?;
+        let mut binding = match self.symbol(&Token::from(&ty)).cloned() {
+            Some(binding) => binding,
+            None => return Err(TypeError::Undefined),
+        };
+        for (i, pair) in access.chain.windows(2).enumerate() {
+            let (left, right) = (&pair[0], &pair[1]);
+            if i != 0 {
+                // TODO: implement member functions
+                let rec = cast!(binding, r, Binding::Record(ref r));
+                let ident = cast!(left, i, Expr::Ident(i));
+                let field = rec.fields.iter().find(|f| f.name == ident.name);
+                if let Some(field) = field {
+                    binding = self.symbol(&field.ty).cloned().unwrap()
+                } else {
+                    return err(self, ident, ty);
+                }
+            }
+            // TODO: implement member functions (same as above)
+            let rec = cast!(binding, r, Binding::Record(ref r));
+            let ident = cast!(right, i, Expr::Ident(i));
+            let field = rec.fields.iter().find(|f| f.name == ident.name);
+            if let Some(field) = field {
+                ty = Type::from(&field.ty);
+            } else {
+                return err(self, ident, ty);
+            }
+        }
+        Ok(ty)
+    }
+
+    fn constant(&mut self, c: &node::ConstantDecl) -> Result<Type, TypeError> {
+        let got = c.expr.check(self)?;
         let expected = Type::from(&c.ty);
         if got != expected {
             self.error(
@@ -143,11 +278,11 @@ impl<'a> TypeCheckPass<'a> {
                 format!("expression of type {}", got),
             );
         }
-        expected
+        Ok(expected)
     }
 
-    fn var(&mut self, v: &node::VarDecl) -> Type {
-        let got = v.expr.check(self);
+    fn var(&mut self, v: &node::VarDecl) -> Result<Type, TypeError> {
+        let got = v.expr.check(self)?;
         let expected = Type::from(&v.ty);
         if got != expected {
             self.error(
@@ -158,10 +293,10 @@ impl<'a> TypeCheckPass<'a> {
         }
         self.scope_mut()
             .insert(v.name.clone(), Binding::Variable(v.clone()));
-        expected
+        Ok(expected)
     }
 
-    fn function(&mut self, fun: &node::FuncDecl) -> Type {
+    fn function(&mut self, fun: &node::FuncDecl) -> Result<Type, TypeError> {
         if String::from(&fun.name) == "main" {
             if let Some(ty) = &fun.ty {
                 if String::from(ty) != "void" {
@@ -180,56 +315,58 @@ impl<'a> TypeCheckPass<'a> {
                 .insert(param.name.clone(), Binding::Function(fun.clone()));
         }
         for node in &fun.body {
-            node.check(self);
+            let _ = node.check(self);
         }
         self.end_scope();
         self.function = None;
-        Type::Void
+        Ok(Type::Void)
     }
 
-    fn ret(&mut self, r: &node::Return) -> Type {
-        let got = r.expr.check(self);
+    fn ret(&mut self, r: &node::Return) -> Result<Type, TypeError> {
+        let got = r.expr.check(self)?;
         match &self.function {
             Some(function) => {
-                let symbol = self.symbol(function).unwrap();
+                let symbol = self.symbol(function).unwrap().clone();
                 if got != symbol.ty() {
                     self.error(
                         r.expr.span(),
                         format!("expected return type to be {}", symbol.ty()),
                         format!("expression is of type {}", got),
                     );
+                    return Err(TypeError::Mismatch(symbol.ty(), got));
                 }
             }
             None => unimplemented!("disallowed by parser"),
         }
-        got
+        Ok(got)
     }
 
-    fn binary(&mut self, b: &node::Binary) -> Type {
-        let lty = b.left.check(self);
-        let rty = b.right.check(self);
-        if lty != rty {
+    fn binary(&mut self, b: &node::Binary) -> Result<Type, TypeError> {
+        let lhs = b.left.check(self)?;
+        let rhs = b.right.check(self)?;
+        if lhs != rhs {
             let heading = match b.op.kind {
-                TokenKind::Plus => format!("cannot add {} to {}", lty, rty),
-                TokenKind::Minus => format!("cannot subtract {} from {}", rty, lty),
-                TokenKind::Star => format!("cannot multiply {} by {}", lty, rty),
-                TokenKind::Slash => format!("cannot divide {} by {}", lty, rty),
-                _ => format!("cannot compare {} and {}", lty, rty),
+                TokenKind::Plus => format!("cannot add {} to {}", lhs, rhs),
+                TokenKind::Minus => format!("cannot subtract {} from {}", rhs, lhs),
+                TokenKind::Star => format!("cannot multiply {} by {}", lhs, rhs),
+                TokenKind::Slash => format!("cannot divide {} by {}", lhs, rhs),
+                _ => format!("cannot compare {} and {}", lhs, rhs),
             };
             self.error(b.op.span, heading, "".into());
+            return Err(TypeError::Mismatch(lhs, rhs));
         }
         if matches!(
             b.op.kind,
             TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash
         ) {
-            lty
+            Ok(lhs)
         } else {
-            Type::Bool
+            Ok(Type::Bool)
         }
     }
 
-    fn ident(&mut self, id: &node::Ident) -> Type {
-        match self.symbol(&id.name) {
+    fn ident(&mut self, id: &node::Ident) -> Result<Type, TypeError> {
+        Ok(match self.symbol(&id.name) {
             Some(Binding::Function(f)) => {
                 let param = f.params.iter().find(|p| p.name == id.name).unwrap();
                 Type::from(&param.ty)
@@ -237,45 +374,24 @@ impl<'a> TypeCheckPass<'a> {
             Some(Binding::Variable(v)) => Type::from(&v.ty),
             Some(Binding::Constant(c)) => Type::from(&c.ty),
             _ => {
-                self.error(id.name.span, "is not defined".into(), "".into());
-                Type::Void
-            }
-        }
-    }
-
-    fn call(&mut self, call: &node::Call) -> Type {
-        let name = match &call.left.deref() {
-            Expr::Ident(ident) => ident.name.clone(),
-            Expr::Binary(_) => todo!("member access"),
-            _ => unimplemented!(),
-        };
-        let (arity, params, ty) = match self.symbol(&name) {
-            Some(Binding::Function(function)) => (
-                function.params.len(),
-                function.params.clone(),
-                function.ty.clone(),
-            ),
-            Some(_) => {
                 self.error(
-                    call.parens.0.span,
-                    format!("{} is not a function", name),
+                    id.name.span,
+                    format!("`{}` is not defined", &id.name),
                     "".into(),
                 );
-                return Type::Void;
+                return Err(TypeError::Undefined);
             }
-            _ => {
-                let name = String::from(&name);
-                // TODO: more robust type checking for builtins
-                if name != "println" && name != "max" && name != "min" {
-                    self.error(
-                        call.parens.0.span,
-                        format!("{} is not defined", name),
-                        "".into(),
-                    );
-                }
-                return Type::Void;
-            }
-        };
+        })
+    }
+
+    fn call(&mut self, call: &node::Call) -> Result<Type, TypeError> {
+        let name = cast!(call.left.deref(), ident.name.clone(), Expr::Ident(ident));
+        let function = symbol!(self, name, Function, "function");
+        let (arity, params, ty) = (
+            function.params.len(),
+            function.params.clone(),
+            function.ty.clone(),
+        );
         if arity != call.args.len() {
             self.error(
                 call.left.span(),
@@ -288,7 +404,7 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
-            let got = arg.check(self);
+            let got = arg.check(self)?;
             if i < params.len() {
                 let expected = Type::from(&params[i].ty);
                 if got != expected {
@@ -300,11 +416,11 @@ impl<'a> TypeCheckPass<'a> {
                 }
             }
         }
-        if let Some(ty) = ty {
+        Ok(if let Some(ty) = ty {
             Type::from(&ty)
         } else {
             Type::Void
-        }
+        })
     }
 }
 
@@ -322,7 +438,7 @@ macro_rules! assert_typecheck {
                     let symbols = SymbolTable::from(&ast.nodes);
                     let mut pass = TypeCheckPass::new(symbols, &source, &ast.nodes);
                     let _ = pass.run();
-                    insta::with_settings!({snapshot_path => "../snapshots"}, {
+                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_yaml_snapshot!(pass.errors);
                     });
 
@@ -334,5 +450,6 @@ macro_rules! assert_typecheck {
 }
 
 assert_typecheck! {
-    "test-cases/typecheck/varied.kya" => varied
+    "test-cases/typecheck/varied.kya" => varied,
+    "test-cases/typecheck/records.kya" => records
 }

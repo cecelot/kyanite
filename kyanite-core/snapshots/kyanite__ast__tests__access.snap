@@ -26,66 +26,46 @@ nodes:
                       column: 5
                       length: 7
               args:
-                - Binary:
-                    left:
-                      Binary:
-                        left:
-                          Ident:
-                            name:
-                              kind: Identifier
-                              lexeme: kyanite
-                              span:
-                                line: 2
-                                column: 13
-                                length: 7
-                        op:
-                          kind: Dot
-                          lexeme: ~
-                          span:
-                            line: 2
-                            column: 20
-                            length: 1
-                        right:
-                          Ident:
-                            name:
-                              kind: Identifier
-                              lexeme: fs
-                              span:
-                                line: 2
-                                column: 21
-                                length: 2
-                    op:
-                      kind: Dot
-                      lexeme: ~
-                      span:
-                        line: 2
-                        column: 23
-                        length: 1
-                    right:
-                      Call:
-                        left:
-                          Ident:
-                            name:
-                              kind: Identifier
-                              lexeme: read
-                              span:
-                                line: 2
-                                column: 24
-                                length: 4
-                        args:
-                          - Str:
-                              - "\"examples/access.kya\""
-                              - kind: Literal
-                                lexeme: "\"examples/access.kya\""
+                - Access:
+                    chain:
+                      - Ident:
+                          name:
+                            kind: Identifier
+                            lexeme: kyanite
+                            span:
+                              line: 2
+                              column: 13
+                              length: 7
+                      - Ident:
+                          name:
+                            kind: Identifier
+                            lexeme: fs
+                            span:
+                              line: 2
+                              column: 21
+                              length: 2
+                      - Call:
+                          left:
+                            Ident:
+                              name:
+                                kind: Identifier
+                                lexeme: read
                                 span:
                                   line: 2
-                                  column: 29
-                                  length: 21
-                          - Binary:
-                              left:
-                                Binary:
-                                  left:
-                                    Ident:
+                                  column: 24
+                                  length: 4
+                          args:
+                            - Str:
+                                - "\"examples/access.kya\""
+                                - kind: Literal
+                                  lexeme: "\"examples/access.kya\""
+                                  span:
+                                    line: 2
+                                    column: 29
+                                    length: 21
+                            - Access:
+                                chain:
+                                  - Ident:
                                       name:
                                         kind: Identifier
                                         lexeme: kyanite
@@ -93,15 +73,7 @@ nodes:
                                           line: 2
                                           column: 52
                                           length: 7
-                                  op:
-                                    kind: Dot
-                                    lexeme: ~
-                                    span:
-                                      line: 2
-                                      column: 59
-                                      length: 1
-                                  right:
-                                    Ident:
+                                  - Ident:
                                       name:
                                         kind: Identifier
                                         lexeme: fs
@@ -109,42 +81,34 @@ nodes:
                                           line: 2
                                           column: 60
                                           length: 2
-                              op:
-                                kind: Dot
-                                lexeme: ~
-                                span:
-                                  line: 2
-                                  column: 62
-                                  length: 1
-                              right:
-                                Ident:
-                                  name:
-                                    kind: Identifier
-                                    lexeme: O_READ
-                                    span:
-                                      line: 2
-                                      column: 63
-                                      length: 6
-                        parens:
-                          - kind: LeftParen
-                            lexeme: ~
-                            span:
-                              line: 2
-                              column: 28
-                              length: 1
-                          - kind: RightParen
-                            lexeme: ~
-                            span:
-                              line: 2
-                              column: 69
-                              length: 1
-                        delimiters:
-                          - kind: Comma
-                            lexeme: ~
-                            span:
-                              line: 2
-                              column: 50
-                              length: 1
+                                  - Ident:
+                                      name:
+                                        kind: Identifier
+                                        lexeme: O_READ
+                                        span:
+                                          line: 2
+                                          column: 63
+                                          length: 6
+                          parens:
+                            - kind: LeftParen
+                              lexeme: ~
+                              span:
+                                line: 2
+                                column: 28
+                                length: 1
+                            - kind: RightParen
+                              lexeme: ~
+                              span:
+                                line: 2
+                                column: 69
+                                length: 1
+                          delimiters:
+                            - kind: Comma
+                              lexeme: ~
+                              span:
+                                line: 2
+                                column: 50
+                                length: 1
               parens:
                 - kind: LeftParen
                   lexeme: ~

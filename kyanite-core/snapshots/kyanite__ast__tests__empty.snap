@@ -13,7 +13,7 @@ nodes:
           length: 3
       params: []
       ty:
-        kind: Type
+        kind: Identifier
         lexeme: void
         span:
           line: 1

@@ -5,13 +5,18 @@ use inkwell::{
     context::Context,
     module::Module,
     passes::PassManager,
-    types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
+    types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, StructType},
     values::{AnyValueEnum, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue},
     AddressSpace, FloatPredicate, IntPredicate,
 };
 
 use crate::{
-    ast::{init, node, Ast, Decl, Expr, Stmt, Type},
+    ast::{
+        init,
+        node::{self, RecordDecl},
+        Ast, Decl, Expr, Stmt, Type,
+    },
+    pass::{Binding, SymbolTable},
     token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
@@ -78,21 +83,27 @@ pub enum IrError {
     MalformedVarDecl,
     #[error("Malformed assignment expression")]
     MalformedAssignment,
+    #[error("Malformed init expression")]
+    MalformedInit,
+    #[error("Malformed struct")]
+    MalformedStruct,
 }
 
 pub struct Ir<'a, 'ctx> {
     pub context: &'ctx Context,
     pub module: &'a Module<'ctx>,
     builder: &'a Builder<'ctx>,
-    #[allow(dead_code)]
     fpm: &'a PassManager<FunctionValue<'ctx>>,
 
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
+    pub records: HashMap<String, (StructType<'ctx>, RecordDecl)>,
     function: Option<FunctionValue<'ctx>>,
+
+    symbols: SymbolTable,
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn from_ast(ast: &mut Ast) -> Result<String, IrError> {
+    pub fn from_ast(ast: &mut Ast, symbols: SymbolTable) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
         let builder = context.create_builder();
@@ -112,7 +123,10 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             fpm: &fpm,
 
             variables: HashMap::new(),
+            records: HashMap::new(),
             function: None,
+
+            symbols,
         };
 
         // Inject builtin function declarations
@@ -128,8 +142,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn decl(&mut self, decl: &mut Decl) -> Result<AnyValueEnum<'ctx>, IrError> {
         match decl {
-            Decl::Function(func) => self.function(func).map(|v| v.into()),
+            Decl::Function(fun) => self.function(fun).map(|v| v.into()),
             Decl::Constant(_) => todo!(),
+            Decl::Record(rec) => self.record(rec).map(|v| v.into()),
         }
     }
 
@@ -145,6 +160,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     fn expr(&mut self, expr: &Expr) -> Result<AnyValueEnum<'ctx>, IrError> {
         match expr {
             Expr::Str(s, _) => self.str(s),
+            Expr::Access(a) => self.access(a).map(|v| v.into()),
             Expr::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
             Expr::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
             Expr::Call(call) => self.call(call).map(|v| v.into()),
@@ -152,7 +168,132 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Expr::Int(n, _) => self.int(n).map(|v| v.into()),
             Expr::Binary(binary) => self.binary(binary).map(|v| v.into()),
             Expr::Unary(unary) => self.unary(unary).map(|v| v.into()),
+            Expr::Init(init) => self.init(init).map(|v| v.into()),
         }
+    }
+
+    fn build_struct(&mut self, record: &node::RecordDecl) -> StructType<'ctx> {
+        self.context.struct_type(
+            record
+                .fields
+                .iter()
+                .map(|f| match Type::from(&f.ty) {
+                    Type::Custom(name) => {
+                        let symbol = self.symbols.get(&Token::from(name)).unwrap().clone();
+                        match symbol {
+                            Binding::Record(rec) => self.build_struct(&rec).into(),
+                            _ => unreachable!(),
+                        }
+                    }
+                    ty => ty.as_llvm_basic_type(self),
+                })
+                .collect::<Vec<BasicTypeEnum>>()
+                .as_slice(),
+            false,
+        )
+    }
+
+    fn record(&mut self, record: &node::RecordDecl) -> Result<BasicValueEnum<'ctx>, IrError> {
+        let rec = self.build_struct(record);
+        self.records
+            .insert(String::from(&record.name), (rec, record.clone()));
+        Ok(self.context.i64_type().const_int(0, false).into())
+    }
+
+    fn init(&mut self, init: &node::Init) -> Result<BasicValueEnum<'ctx>, IrError> {
+        let (rec, _) = *self.records.get(&String::from(&init.name)).unwrap();
+        let mut values = vec![];
+        for init in &init.initializers {
+            values.push(
+                self.expr(&init.expr)?
+                    .try_into()
+                    .map_err(|_| IrError::MalformedInit)?,
+            );
+        }
+        Ok(rec.const_named_struct(values.as_slice()).into())
+    }
+
+    fn variable(&self, expr: &Expr) -> Type {
+        match expr {
+            Expr::Ident(ident) => self
+                .variables
+                .get(&String::from(&ident.name))
+                .unwrap()
+                .1
+                .clone(),
+            Expr::Call(_) => todo!(),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn indices(&mut self, access: &node::Access) -> Vec<(u32, Type)> {
+        let mut indices: Vec<(u32, Type)> = vec![];
+        let ty = self.variable(access.chain.first().unwrap());
+        let mut binding = self.symbols.get(&Token::from(&ty)).unwrap().clone();
+        for pair in access.chain.windows(2) {
+            let (_, right) = (&pair[0], &pair[1]);
+            let right = match right {
+                Expr::Ident(ident) => ident,
+                Expr::Call(..) => todo!(),
+                _ => unimplemented!(),
+            };
+            let (_, rec) = self.get_record(&binding.ty()).cloned().unwrap();
+            let (index, field) = rec
+                .fields
+                .iter()
+                .enumerate()
+                .find(|(_, f)| f.name == right.name)
+                .unwrap();
+            let field_ty = Type::from(&field.ty);
+            if let ref name @ Type::Custom(_) = field_ty {
+                let (_, rec): (StructType<'_>, RecordDecl) =
+                    self.get_record(name).cloned().unwrap();
+                binding = Binding::Record(rec.clone());
+            }
+            indices.push((
+                u32::try_from(index).expect("exceeded maximum number of fields"),
+                field_ty.clone(),
+            ));
+        }
+        indices
+    }
+
+    fn gep(&mut self, access: &node::Access) -> (PointerValue<'ctx>, BasicTypeEnum<'ctx>) {
+        let (ptr, ty) = match access.chain.first().unwrap() {
+            Expr::Ident(ident) => self
+                .variables
+                .get(&String::from(&ident.name))
+                .unwrap()
+                .clone(),
+            Expr::Call(_) => todo!(),
+            _ => unimplemented!(),
+        };
+        let indices = self.indices(access);
+        let (ty, rec) = self
+            .records
+            .get(&String::from(&Token::from(&ty)))
+            .cloned()
+            .unwrap();
+        let mut field_ty =
+            Type::from(&rec.fields[indices[0].0 as usize].ty).as_llvm_basic_type(self);
+        let mut gep = self
+            .builder
+            .build_struct_gep(ty, ptr, indices[0].0, "tmp")
+            .unwrap();
+        for (index, ty) in indices.iter().skip(1) {
+            let index = *index;
+            gep = self
+                .builder
+                .build_struct_gep(field_ty, gep, index, "tmp")
+                .unwrap();
+            field_ty = ty.as_llvm_basic_type(self);
+        }
+        (gep, field_ty)
+    }
+
+    fn access(&mut self, access: &node::Access) -> Result<BasicValueEnum<'ctx>, IrError> {
+        let (gep, field_ty) = self.gep(access);
+        Ok(self.builder.build_load(field_ty, gep, "tmp"))
     }
 
     /// Compiles a function prototype into a `FunctionValue`
@@ -331,9 +472,16 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn assign(&mut self, assign: &node::Assign) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let name = match assign.target {
-            Expr::Ident(ref ident) => String::from(&ident.name),
-            Expr::Binary(_) => todo!("member access"),
+        // Retreive the pointer to the variable in question
+        let ptr = match &assign.target {
+            Expr::Ident(ref ident) => {
+                let name = String::from(&ident.name);
+                match self.variables.get(&name) {
+                    Some((ptr, _)) => *ptr,
+                    None => return Err(IrError::Undefined(name)),
+                }
+            }
+            Expr::Access(access) => self.gep(access).0,
             _ => unimplemented!(),
         };
         // Compile the right-hand-side of assignment to an expression
@@ -341,13 +489,8 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             .expr(&assign.expr)?
             .try_into()
             .map_err(|_| IrError::MalformedAssignment)?;
-        // Retreive the pointer to the variable in question
-        let (var, _) = match self.variables.get(&name) {
-            Some(var) => var,
-            None => return Err(IrError::Undefined(name)),
-        };
         // Store the updated value in the variable
-        self.builder.build_store(*var, value);
+        self.builder.build_store(ptr, value);
         Ok(self.context.i64_type().const_zero().into())
     }
 
@@ -411,7 +554,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // (this needs to be updated when member access is implemented)
         let name = match *call.left {
             Expr::Ident(ref ident) => String::from(&ident.name),
-            Expr::Binary(_) => todo!("member access"),
+            Expr::Access(_) => todo!(),
             _ => unimplemented!(),
         };
         match self.get_function(&name, &args) {
@@ -479,7 +622,12 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         }
     }
 
-    fn alloca(&self, name: &str, arg: &BasicValueEnum) -> PointerValue<'ctx> {
+    #[inline]
+    fn get_record(&mut self, ty: &Type) -> Option<&(StructType<'ctx>, RecordDecl)> {
+        self.records.get(&String::from(ty))
+    }
+
+    fn alloca(&self, name: &str, arg: &BasicValueEnum<'ctx>) -> PointerValue<'ctx> {
         let builder = self.context.create_builder();
         let entry = self.function.unwrap().get_first_basic_block().unwrap();
         match entry.get_first_instruction() {
@@ -493,6 +641,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 self.context.i8_type().ptr_type(AddressSpace::default()),
                 name,
             ),
+            BasicValueEnum::StructValue(_) => {
+                builder.build_alloca(arg.get_type().into_struct_type(), name)
+            }
             _ => unimplemented!("alloca is not implemented for {}", arg),
         }
     }

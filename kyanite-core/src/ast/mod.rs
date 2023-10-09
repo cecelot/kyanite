@@ -54,6 +54,7 @@ pub trait NodeSpan {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Decl {
+    Record(node::RecordDecl),
     Function(node::FuncDecl),
     Constant(node::ConstantDecl),
 }
@@ -69,36 +70,15 @@ pub enum Stmt {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expr {
     Call(node::Call),
+    Access(node::Access),
     Binary(node::Binary),
     Unary(node::Unary),
     Ident(node::Ident),
+    Init(node::Init),
     Str(String, Token),
     Int(i64, Token),
     Float(f64, Token),
     Bool(bool, Token),
-}
-
-impl NodeSpan for Decl {
-    fn start(&self) -> usize {
-        match self {
-            Decl::Function(func) => func.name.span.column,
-            Decl::Constant(constant) => constant.expr.start(),
-        }
-    }
-
-    fn end(&self) -> usize {
-        match self {
-            Decl::Function(func) => func.name.span.column + func.name.span.length,
-            Decl::Constant(constant) => constant.expr.end(),
-        }
-    }
-
-    fn line(&self) -> usize {
-        match self {
-            Decl::Function(func) => func.name.span.line,
-            Decl::Constant(constant) => constant.expr.line(),
-        }
-    }
 }
 
 impl NodeSpan for Stmt {
@@ -133,6 +113,7 @@ impl NodeSpan for Stmt {
 impl NodeSpan for Expr {
     fn start(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.first().unwrap().start(),
             Expr::Call(call) => call.left.start(),
             Expr::Binary(binary) => binary.left.start(),
             Expr::Unary(unary) => unary.op.span.column,
@@ -141,11 +122,13 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.column,
             Expr::Float(_, token) => token.span.column,
             Expr::Bool(_, token) => token.span.column,
+            Expr::Init(init) => init.name.span.column,
         }
     }
 
     fn end(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.last().unwrap().end(),
             Expr::Call(call) => call.parens.1.span.column + 1,
             Expr::Binary(binary) => binary.right.end(),
             Expr::Unary(unary) => unary.right.end(),
@@ -154,11 +137,13 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.column + token.span.length,
             Expr::Float(_, token) => token.span.column + token.span.length,
             Expr::Bool(_, token) => token.span.column + token.span.length,
+            Expr::Init(init) => init.parens.1.span.column + 1,
         }
     }
 
     fn line(&self) -> usize {
         match self {
+            Expr::Access(access) => access.chain.first().unwrap().line(),
             Expr::Call(call) => call.left.line(),
             Expr::Binary(binary) => binary.left.line(),
             Expr::Unary(unary) => unary.right.line(),
@@ -167,6 +152,7 @@ impl NodeSpan for Expr {
             Expr::Int(_, token) => token.span.line,
             Expr::Float(_, token) => token.span.line,
             Expr::Bool(_, token) => token.span.line,
+            Expr::Init(init) => init.name.span.line,
         }
     }
 }
@@ -181,42 +167,9 @@ impl Expr {
             Expr::Binary(binary) => binary.left.ty(),
             Expr::Unary(unary) => unary.right.ty(),
             Expr::Call(call) => call.left.ty(),
-            Expr::Ident(_) => unimplemented!(""),
-        }
-    }
-}
-
-impl fmt::Display for Decl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Decl::Function(func) => write!(f, "{}", func),
-            Decl::Constant(constant) => write!(f, "{}", constant),
-        }
-    }
-}
-
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Binary(binary) => write!(f, "{}", binary),
-            Expr::Unary(unary) => write!(f, "{}", unary),
-            Expr::Call(call) => write!(f, "{}", call),
-            Expr::Ident(id) => write!(f, "{}", id),
-            Expr::Float(n, _) => write!(f, "{}", n),
-            Expr::Int(i, _) => write!(f, "{}", i),
-            Expr::Str(s, _) => write!(f, "{}", s),
-            Expr::Bool(b, _) => write!(f, "{}", b),
-        }
-    }
-}
-
-impl fmt::Display for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Stmt::Var(var) => write!(f, "{}", var),
-            Stmt::Assign(assign) => write!(f, "{}", assign),
-            Stmt::Return(ret) => write!(f, "{}", ret),
-            Stmt::Expr(expr) => write!(f, "{}", expr),
+            Expr::Ident(_) => unimplemented!(),
+            Expr::Init(..) => unimplemented!(),
+            Expr::Access(..) => unimplemented!(),
         }
     }
 }
@@ -228,6 +181,7 @@ pub enum Type {
     Float,
     Bool,
     Void,
+    Custom(String),
 }
 
 impl Type {
@@ -241,21 +195,33 @@ impl Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
+            Type::Custom(name) => ir
+                .records
+                .get(name)
+                .expect("called before all records built")
+                .0
+                .into(),
             Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
+        }
+    }
+}
+
+impl From<&Type> for String {
+    fn from(ty: &Type) -> Self {
+        match ty {
+            Type::Str => "str".to_string(),
+            Type::Int => "int".to_string(),
+            Type::Float => "float".to_string(),
+            Type::Bool => "bool".to_string(),
+            Type::Void => "void".to_string(),
+            Type::Custom(name) => name.clone(),
         }
     }
 }
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ty = match self {
-            Type::Str => "str",
-            Type::Int => "int",
-            Type::Float => "float",
-            Type::Bool => "bool",
-            Type::Void => "void",
-        };
-        write!(f, "{}", ty)
+        write!(f, "{}", String::from(self))
     }
 }
 
@@ -272,7 +238,7 @@ impl From<&Token> for Type {
             "float" => Self::Float,
             "bool" => Self::Bool,
             "void" => Self::Void,
-            _ => unreachable!("type lexeme must be one of `str`, `int`, `float`, `bool`, `void`"),
+            name => Self::Custom(name.to_string()),
         }
     }
 }
@@ -286,15 +252,38 @@ impl From<Option<&Token>> for Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Param {
-    pub name: Token,
-    pub ty: Token,
+macro_rules! association {
+    {$($ty:ident),*} => {
+        $(
+            #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+            pub struct $ty {
+                pub name: Token,
+                pub ty: Token,
+            }
+
+            impl $ty {
+                pub fn new(name: Token, ty: Token) -> Self {
+                    Self { name, ty }
+                }
+            }
+        )*
+    };
 }
 
-impl Param {
-    pub fn new(name: Token, ty: Token) -> Self {
-        Self { name, ty }
+association! {
+    Param,
+    Field
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Initializer {
+    pub name: Token,
+    pub expr: Expr,
+}
+
+impl Initializer {
+    pub fn new(name: Token, expr: Expr) -> Self {
+        Self { name, expr }
     }
 }
 
