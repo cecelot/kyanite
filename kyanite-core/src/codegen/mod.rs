@@ -269,13 +269,12 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             _ => unimplemented!(),
         };
         let indices = self.indices(access);
-        let (ty, rec) = self
+        let (ty, _) = self
             .records
             .get(&String::from(&Token::from(&ty)))
             .cloned()
             .unwrap();
-        let mut field_ty =
-            Type::from(&rec.fields[indices[0].0 as usize].ty).as_llvm_basic_type(self);
+        let mut field_ty = indices[0].1.as_llvm_basic_type(self);
         let mut gep = self
             .builder
             .build_struct_gep(ty, ptr, indices[0].0, "tmp")
