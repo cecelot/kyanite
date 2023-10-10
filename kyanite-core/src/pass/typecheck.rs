@@ -210,7 +210,7 @@ impl<'a> TypeCheckPass<'a> {
                 None => {
                     self.error(
                         initializer.name.span,
-                        format!("`{}` is not a field of `{}`", initializer.name, init.name),
+                        format!("no field `{}` on type `{}`", initializer.name, init.name),
                         "".into(),
                     );
                     continue;
@@ -232,7 +232,7 @@ impl<'a> TypeCheckPass<'a> {
         fn err(pass: &mut TypeCheckPass<'_>, ident: &Ident, ty: Type) -> Result<Type, TypeError> {
             pass.error(
                 ident.name.span,
-                format!("`{}` is not a property of `{}`", ident.name, ty),
+                format!("no field `{}` on type `{}`", ident.name, ty),
                 "".into(),
             );
             Err(TypeError::NotProperty(ident.name.clone(), ty))

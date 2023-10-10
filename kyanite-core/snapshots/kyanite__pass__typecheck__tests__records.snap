@@ -3,7 +3,7 @@ source: kyanite-core/src/pass/typecheck.rs
 expression: pass.errors
 ---
 - filename: test-cases/typecheck/records.kya
-  heading: "`hello` is not a field of `Person`"
+  heading: "no field `hello` on type `Person`"
   source: "        hello: \"world\""
   span:
     line: 22
@@ -35,7 +35,7 @@ expression: pass.errors
     length: 11
   text: expression of type str
 - filename: test-cases/typecheck/records.kya
-  heading: "`faavorite` is not a property of `Person`"
+  heading: "no field `faavorite` on type `Person`"
   source: "    let favorite: int = alaina.faavorite;"
   span:
     line: 31
@@ -43,7 +43,7 @@ expression: pass.errors
     length: 9
   text: ""
 - filename: test-cases/typecheck/records.kya
-  heading: "`barr` is not a property of `Foo`"
+  heading: "no field `barr` on type `Foo`"
   source: "    let bar: Bar = alaina.foo.barr;"
   span:
     line: 33
@@ -51,7 +51,7 @@ expression: pass.errors
     length: 4
   text: ""
 - filename: test-cases/typecheck/records.kya
-  heading: "`baaz` is not a property of `Bar`"
+  heading: "no field `baaz` on type `Bar`"
   source: "    let baz: Baz = alaina.foo.bar.baaz;"
   span:
     line: 34
