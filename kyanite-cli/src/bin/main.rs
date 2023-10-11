@@ -12,6 +12,7 @@ fn main() {
     let stdout = std::io::stdout();
     let res = match cli.command {
         Commands::Run { path } => kyanite_cli::run(Program::from_file(path), stdout),
+        Commands::Build { path } => kyanite_cli::build(Program::from_file(path), stdout),
         Commands::Version => {
             println!(
                 "kyanite {} (kyac {})",

@@ -22,6 +22,11 @@ pub enum Commands {
         /// The path to the .kya file
         path: PathBuf,
     },
+    /// Builds a .kya file
+    Build {
+        /// The path to the .kya file
+        path: PathBuf,
+    },
     /// Prints the kyanite version
     Version,
 }
@@ -50,6 +55,23 @@ pub fn run(
         kyanite::subprocess::exec(&format!("./{entrypoint}"), &[]).output
     )
     .unwrap();
+
+    Ok(())
+}
+
+pub fn build(
+    res: Result<Program, PipelineError>,
+    mut writer: impl Write,
+) -> Result<(), PipelineError> {
+    let program = match res {
+        Ok(program) => program,
+        Err(e) => {
+            println!("{}: {}", "error".bold().red(), e);
+            return Ok(());
+        }
+    };
+    let entrypoint = program.compile(&mut writer)?;
+    writeln!(writer, "{} `./{}`", "Built".bold().green(), entrypoint).unwrap();
 
     Ok(())
 }
