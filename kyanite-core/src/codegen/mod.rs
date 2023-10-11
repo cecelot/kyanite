@@ -75,18 +75,8 @@ pub enum IrError {
     MalformedFunction,
     #[error("Undefined function {0}")]
     UndefinedFunction(String),
-    #[error("Malformed function call")]
-    MalformedCall,
-    #[error("Malformed return statement")]
-    MalformedReturn,
-    #[error("Malformed variable declaration expression")]
-    MalformedVarDecl,
-    #[error("Malformed assignment expression")]
-    MalformedAssignment,
-    #[error("Malformed init expression")]
-    MalformedInit,
-    #[error("Malformed struct")]
-    MalformedStruct,
+    #[error("Malformed {0}")]
+    Malformed(&'static str),
 }
 
 pub struct Ir<'a, 'ctx> {
@@ -178,7 +168,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .fields
                 .iter()
                 .map(|f| match Type::from(&f.ty) {
-                    Type::Custom(name) => {
+                    Type::UserDefined(name) => {
                         let symbol = self.symbols.get(&Token::from(name)).unwrap().clone();
                         match symbol {
                             Binding::Record(rec) => self.build_struct(&rec).into(),
@@ -207,7 +197,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             values.push(
                 self.expr(&init.expr)?
                     .try_into()
-                    .map_err(|_| IrError::MalformedInit)?,
+                    .map_err(|_| IrError::Malformed("init expression"))?,
             );
         }
         Ok(rec.const_named_struct(values.as_slice()).into())
@@ -249,7 +239,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                     .find(|(_, f)| f.name == right.name)
                     .unwrap();
                 let field_ty = Type::from(&field.ty);
-                if let ref name @ Type::Custom(_) = field_ty {
+                if let ref name @ Type::UserDefined(_) = field_ty {
                     let (_, rec): (StructType<'_>, RecordDecl) =
                         self.get_record(name).cloned().unwrap();
                     binding = Binding::Record(rec.clone());
@@ -458,7 +448,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn ret(&mut self, r: &node::Return) -> Result<AnyValueEnum<'ctx>, IrError> {
         let any = self.expr(&r.expr)?;
-        let val: BasicValueEnum<'_> = any.try_into().map_err(|_| IrError::MalformedReturn)?;
+        let val: BasicValueEnum<'_> = any
+            .try_into()
+            .map_err(|_| IrError::Malformed("expression in return statement"))?;
         self.builder.build_return(Some(&val));
         Ok(any)
     }
@@ -470,7 +462,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let value = self
             .expr(&var.expr)?
             .try_into()
-            .map_err(|_| IrError::MalformedVarDecl)?;
+            .map_err(|_| IrError::Malformed("variable declaration"))?;
         let alloca = self.alloca(&name, &value);
         self.builder.build_store(alloca, value);
         self.variables.insert(name, (alloca, ty));
@@ -495,7 +487,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let value: BasicValueEnum<'_> = self
             .expr(&assign.expr)?
             .try_into()
-            .map_err(|_| IrError::MalformedAssignment)?;
+            .map_err(|_| IrError::Malformed("right-hand side of assignment"))?;
         // Store the updated value in the variable
         self.builder.build_store(ptr, value);
         Ok(self.context.i64_type().const_zero().into())
@@ -554,7 +546,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             args.push(
                 self.expr(arg)?
                     .try_into()
-                    .map_err(|_| IrError::MalformedCall)?,
+                    .map_err(|_| IrError::Malformed("expression to call expr"))?,
             );
         }
         // Retreive the name of the function

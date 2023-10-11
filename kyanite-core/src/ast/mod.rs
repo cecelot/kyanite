@@ -181,7 +181,7 @@ pub enum Type {
     Float,
     Bool,
     Void,
-    Custom(String),
+    UserDefined(String),
 }
 
 impl Type {
@@ -195,7 +195,8 @@ impl Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
-            Type::Custom(name) => ir
+            // TODO: this may be something other than a record in the future
+            Type::UserDefined(name) => ir
                 .records
                 .get(name)
                 .expect("called before all records built")
@@ -214,7 +215,7 @@ impl From<&Type> for String {
             Type::Float => "float".to_string(),
             Type::Bool => "bool".to_string(),
             Type::Void => "void".to_string(),
-            Type::Custom(name) => name.clone(),
+            Type::UserDefined(name) => name.clone(),
         }
     }
 }
@@ -238,7 +239,7 @@ impl From<&Token> for Type {
             "float" => Self::Float,
             "bool" => Self::Bool,
             "void" => Self::Void,
-            name => Self::Custom(name.to_string()),
+            name => Self::UserDefined(name.to_string()),
         }
     }
 }
