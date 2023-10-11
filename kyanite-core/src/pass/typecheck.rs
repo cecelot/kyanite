@@ -250,7 +250,7 @@ impl<'a> TypeCheckPass<'a> {
                 let ident = cast!(left, i, Expr::Ident(i));
                 let field = rec.fields.iter().find(|f| f.name == ident.name);
                 if let Some(field) = field {
-                    binding = self.symbol(&field.ty).cloned().unwrap()
+                    binding = self.symbol(&field.ty).cloned().unwrap();
                 } else {
                     return err(self, ident, ty);
                 }

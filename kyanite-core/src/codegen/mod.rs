@@ -227,35 +227,36 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn indices(&mut self, access: &node::Access) -> Vec<(u32, Type)> {
-        let mut indices: Vec<(u32, Type)> = vec![];
         let ty = self.variable(access.chain.first().unwrap());
         let mut binding = self.symbols.get(&Token::from(&ty)).unwrap().clone();
-        for pair in access.chain.windows(2) {
-            let (_, right) = (&pair[0], &pair[1]);
-            let right = match right {
-                Expr::Ident(ident) => ident,
-                Expr::Call(..) => todo!(),
-                _ => unimplemented!(),
-            };
-            let (_, rec) = self.get_record(&binding.ty()).cloned().unwrap();
-            let (index, field) = rec
-                .fields
-                .iter()
-                .enumerate()
-                .find(|(_, f)| f.name == right.name)
-                .unwrap();
-            let field_ty = Type::from(&field.ty);
-            if let ref name @ Type::Custom(_) = field_ty {
-                let (_, rec): (StructType<'_>, RecordDecl) =
-                    self.get_record(name).cloned().unwrap();
-                binding = Binding::Record(rec.clone());
-            }
-            indices.push((
-                u32::try_from(index).expect("exceeded maximum number of fields"),
-                field_ty.clone(),
-            ));
-        }
-        indices
+        access
+            .chain
+            .windows(2)
+            .map(|pair| {
+                // TODO: this feels like a bunch of extra work that was already done in
+                // kyanite-core/src/pass/typecheck.rs
+                let (_, right) = (&pair[0], &pair[1]);
+                let right = match right {
+                    Expr::Ident(ident) => ident,
+                    Expr::Call(..) => todo!(),
+                    _ => unimplemented!(),
+                };
+                let (_, rec) = self.get_record(&binding.ty()).cloned().unwrap();
+                let (index, field) = rec
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, f)| f.name == right.name)
+                    .unwrap();
+                let field_ty = Type::from(&field.ty);
+                if let ref name @ Type::Custom(_) = field_ty {
+                    let (_, rec): (StructType<'_>, RecordDecl) =
+                        self.get_record(name).cloned().unwrap();
+                    binding = Binding::Record(rec.clone());
+                }
+                (u32::try_from(index).unwrap(), field_ty.clone())
+            })
+            .collect()
     }
 
     fn gep(&mut self, access: &node::Access) -> (PointerValue<'ctx>, BasicTypeEnum<'ctx>) {
@@ -330,6 +331,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                     .set_name(&String::from(&func.params[i].name)),
                 BasicValueEnum::PointerValue(_) => arg
                     .into_pointer_value()
+                    .set_name(&String::from(&func.params[i].name)),
+                BasicValueEnum::StructValue(_) => arg
+                    .into_struct_value()
                     .set_name(&String::from(&func.params[i].name)),
                 _ => unimplemented!("formal parameter type `{arg}` is not implemented"),
             };
