@@ -10,14 +10,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Binding {
+pub enum Symbol {
     Record(node::RecordDecl),
     Function(node::FuncDecl),
     Constant(node::ConstantDecl),
     Variable(node::VarDecl),
 }
 
-impl Binding {
+impl Symbol {
     pub fn ty(&self) -> Type {
         match self {
             Self::Record(rec) => Type::from(&rec.name),
@@ -29,7 +29,7 @@ impl Binding {
 }
 
 #[derive(Debug, Clone)]
-pub struct SymbolTable(HashMap<Token, Binding>);
+pub struct SymbolTable(HashMap<Token, Symbol>);
 
 impl SymbolTable {
     pub fn new() -> Self {
@@ -38,7 +38,7 @@ impl SymbolTable {
 }
 
 impl Deref for SymbolTable {
-    type Target = HashMap<Token, Binding>;
+    type Target = HashMap<Token, Symbol>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -82,13 +82,13 @@ impl SymbolTableVisitor for Decl {
 }
 
 fn func(fun: &node::FuncDecl, table: &mut SymbolTable) {
-    table.insert(fun.name.clone(), Binding::Function(fun.clone()));
+    table.insert(fun.name.clone(), Symbol::Function(fun.clone()));
 }
 
 fn constant(c: &node::ConstantDecl, table: &mut SymbolTable) {
-    table.insert(c.name.clone(), Binding::Constant(c.clone()));
+    table.insert(c.name.clone(), Symbol::Constant(c.clone()));
 }
 
 fn record(rec: &node::RecordDecl, table: &mut SymbolTable) {
-    table.insert(rec.name.clone(), Binding::Record(rec.clone()));
+    table.insert(rec.name.clone(), Symbol::Record(rec.clone()));
 }

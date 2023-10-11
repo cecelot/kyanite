@@ -10,12 +10,12 @@ use crate::{
     Source,
 };
 
-use super::symbol::{Binding, SymbolTable};
+use super::symbol::{Symbol, SymbolTable};
 
 macro_rules! symbol {
     ($self:ident, $name:expr, $ty:ident, $s:literal) => {
         match $self.symbol(&$name) {
-            Some(Binding::$ty(v)) => v.clone(),
+            Some(Symbol::$ty(v)) => v.clone(),
             Some(_) => {
                 $self.error(
                     $name.span,
@@ -144,7 +144,7 @@ impl<'a> TypeCheckPass<'a> {
         self.scopes.pop();
     }
 
-    fn symbol(&self, name: &Token) -> Option<&Binding> {
+    fn symbol(&self, name: &Token) -> Option<&Symbol> {
         for scope in self.scopes.iter().rev() {
             if let Some(definition) = scope.get(name) {
                 return Some(definition);
@@ -246,7 +246,7 @@ impl<'a> TypeCheckPass<'a> {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
                 // TODO: implement member functions
-                let rec = cast!(binding, r, Binding::Record(ref r));
+                let rec = cast!(binding, r, Symbol::Record(ref r));
                 let ident = cast!(left, i, Expr::Ident(i));
                 let field = rec.fields.iter().find(|f| f.name == ident.name);
                 if let Some(field) = field {
@@ -256,7 +256,7 @@ impl<'a> TypeCheckPass<'a> {
                 }
             }
             // TODO: implement member functions (same as above)
-            let rec = cast!(binding, r, Binding::Record(ref r));
+            let rec = cast!(binding, r, Symbol::Record(ref r));
             let ident = cast!(right, i, Expr::Ident(i));
             let field = rec.fields.iter().find(|f| f.name == ident.name);
             if let Some(field) = field {
@@ -292,7 +292,7 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         self.scope_mut()
-            .insert(v.name.clone(), Binding::Variable(v.clone()));
+            .insert(v.name.clone(), Symbol::Variable(v.clone()));
         Ok(expected)
     }
 
@@ -312,7 +312,7 @@ impl<'a> TypeCheckPass<'a> {
         self.function = Some(fun.name.clone());
         for param in &fun.params {
             self.scope_mut()
-                .insert(param.name.clone(), Binding::Function(fun.clone()));
+                .insert(param.name.clone(), Symbol::Function(fun.clone()));
         }
         for node in &fun.body {
             let _ = node.check(self);
@@ -367,12 +367,12 @@ impl<'a> TypeCheckPass<'a> {
 
     fn ident(&mut self, id: &node::Ident) -> Result<Type, TypeError> {
         Ok(match self.symbol(&id.name) {
-            Some(Binding::Function(f)) => {
+            Some(Symbol::Function(f)) => {
                 let param = f.params.iter().find(|p| p.name == id.name).unwrap();
                 Type::from(&param.ty)
             }
-            Some(Binding::Variable(v)) => Type::from(&v.ty),
-            Some(Binding::Constant(c)) => Type::from(&c.ty),
+            Some(Symbol::Variable(v)) => Type::from(&v.ty),
+            Some(Symbol::Constant(c)) => Type::from(&c.ty),
             _ => {
                 self.error(
                     id.name.span,

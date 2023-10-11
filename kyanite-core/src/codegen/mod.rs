@@ -16,7 +16,7 @@ use crate::{
         node::{self, RecordDecl},
         Ast, Decl, Expr, Stmt, Type,
     },
-    pass::{Binding, SymbolTable},
+    pass::{Symbol, SymbolTable},
     token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
@@ -171,7 +171,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                     Type::UserDefined(name) => {
                         let symbol = self.symbols.get(&Token::from(name)).unwrap().clone();
                         match symbol {
-                            Binding::Record(rec) => self.build_struct(&rec).into(),
+                            Symbol::Record(rec) => self.build_struct(&rec).into(),
                             _ => unreachable!(),
                         }
                     }
@@ -242,7 +242,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 if let ref name @ Type::UserDefined(_) = field_ty {
                     let (_, rec): (StructType<'_>, RecordDecl) =
                         self.get_record(name).cloned().unwrap();
-                    binding = Binding::Record(rec.clone());
+                    binding = Symbol::Record(rec.clone());
                 }
                 (u32::try_from(index).unwrap(), field_ty.clone())
             })
