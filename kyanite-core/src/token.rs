@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt, hash::Hash, io};
+use std::{collections::VecDeque, fmt, hash::Hash, io};
 
 use crate::{ast::Type, reporting::error::PreciseError, Source};
 
@@ -180,37 +180,34 @@ impl fmt::Display for Span {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct TokenStream {
+#[derive(Debug)]
+pub struct TokenStream<'a> {
     pub(super) errors: Vec<PreciseError>,
-    pub(super) tokens: Vec<Token>,
-    pub(super) source: Source,
+    pub(super) tokens: VecDeque<Token>,
+    pub(super) source: &'a Source,
     span: Span,
     start: usize,
     current: usize,
 }
 
-impl From<Source> for TokenStream {
-    fn from(source: Source) -> Self {
+impl<'a> From<&'a Source> for TokenStream<'a> {
+    fn from(source: &'a Source) -> Self {
         Self {
             source,
-            ..Default::default()
+            errors: vec![],
+            tokens: VecDeque::new(),
+            span: Default::default(),
+            start: 0,
+            current: 0,
         }
     }
 }
 
-impl TokenStream {
-    pub fn from_source(source: Source) -> Result<Self, io::Error> {
+impl<'a> TokenStream<'a> {
+    pub fn from_source(source: &'a Source) -> Result<Self, io::Error> {
         let mut stream = Self::from(source);
         stream.process();
         Ok(stream)
-    }
-
-    pub fn from_string(source: String) -> Result<Self, io::Error> {
-        Self::from_source(Source {
-            chars: source.chars().collect(),
-            ..Default::default()
-        })
     }
 
     fn process(&mut self) {
@@ -258,7 +255,7 @@ impl TokenStream {
                     }
                     c => {
                         let error = PreciseError::new(
-                            &self.source,
+                            self.source,
                             self.span,
                             format!("unexpected character `{c}`"),
                             "not a token".into(),
@@ -271,7 +268,7 @@ impl TokenStream {
             }
             None => Token::new(TokenKind::Eof, None, self.span),
         };
-        self.tokens.push(token);
+        self.tokens.push_back(token);
     }
 
     fn peek(&self) -> Option<char> {
@@ -290,7 +287,7 @@ impl TokenStream {
         self.span.length = self.current - self.start + 1;
         if self.eof() {
             let error = PreciseError::new(
-                &self.source,
+                self.source,
                 oquote,
                 "unterminated string".into(),
                 "opening quote here".into(),
@@ -421,7 +418,8 @@ macro_rules! assert_tokens {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let stream = TokenStream::from_source(Source::new($path)?)?;
+                    let source = Source::new($path)?;
+                    let stream = TokenStream::from_source(&source)?;
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
                         if $valid {
                             insta::assert_yaml_snapshot!(stream.tokens);

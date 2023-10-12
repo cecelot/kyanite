@@ -18,13 +18,8 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn from_source(source: Source) -> Result<Self, PipelineError> {
+    pub fn from_source(source: &Source) -> Result<Self, PipelineError> {
         let stream = TokenStream::from_source(source).map_err(|_| PipelineError::InvalidUtf8)?;
-        Self::new(stream)
-    }
-
-    pub fn from_string(source: String) -> Result<Self, PipelineError> {
-        let stream = TokenStream::from_string(source).map_err(|_| PipelineError::InvalidUtf8)?;
         Self::new(stream)
     }
 
@@ -297,7 +292,7 @@ macro_rules! assert_ast {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let ast = ast::Ast::from_source(Source::new($path)?)?;
+                    let ast = ast::Ast::from_source(&Source::new($path)?)?;
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_yaml_snapshot!(ast);
                     });

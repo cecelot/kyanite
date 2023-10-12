@@ -14,7 +14,7 @@ use crate::{
     ast::{
         init,
         node::{self, RecordDecl},
-        Ast, Decl, Expr, Stmt, Type,
+        Decl, Expr, Stmt, Type,
     },
     pass::{Symbol, SymbolTable},
     token::{Span, Token, TokenKind},
@@ -95,7 +95,7 @@ pub struct Ir<'a, 'ctx> {
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
     pub fn from_ast(
-        ast: &mut Ast,
+        program: &mut Vec<Decl>,
         symbols: SymbolTable,
         accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
     ) -> Result<String, IrError> {
@@ -129,7 +129,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Builtins::new(&mut ir)?;
 
         // entrypoint - compile all toplevel nodes
-        for node in &mut ast.nodes {
+        for node in program {
             ir.decl(node)?;
         }
 
@@ -210,13 +210,13 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn indices(&mut self, access: &node::Access) -> (Vec<(u32, Type)>, Type) {
-        let (symbols, indices, ty) = self.accesses.get(&access.id).unwrap();
+        let (symbols, indices, ty) = self.accesses.remove(&access.id).unwrap();
         let indices = symbols
             .iter()
             .zip(indices)
-            .map(|(symbol, index)| (u32::try_from(*index).unwrap(), symbol.ty()))
+            .map(|(symbol, index)| (u32::try_from(index).unwrap(), symbol.ty()))
             .collect();
-        (indices, ty.clone())
+        (indices, ty)
     }
 
     fn gep(&mut self, access: &node::Access) -> (PointerValue<'ctx>, BasicTypeEnum<'ctx>) {

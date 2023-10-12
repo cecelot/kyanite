@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::{
     ast::{init, Decl, Expr, Field, Initializer, Param, Stmt},
     reporting::error::PreciseError,
@@ -15,22 +17,22 @@ pub enum ParseError {
     Unhandled(TokenKind, Span, &'static [TokenKind]),
 }
 
-pub struct Parser {
+pub struct Parser<'a> {
     pub(super) errors: Vec<PreciseError>,
-    source: Source,
-    tokens: Vec<Token>,
-    current: usize,
+    source: &'a Source,
+    tokens: VecDeque<Token>,
+    previous: Option<Token>,
     panic: bool,
 }
 
-impl Parser {
-    pub fn new(source: Source, tokens: Vec<Token>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(source: &'a Source, tokens: VecDeque<Token>) -> Self {
         Self {
             source,
             tokens,
             panic: false,
             errors: vec![],
-            current: 0,
+            previous: None,
         }
     }
 
@@ -261,12 +263,13 @@ impl Parser {
 
     fn access(&mut self) -> Result<Expr, ParseError> {
         let item = self.call()?;
-        let mut chain: Vec<Expr> = vec![item.clone()];
+        let mut chain: Vec<Expr> = vec![];
 
         while self.peek()?.kind == TokenKind::Dot {
             self.consume(TokenKind::Dot)?;
             chain.push(self.call()?);
             if self.peek()?.kind != TokenKind::Dot {
+                chain.insert(0, item);
                 return Ok(init::access(chain));
             }
         }
@@ -356,7 +359,7 @@ impl Parser {
         if self.eof() {
             return Err(ParseError::Expected(
                 kind,
-                self.tokens[self.current - 1].span,
+                self.previous.as_ref().unwrap().span,
                 TokenKind::Eof,
             ));
         }
@@ -370,26 +373,22 @@ impl Parser {
     }
 
     fn eof(&self) -> bool {
-        self.current >= self.tokens.len()
+        self.tokens.is_empty()
     }
 
-    fn peek(&self) -> Result<Token, ParseError> {
-        let span = if self.current > 0 {
-            if self.current > self.tokens.len() {
+    fn peek(&self) -> Result<&Token, ParseError> {
+        let span = if self.previous.is_some() {
+            if self.eof() {
                 return Err(ParseError::UnexpectedEof(Span::new(0, 0, 0)));
             }
-            self.tokens[self.current - 1].span
+            self.previous.as_ref().unwrap().span
         } else {
             Span::new(0, 0, 0)
         };
-        match self.tokens.get(self.current).cloned() {
+        match self.tokens.front() {
             Some(token) => Ok(token),
             None => Err(ParseError::UnexpectedEof(span)),
         }
-    }
-
-    fn previous(&self) -> Option<Token> {
-        self.tokens.get(self.current - 1).cloned()
     }
 
     fn error(&mut self, e: &ParseError) {
@@ -411,7 +410,7 @@ impl Parser {
             }
             ParseError::UnexpectedEof(_) => "unexpected end of file".into(),
         };
-        let error = PreciseError::new(&self.source, span, format!("{}", e), detail);
+        let error = PreciseError::new(self.source, span, format!("{}", e), detail);
         println!("{}", error);
         self.errors.push(error);
     }
@@ -424,8 +423,8 @@ impl Parser {
         }
 
         while !self.eof() {
-            if self.previous().unwrap().kind == TokenKind::Semicolon
-                || self.previous().unwrap().span.line < self.peek().unwrap().span.line
+            if self.previous.as_ref().unwrap().kind == TokenKind::Semicolon
+                || self.previous.as_ref().unwrap().span.line < self.peek().unwrap().span.line
             {
                 return;
             }
@@ -441,8 +440,9 @@ impl Parser {
     }
 
     fn advance(&mut self) -> Option<Token> {
-        self.current += 1;
-        self.tokens.get(self.current - 1).cloned()
+        let previous = self.tokens.pop_front();
+        self.previous = previous.clone();
+        previous
     }
 }
 
@@ -455,7 +455,8 @@ macro_rules! assert_parse {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let stream = TokenStream::from_source(Source::new($path)?)?;
+                    let source = Source::new($path)?;
+                    let stream = TokenStream::from_source(&source)?;
                     let mut parser = Parser::new(stream.source, stream.tokens);
                     parser.parse();
                     insta::with_settings!({snapshot_path => "../snapshots"}, {

@@ -59,13 +59,16 @@ pub enum TypeError {
     NotProperty(Token, Type),
 }
 
-pub struct TypeCheckPass {
+type AccessMap = HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>;
+
+pub struct TypeCheckPass<'a> {
+    program: &'a Vec<Decl>,
+    globals: &'a SymbolTable,
+    accesses: &'a mut AccessMap,
     source: Source,
-    program: Vec<Decl>,
     errors: Vec<PreciseError>,
-    function: Option<Token>,
     scopes: Vec<SymbolTable>,
-    pub accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
+    function: Option<Token>,
 }
 
 trait Check {
@@ -110,21 +113,26 @@ impl Check for Expr {
     }
 }
 
-impl TypeCheckPass {
-    pub fn new(table: SymbolTable, source: Source, program: Vec<Decl>) -> Self {
+impl<'a> TypeCheckPass<'a> {
+    pub fn new(
+        globals: &'a SymbolTable,
+        accesses: &'a mut AccessMap,
+        source: Source,
+        program: &'a Vec<Decl>,
+    ) -> Self {
         Self {
             source,
             program,
+            globals,
+            accesses,
             errors: vec![],
             function: None,
-            scopes: vec![table],
-            accesses: HashMap::new(),
+            scopes: vec![],
         }
     }
 
     pub fn run(&mut self) -> Result<(), usize> {
-        let nodes = self.program.clone();
-        for node in nodes {
+        for node in self.program {
             let _ = node.check(self);
         }
         let len = self.errors.len();
@@ -153,7 +161,7 @@ impl TypeCheckPass {
                 return Some(definition);
             }
         }
-        None
+        self.globals.get(name)
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
@@ -438,15 +446,17 @@ macro_rules! assert_typecheck {
     ($($path:expr => $name:ident),*) => {
         #[cfg(test)]
         mod tests {
+            use std::collections::HashMap;
             use crate::{SymbolTable, pass::typecheck::TypeCheckPass};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = crate::Source::new($path)?;
-                    let ast = crate::ast::Ast::from_source(source.clone())?;
+                    let ast = crate::ast::Ast::from_source(&source)?;
                     let symbols = SymbolTable::from(&ast.nodes);
-                    let mut pass = TypeCheckPass::new(symbols, source, ast.nodes);
+                    let mut accesses = HashMap::new();
+                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_yaml_snapshot!(pass.errors);

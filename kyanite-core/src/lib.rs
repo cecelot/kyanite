@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, path::Path};
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
 
 use codegen::IrError;
 
@@ -24,7 +24,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub enum PipelineError {
     #[error("file \"{0}\" does not exist")]
     FileNotFound(String),
-    #[error("File is not valid UTF-8")]
+    #[error("file is not valid UTF-8")]
     InvalidUtf8,
     #[error("(while lexing source) {0} error(s) encountered")]
     LexError(usize),
@@ -50,7 +50,7 @@ impl Program {
         P: AsRef<Path>,
     {
         let source = Source::new(path)?;
-        let ast = ast::Ast::from_source(source.clone())?;
+        let ast = ast::Ast::from_source(&source)?;
         Self::new(ast, source)
     }
 
@@ -60,13 +60,14 @@ impl Program {
             let name: Vec<_> = chars.iter().rev().take_while(|&&c| c != '/').collect();
             name.iter().rev().copied().copied().collect()
         }
-        let filename = source.filename.clone();
+        let filename = strip_prefix(&source.filename);
         let symbols = SymbolTable::from(&ast.nodes);
-        let mut pass = TypeCheckPass::new(symbols.clone(), source, ast.nodes.clone());
+        let mut accesses = HashMap::new();
+        let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
-            ir: Ir::from_ast(&mut ast, symbols, pass.accesses).map_err(PipelineError::IrError)?,
-            filename: strip_prefix(&filename),
+            ir: Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
+            filename,
         })
     }
 }
@@ -89,6 +90,7 @@ impl Source {
             .ok_or(PipelineError::InvalidUtf8)?
             .to_string();
         let mut raw = String::new();
+        // acceptable clone()
         let mut file =
             File::open(&path).map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
         file.read_to_string(&mut raw)
@@ -98,5 +100,13 @@ impl Source {
             chars: raw.chars().collect(),
             raw,
         })
+    }
+
+    pub fn in_memory(raw: String) -> Self {
+        Self {
+            filename: "in-memory.kya".into(),
+            chars: raw.chars().collect(),
+            raw,
+        }
     }
 }

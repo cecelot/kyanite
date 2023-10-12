@@ -15,7 +15,6 @@ pub struct PreciseError {
 
 impl PreciseError {
     pub fn new(source: &Source, span: Span, heading: String, text: String) -> Self {
-        let filename = source.filename.clone();
         Self {
             source: source
                 .raw
@@ -23,10 +22,10 @@ impl PreciseError {
                 .nth(span.line - 1)
                 .expect("span to have valid line number")
                 .into(),
+            filename: source.filename.clone(),
             span,
             heading,
             text,
-            filename,
         }
     }
 
