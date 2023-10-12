@@ -3,11 +3,17 @@
 [Introduction](./introduction.md)
 
 # User Guide
-- [Command Line Interface](./cli-intro.md)
-  - [run](./cli-run.md)
-- [Architecture](./architecture.md)
-  - [Lexer](./lex.md)
+- [Command Line Interface]()
+  - [run](./cli/run.md)
+- [Architecture]()
+  - [Lexer]()
+  - [Parser]()
+- [Reference](./ref/index.md)
+  - [Primitive Types](./ref/primitives.md)
+  - [Records](./ref/records.md)
+  - [Functions](./ref/functions.md)
+  - [Expressions](./ref/exprs.md)
+  - [Statements](./ref/statements.md)
 
------------
-
-[Reference](./reference.md)
+# Appendix
+- [Grammar]()
