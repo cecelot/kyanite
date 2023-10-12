@@ -1,6 +1,6 @@
 # Kyanite
 
-Languages are cool! Compilers are cool! How do they work? That's why this project exists: Kyanite (name is a WIP) is a statically-typed, compiled programming language to learn more about how PLs are created. The current (only) backend is LLVM, but I may pursue adding a custom backend in the future.
+Languages are cool! Compilers are cool! How do they work? That's why this project exists: Kyanite is a statically-typed, compiled programming language to learn more about how PLs are created. The current (only) backend is LLVM, but I may pursue adding a custom backend in the future.
 
 ## Documentation
 
@@ -18,4 +18,4 @@ The project is a standard Rust workspace; the entrypoint is found within `kyanit
 nix develop -c cargo run -- run <filename>
 ```
 
-Other methods may also work, but are untested. Note that LLVM (for `llc`) and clang are additional required dependencies.
+Other methods may also work, but are untested. Note that LLVM and clang are additional required dependencies.
