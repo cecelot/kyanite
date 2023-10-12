@@ -2,6 +2,10 @@ name: Rust
 on:
   pull_request:
   push:
+    paths:
+      - "kyanite-core/**"
+      - "kyanite-cli/**"
+      - "kyanite-builtins/**"
 jobs:
   tests:
     runs-on: macos-latest
