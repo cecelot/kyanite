@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{collections::HashMap, ops::Deref};
 
 use crate::{
     ast::{
@@ -59,20 +59,21 @@ pub enum TypeError {
     NotProperty(Token, Type),
 }
 
-pub struct TypeCheckPass<'a> {
-    source: &'a Source,
-    program: &'a Vec<Decl>,
+pub struct TypeCheckPass {
+    source: Source,
+    program: Vec<Decl>,
     errors: Vec<PreciseError>,
     function: Option<Token>,
     scopes: Vec<SymbolTable>,
+    pub accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
 }
 
 trait Check {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError>;
+    fn check(&self, pass: &mut TypeCheckPass) -> Result<Type, TypeError>;
 }
 
 impl Check for Decl {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
+    fn check(&self, pass: &mut TypeCheckPass) -> Result<Type, TypeError> {
         match self {
             Decl::Function(fun) => pass.function(fun),
             Decl::Constant(c) => pass.constant(c),
@@ -82,7 +83,7 @@ impl Check for Decl {
 }
 
 impl Check for Stmt {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
+    fn check(&self, pass: &mut TypeCheckPass) -> Result<Type, TypeError> {
         match self {
             Stmt::Return(r) => pass.ret(r),
             Stmt::Expr(e) => e.check(pass),
@@ -93,7 +94,7 @@ impl Check for Stmt {
 }
 
 impl Check for Expr {
-    fn check(&self, pass: &mut TypeCheckPass<'_>) -> Result<Type, TypeError> {
+    fn check(&self, pass: &mut TypeCheckPass) -> Result<Type, TypeError> {
         match self {
             Expr::Binary(b) => pass.binary(b),
             Expr::Unary(u) => pass.unary(u),
@@ -109,19 +110,21 @@ impl Check for Expr {
     }
 }
 
-impl<'a> TypeCheckPass<'a> {
-    pub fn new(table: SymbolTable, source: &'a Source, program: &'a Vec<Decl>) -> Self {
+impl TypeCheckPass {
+    pub fn new(table: SymbolTable, source: Source, program: Vec<Decl>) -> Self {
         Self {
             source,
             program,
             errors: vec![],
             function: None,
             scopes: vec![table],
+            accesses: HashMap::new(),
         }
     }
 
     pub fn run(&mut self) -> Result<(), usize> {
-        for node in self.program {
+        let nodes = self.program.clone();
+        for node in nodes {
             let _ = node.check(self);
         }
         let len = self.errors.len();
@@ -154,7 +157,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
-        let error = PreciseError::new(self.source, at, heading, text);
+        let error = PreciseError::new(&self.source, at, heading, text);
         println!("{}", error);
         self.errors.push(error);
     }
@@ -229,7 +232,7 @@ impl<'a> TypeCheckPass<'a> {
 
     // TODO: make this prettier
     fn access(&mut self, access: &node::Access) -> Result<Type, TypeError> {
-        fn err(pass: &mut TypeCheckPass<'_>, ident: &Ident, ty: Type) -> Result<Type, TypeError> {
+        fn err(pass: &mut TypeCheckPass, ident: &Ident, ty: Type) -> Result<Type, TypeError> {
             pass.error(
                 ident.name.span,
                 format!("no field `{}` on type `{}`", ident.name, ty),
@@ -238,33 +241,40 @@ impl<'a> TypeCheckPass<'a> {
             Err(TypeError::NotProperty(ident.name.clone(), ty))
         }
         let mut ty = access.chain[0].check(self)?;
-        let mut binding = match self.symbol(&Token::from(&ty)).cloned() {
-            Some(binding) => binding,
+        let mut symbols = vec![];
+        let mut indices = vec![];
+        let mut symbol = match self.symbol(&Token::from(&ty)).cloned() {
+            Some(symbol) => symbol,
             None => return Err(TypeError::Undefined),
         };
+        symbols.push(symbol.clone());
         for (i, pair) in access.chain.windows(2).enumerate() {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
                 // TODO: implement member functions
-                let rec = cast!(binding, r, Symbol::Record(ref r));
+                let rec = cast!(symbol, r, Symbol::Record(ref r));
                 let ident = cast!(left, i, Expr::Ident(i));
                 let field = rec.fields.iter().find(|f| f.name == ident.name);
                 if let Some(field) = field {
-                    binding = self.symbol(&field.ty).cloned().unwrap();
+                    symbol = self.symbol(&field.ty).cloned().unwrap();
+                    symbols.push(symbol.clone());
                 } else {
                     return err(self, ident, ty);
                 }
             }
             // TODO: implement member functions (same as above)
-            let rec = cast!(binding, r, Symbol::Record(ref r));
+            let rec = cast!(symbol, r, Symbol::Record(ref r));
             let ident = cast!(right, i, Expr::Ident(i));
-            let field = rec.fields.iter().find(|f| f.name == ident.name);
-            if let Some(field) = field {
-                ty = Type::from(&field.ty);
+            let index = rec.fields.iter().position(|f| f.name == ident.name);
+            if let Some(index) = index {
+                indices.push(index);
+                ty = Type::from(&rec.fields[index].ty);
             } else {
                 return err(self, ident, ty);
             }
         }
+        self.accesses
+            .insert(access.id, (symbols, indices, ty.clone()));
         Ok(ty)
     }
 
@@ -436,7 +446,7 @@ macro_rules! assert_typecheck {
                     let source = crate::Source::new($path)?;
                     let ast = crate::ast::Ast::from_source(source.clone())?;
                     let symbols = SymbolTable::from(&ast.nodes);
-                    let mut pass = TypeCheckPass::new(symbols, &source, &ast.nodes);
+                    let mut pass = TypeCheckPass::new(symbols, source, ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_yaml_snapshot!(pass.errors);

@@ -51,22 +51,22 @@ impl Program {
     {
         let source = Source::new(path)?;
         let ast = ast::Ast::from_source(source.clone())?;
-        Self::new(ast, &source)
+        Self::new(ast, source)
     }
 
-    fn new(mut ast: ast::Ast, source: &Source) -> Result<Self, PipelineError> {
+    fn new(mut ast: ast::Ast, source: Source) -> Result<Self, PipelineError> {
         fn strip_prefix(filename: &str) -> String {
             let chars: Vec<_> = filename.chars().collect();
             let name: Vec<_> = chars.iter().rev().take_while(|&&c| c != '/').collect();
             name.iter().rev().copied().copied().collect()
         }
-
+        let filename = source.filename.clone();
         let symbols = SymbolTable::from(&ast.nodes);
-        let mut pass = TypeCheckPass::new(symbols.clone(), source, &ast.nodes);
+        let mut pass = TypeCheckPass::new(symbols.clone(), source, ast.nodes.clone());
         pass.run().map_err(PipelineError::TypeError)?;
         Ok(Self {
-            ir: Ir::from_ast(&mut ast, symbols).map_err(PipelineError::IrError)?,
-            filename: strip_prefix(&source.filename),
+            ir: Ir::from_ast(&mut ast, symbols, pass.accesses).map_err(PipelineError::IrError)?,
+            filename: strip_prefix(&filename),
         })
     }
 }

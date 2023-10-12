@@ -16,7 +16,10 @@ fun foo(baz: bool): Foo {
 
 fun main() {
     let x: Foo = foo(true);
-    println(x.y); % 500
-    println(x.x); % 17
-    println(x.z); % 83
+    let a: int = x.y;
+    let b: int = x.x;
+    let c: int = x.z;
+    println(a); % 500
+    println(b); % 17
+    println(c); % 83
 }

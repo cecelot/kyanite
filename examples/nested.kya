@@ -1,0 +1,49 @@
+rec Foo {
+    x: int,
+    y: int,
+    z: Bar
+}
+
+rec Bar {
+    x: int,
+    y: Baz
+}
+
+rec Baz {
+    a: str,
+    b: str,
+    c: str
+}
+
+fun stuff(foo: Foo): str {
+    return foo.z.y.b;
+}
+
+fun main() {
+    let foo: Foo = Foo:init(
+        x: 500,
+        y: 80,
+        z: Bar:init(
+            x: 100,
+            y: Baz:init(
+                a: "Hello",
+                b: "World",
+                c: "!"
+            )
+        ),
+    );
+    let a: int = foo.z.x;
+    println(a); % 100
+    let b: int = foo.x;
+    println(b); % 500
+    let c: int = foo.y;
+    println(c); % 80
+    let d: str = foo.z.y.a;
+    println(d); % "Hello"
+    let e: str = foo.z.y.b;
+    println(e); % "World"
+    let f: str = foo.z.y.c;
+    println(f); % "!"
+    let g: str = stuff(foo);
+    println(g); % "World"
+}

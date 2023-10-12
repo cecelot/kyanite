@@ -88,12 +88,17 @@ pub struct Ir<'a, 'ctx> {
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
     pub records: HashMap<String, (StructType<'ctx>, RecordDecl)>,
     function: Option<FunctionValue<'ctx>>,
-
     symbols: SymbolTable,
+
+    accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn from_ast(ast: &mut Ast, symbols: SymbolTable) -> Result<String, IrError> {
+    pub fn from_ast(
+        ast: &mut Ast,
+        symbols: SymbolTable,
+        accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
+    ) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
         let builder = context.create_builder();
@@ -117,6 +122,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             function: None,
 
             symbols,
+            accesses,
         };
 
         // Inject builtin function declarations
@@ -203,50 +209,14 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         Ok(rec.const_named_struct(values.as_slice()).into())
     }
 
-    fn variable(&self, expr: &Expr) -> Type {
-        match expr {
-            Expr::Ident(ident) => self
-                .variables
-                .get(&String::from(&ident.name))
-                .unwrap()
-                .1
-                .clone(),
-            Expr::Call(_) => todo!(),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn indices(&mut self, access: &node::Access) -> Vec<(u32, Type)> {
-        let ty = self.variable(access.chain.first().unwrap());
-        let mut binding = self.symbols.get(&Token::from(&ty)).unwrap().clone();
-        access
-            .chain
-            .windows(2)
-            .map(|pair| {
-                // TODO: this feels like a bunch of extra work that was already done in
-                // kyanite-core/src/pass/typecheck.rs
-                let (_, right) = (&pair[0], &pair[1]);
-                let right = match right {
-                    Expr::Ident(ident) => ident,
-                    Expr::Call(..) => todo!(),
-                    _ => unimplemented!(),
-                };
-                let (_, rec) = self.get_record(&binding.ty()).cloned().unwrap();
-                let (index, field) = rec
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, f)| f.name == right.name)
-                    .unwrap();
-                let field_ty = Type::from(&field.ty);
-                if let ref name @ Type::UserDefined(_) = field_ty {
-                    let (_, rec): (StructType<'_>, RecordDecl) =
-                        self.get_record(name).cloned().unwrap();
-                    binding = Symbol::Record(rec.clone());
-                }
-                (u32::try_from(index).unwrap(), field_ty.clone())
-            })
-            .collect()
+    fn indices(&mut self, access: &node::Access) -> (Vec<(u32, Type)>, Type) {
+        let (symbols, indices, ty) = self.accesses.get(&access.id).unwrap();
+        let indices = symbols
+            .iter()
+            .zip(indices)
+            .map(|(symbol, index)| (u32::try_from(*index).unwrap(), symbol.ty()))
+            .collect();
+        (indices, ty.clone())
     }
 
     fn gep(&mut self, access: &node::Access) -> (PointerValue<'ctx>, BasicTypeEnum<'ctx>) {
@@ -259,26 +229,23 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Expr::Call(_) => todo!(),
             _ => unimplemented!(),
         };
-        let indices = self.indices(access);
+        let (indices, last) = self.indices(access);
         let (ty, _) = self
             .records
             .get(&String::from(&Token::from(&ty)))
             .cloned()
             .unwrap();
-        let mut field_ty = indices[0].1.as_llvm_basic_type(self);
-        let mut gep = self
-            .builder
-            .build_struct_gep(ty, ptr, indices[0].0, "tmp")
-            .unwrap();
-        for (index, ty) in indices.iter().skip(1) {
-            let index = *index;
-            gep = self
-                .builder
-                .build_struct_gep(field_ty, gep, index, "tmp")
-                .unwrap();
-            field_ty = ty.as_llvm_basic_type(self);
-        }
-        (gep, field_ty)
+        let gep = indices.iter().skip(1).fold(
+            self.builder
+                .build_struct_gep(ty, ptr, indices[0].0, "tmp")
+                .unwrap(),
+            |gep, (index, ty)| {
+                self.builder
+                    .build_struct_gep(ty.as_llvm_basic_type(self), gep, *index, "tmp")
+                    .unwrap()
+            },
+        );
+        (gep, last.as_llvm_basic_type(self))
     }
 
     fn access(&mut self, access: &node::Access) -> Result<BasicValueEnum<'ctx>, IrError> {
@@ -619,11 +586,6 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             },
             _ => self.module.get_function(name),
         }
-    }
-
-    #[inline]
-    fn get_record(&mut self, ty: &Type) -> Option<&(StructType<'ctx>, RecordDecl)> {
-        self.records.get(&String::from(ty))
     }
 
     fn alloca(&self, name: &str, arg: &BasicValueEnum<'ctx>) -> PointerValue<'ctx> {

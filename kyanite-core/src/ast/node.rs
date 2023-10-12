@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use serde::{Deserialize, Serialize};
 
 use crate::token::Token;
@@ -125,11 +127,15 @@ impl Call {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Access {
     pub chain: Vec<Expr>,
+    #[serde(skip)]
+    pub id: usize,
 }
 
 impl Access {
     pub fn new(chain: Vec<Expr>) -> Self {
-        Self { chain }
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
+        Self { chain, id }
     }
 }
 

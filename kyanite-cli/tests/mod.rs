@@ -22,5 +22,6 @@ assert_output! {
     "../examples/hello.kya" => hello,
     "../examples/exprs.kya" => exprs,
     "../examples/decls.kya" => decls,
-    "../examples/functions.kya" => functions
+    "../examples/functions.kya" => functions,
+    "../examples/nested.kya" => nested
 }

@@ -1,0 +1,12 @@
+---
+source: kyanite-cli/tests/mod.rs
+expression: lines
+---
+- "100"
+- "500"
+- "80"
+- Hello
+- World
+- "!"
+- World
+
