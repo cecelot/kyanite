@@ -30,6 +30,8 @@
           ncurses # -ltinfo
           libffi # -lffi
           libxml2 # -lxml2
+          # Misc
+          mdbook
         ];
 
         LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
