@@ -4,9 +4,7 @@ Languages are cool! Compilers are cool! How do they work? That's why this projec
 
 ## Documentation
 
-TODO (including a language reference)
-
-In the meantime, there are some working samples to try out in the `examples/` folder.
+There are work-in-progress docs [here](https://alaidriel.github.io/kyanite/), and some working samples in the `examples/` folder.
 
 ## Explore
 
