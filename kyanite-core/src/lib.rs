@@ -12,6 +12,7 @@ pub use compile::Compile;
 mod ast;
 mod codegen;
 mod compile;
+mod kyir;
 mod parse;
 mod pass;
 mod reporting;

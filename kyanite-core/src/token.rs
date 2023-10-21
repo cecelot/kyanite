@@ -36,6 +36,9 @@ pub enum TokenKind {
     Fun,
     Return,
     Extern,
+    If,
+    Else,
+    While,
 
     Rec,
     Init,
@@ -75,6 +78,9 @@ impl fmt::Display for TokenKind {
             TokenKind::Return => write!(f, "return"),
             TokenKind::Rec => write!(f, "rec"),
             TokenKind::Init => write!(f, "init"),
+            TokenKind::If => write!(f, "if"),
+            TokenKind::Else => write!(f, "else"),
+            TokenKind::While => write!(f, "while"),
             TokenKind::Identifier => write!(f, "identifier"),
             TokenKind::Literal => write!(f, "literal"),
             TokenKind::Error => write!(f, "error"),
@@ -297,9 +303,7 @@ impl<'a> TokenStream<'a> {
             return Token::new(TokenKind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        self.adjusted(|stream: &TokenStream| {
-            Token::new(TokenKind::Literal, Some(lexeme), stream.span)
-        })
+        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
     }
 
     fn number(&mut self) -> Token {
@@ -346,6 +350,9 @@ impl<'a> TokenStream<'a> {
             "extern" => Token::new(TokenKind::Extern, None, stream.span),
             "rec" => Token::new(TokenKind::Rec, None, stream.span),
             "init" => Token::new(TokenKind::Init, None, stream.span),
+            "if" => Token::new(TokenKind::If, None, stream.span),
+            "else" => Token::new(TokenKind::Else, None, stream.span),
+            "while" => Token::new(TokenKind::While, None, stream.span),
             _ => Token::new(TokenKind::Identifier, Some(lexeme), stream.span),
         })
     }

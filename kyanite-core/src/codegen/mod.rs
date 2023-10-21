@@ -150,6 +150,8 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Stmt::Expr(expr) => self.expr(expr),
             Stmt::Return(r) => self.ret(r),
             Stmt::Var(var) => self.var(var),
+            Stmt::If(_) => todo!(),
+            Stmt::While(_) => todo!(),
         }
     }
 
@@ -491,7 +493,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn unary(&mut self, unary: &node::Unary) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let expr = self.expr(&unary.right)?;
+        let expr = self.expr(&unary.expr)?;
         Ok(match unary.op.kind {
             TokenKind::Minus => match expr {
                 AnyValueEnum::IntValue(i) => i.const_neg().into(),

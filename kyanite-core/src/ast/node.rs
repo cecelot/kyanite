@@ -25,6 +25,8 @@ pub struct FuncDecl {
     pub ty: Option<Token>,
     pub body: Vec<Stmt>,
     pub external: bool,
+    #[serde(skip)]
+    pub id: usize,
 }
 
 impl FuncDecl {
@@ -35,13 +37,45 @@ impl FuncDecl {
         body: Vec<Stmt>,
         external: bool,
     ) -> Self {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
         Self {
+            id,
             name,
             params,
             ty,
             body,
             external,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct If {
+    pub condition: Expr,
+    pub is: Vec<Stmt>,
+    pub otherwise: Vec<Stmt>,
+}
+
+impl If {
+    pub fn new(condition: Expr, is: Vec<Stmt>, otherwise: Vec<Stmt>) -> Self {
+        Self {
+            condition,
+            is,
+            otherwise,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct While {
+    pub condition: Expr,
+    pub body: Vec<Stmt>,
+}
+
+impl While {
+    pub fn new(condition: Expr, body: Vec<Stmt>) -> Self {
+        Self { condition, body }
     }
 }
 
@@ -154,12 +188,12 @@ impl Return {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Unary {
     pub op: Token,
-    pub right: Box<Expr>,
+    pub expr: Box<Expr>,
 }
 
 impl Unary {
-    pub fn new(op: Token, right: Box<Expr>) -> Self {
-        Self { op, right }
+    pub fn new(op: Token, expr: Box<Expr>) -> Self {
+        Self { op, expr }
     }
 }
 

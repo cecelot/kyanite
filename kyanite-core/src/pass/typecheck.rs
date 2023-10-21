@@ -92,6 +92,8 @@ impl Check for Stmt {
             Stmt::Expr(e) => e.check(pass),
             Stmt::Var(v) => pass.var(v),
             Stmt::Assign(a) => pass.assign(a),
+            Stmt::If(c) => pass.condition(c),
+            Stmt::While(c) => pass.loops(c),
         }
     }
 }
@@ -171,12 +173,12 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn unary(&mut self, unary: &node::Unary) -> Result<Type, TypeError> {
-        let got = unary.right.check(self)?;
+        let got = unary.expr.check(self)?;
         match unary.op.kind {
             TokenKind::Minus => {
                 if !matches!(got, Type::Int | Type::Float) {
                     self.error(
-                        unary.right.span(),
+                        unary.expr.span(),
                         format!("cannot negate {}", got),
                         format!("expression of type {}", got),
                     );
@@ -187,7 +189,7 @@ impl<'a> TypeCheckPass<'a> {
             TokenKind::Bang => {
                 if got != Type::Bool {
                     self.error(
-                        unary.right.span(),
+                        unary.expr.span(),
                         format!("cannot invert {}", got),
                         format!("expression of type {}", got),
                     );
@@ -210,6 +212,31 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         Ok(Type::Void)
+    }
+
+    fn blocks(&mut self, condition: &Expr, blocks: &[&[Stmt]]) -> Result<Type, TypeError> {
+        let got = condition.check(self)?;
+        if got != Type::Bool {
+            self.error(
+                condition.span(),
+                format!("expected condition of type {}", Type::Bool),
+                format!("expression of type {}", got),
+            );
+        }
+        for block in blocks {
+            for node in *block {
+                let _ = node.check(self);
+            }
+        }
+        Ok(Type::Void)
+    }
+
+    fn condition(&mut self, c: &node::If) -> Result<Type, TypeError> {
+        self.blocks(&c.condition, &[&c.is, &c.otherwise])
+    }
+
+    fn loops(&mut self, c: &node::While) -> Result<Type, TypeError> {
+        self.blocks(&c.condition, &[&c.body])
     }
 
     fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {

@@ -14,6 +14,14 @@ pub fn access(accesses: Vec<Expr>) -> Expr {
     Expr::Access(node::Access::new(accesses))
 }
 
+pub fn conditional(condition: Expr, is: Vec<Stmt>, otherwise: Vec<Stmt>) -> Stmt {
+    Stmt::If(node::If::new(condition, is, otherwise))
+}
+
+pub fn loops(condition: Expr, body: Vec<Stmt>) -> Stmt {
+    Stmt::While(node::While::new(condition, body))
+}
+
 pub fn func(
     name: Token,
     params: Vec<Param>,
@@ -44,8 +52,8 @@ pub fn ret(expr: Expr, token: Token) -> Stmt {
     Stmt::Return(node::Return::new(expr, token))
 }
 
-pub fn unary(op: Token, right: Expr) -> Expr {
-    Expr::Unary(node::Unary::new(op, Box::new(right)))
+pub fn unary(op: Token, expr: Expr) -> Expr {
+    Expr::Unary(node::Unary::new(op, Box::new(expr)))
 }
 
 pub fn binary(left: Expr, op: Token, right: Expr) -> Expr {

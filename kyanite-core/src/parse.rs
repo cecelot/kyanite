@@ -94,10 +94,7 @@ impl<'a> Parser<'a> {
         if external {
             Ok(init::func(name, params, ty, vec![], external))
         } else {
-            self.consume(TokenKind::LeftBrace)?;
-            let body = self.block()?;
-            self.consume(TokenKind::RightBrace)?;
-            Ok(init::func(name, params, ty, body, external))
+            Ok(init::func(name, params, ty, self.block()?, external))
         }
     }
 
@@ -130,6 +127,7 @@ impl<'a> Parser<'a> {
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        self.consume(TokenKind::LeftBrace)?;
         let mut stmts: Vec<Stmt> = vec![];
         while self.peek()?.kind != TokenKind::RightBrace {
             let stmt = self.statement();
@@ -141,6 +139,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        self.consume(TokenKind::RightBrace)?;
         Ok(stmts)
     }
 
@@ -166,9 +165,31 @@ impl<'a> Parser<'a> {
         Ok(init::var(name, ty, value))
     }
 
+    fn condition(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(TokenKind::If)?;
+        let condition = self.expression()?;
+        let is = self.block()?;
+        if self.peek()?.kind == TokenKind::Else {
+            self.consume(TokenKind::Else)?;
+            let otherwise = self.block()?;
+            Ok(init::conditional(condition, is, otherwise))
+        } else {
+            Ok(init::conditional(condition, is, vec![]))
+        }
+    }
+
+    fn loops(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(TokenKind::While)?;
+        let condition = self.expression()?;
+        let block = self.block()?;
+        Ok(init::loops(condition, block))
+    }
+
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         match self.peek()?.kind {
             TokenKind::Let => self.declaration(),
+            TokenKind::If => self.condition(),
+            TokenKind::While => self.loops(),
             TokenKind::Return => {
                 let token = self.consume(TokenKind::Return)?;
                 let value = self.expression()?;

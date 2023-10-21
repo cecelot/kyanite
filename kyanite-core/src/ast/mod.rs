@@ -60,6 +60,8 @@ pub enum Stmt {
     Assign(node::Assign),
     Return(node::Return),
     Expr(Expr),
+    If(node::If),
+    While(node::While),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +85,8 @@ impl NodeSpan for Stmt {
             Stmt::Assign(assign) => assign.target.start(),
             Stmt::Return(ret) => ret.keyword.span.column,
             Stmt::Expr(expr) => expr.start(),
+            Stmt::If(cond) => cond.condition.start(),
+            Stmt::While(cond) => cond.condition.start(),
         }
     }
 
@@ -92,6 +96,8 @@ impl NodeSpan for Stmt {
             Stmt::Assign(assign) => assign.expr.end(),
             Stmt::Return(ret) => ret.expr.end(),
             Stmt::Expr(expr) => expr.end(),
+            Stmt::If(cond) => cond.condition.end(),
+            Stmt::While(cond) => cond.condition.end(),
         }
     }
 
@@ -101,6 +107,8 @@ impl NodeSpan for Stmt {
             Stmt::Assign(assign) => assign.target.line(),
             Stmt::Return(ret) => ret.expr.line(),
             Stmt::Expr(expr) => expr.line(),
+            Stmt::If(cond) => cond.condition.line(),
+            Stmt::While(cond) => cond.condition.line(),
         }
     }
 }
@@ -126,7 +134,7 @@ impl NodeSpan for Expr {
             Expr::Access(access) => access.chain.last().unwrap().end(),
             Expr::Call(call) => call.parens.1.span.column + 1,
             Expr::Binary(binary) => binary.right.end(),
-            Expr::Unary(unary) => unary.right.end(),
+            Expr::Unary(unary) => unary.expr.end(),
             Expr::Ident(id) => id.name.span.column + id.name.span.length,
             Expr::Str(_, token) => token.span.column + token.span.length,
             Expr::Int(_, token) => token.span.column + token.span.length,
@@ -141,7 +149,7 @@ impl NodeSpan for Expr {
             Expr::Access(access) => access.chain.first().unwrap().line(),
             Expr::Call(call) => call.left.line(),
             Expr::Binary(binary) => binary.left.line(),
-            Expr::Unary(unary) => unary.right.line(),
+            Expr::Unary(unary) => unary.expr.line(),
             Expr::Ident(id) => id.name.span.line,
             Expr::Str(_, token) => token.span.line,
             Expr::Int(_, token) => token.span.line,
@@ -160,7 +168,7 @@ impl Expr {
             Expr::Float(..) => Type::Float,
             Expr::Bool(..) => Type::Bool,
             Expr::Binary(binary) => binary.left.ty(),
-            Expr::Unary(unary) => unary.right.ty(),
+            Expr::Unary(unary) => unary.expr.ty(),
             Expr::Call(call) => call.left.ty(),
             Expr::Ident(_) => unimplemented!(),
             Expr::Init(..) => unimplemented!(),
