@@ -7,10 +7,11 @@ use crate::{
 
 use super::{Frame, RegisterMap, ReturnRegisters};
 
+#[derive(Debug)]
 pub struct Amd64 {
     /// Map of local variable names to their offsets from the frame pointer
     locals: HashMap<String, i64>,
-    formals: Vec<&'static str>,
+    formals: Vec<(String, &'static str)>,
 }
 
 impl Frame for Amd64 {
@@ -23,12 +24,15 @@ impl Frame for Amd64 {
                 .params
                 .iter()
                 .enumerate()
-                .map(|(i, _)| registers.argument[i])
+                .map(|(i, param)| (param.name.to_string(), registers.argument[i]))
                 .collect(),
         }
     }
 
     fn get(&self, ident: &str) -> Box<Expr> {
+        if let Some((name, _)) = self.formals.iter().find(|(name, _)| name == ident) {
+            return Box::new(Expr::Temp(name.to_string()));
+        }
         let offset = self.locals.get(ident).copied().unwrap();
         let registers = Self::registers();
         Box::new(Expr::Mem(Box::new(Expr::Binary(
@@ -53,9 +57,10 @@ impl Frame for Amd64 {
             registers.stack, registers.frame
         ));
         let offset = self.offset();
-        for (i, formal) in self.formals.iter().enumerate() {
+        for (i, (_, formal)) in self.formals.iter().enumerate() {
             prologue.push_str(&format!(
-                "movq %{formal}, {}(%{})\n",
+                "movq %{}, {}(%{})\n",
+                formal,
                 offset - i64::try_from(i * Self::word_size()).unwrap(),
                 registers.frame
             ));
@@ -66,7 +71,6 @@ impl Frame for Amd64 {
     fn epilogue(&self) -> String {
         let registers = Self::registers();
         let mut epilogue = String::with_capacity(3);
-        // TODO: set return value (handle by function body?)
         epilogue.push_str(&format!("popq %{}\n", registers.frame));
         epilogue.push_str("ret\n");
         epilogue

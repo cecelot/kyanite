@@ -66,6 +66,7 @@ pub enum Stmt {
         right: Option<Box<Stmt>>,
     },
     Jump(String),
+    Noop,
     CJump {
         op: BinOp,
         left: Box<Expr>,
@@ -77,39 +78,42 @@ pub enum Stmt {
 
 impl From<&[Stmt]> for Stmt {
     fn from(stmts: &[Stmt]) -> Self {
-        if stmts.len() == 1 {
-            Stmt::Seq {
-                left: Box::new(stmts[0].clone()),
-                right: None,
-            }
-        } else {
-            Stmt::Seq {
+        match stmts.len() {
+            0 => Stmt::Noop,
+            1 => stmts[0].clone(),
+            _ => Stmt::Seq {
                 left: Box::new(stmts[0].clone()),
                 right: Some(Box::new(Stmt::from(&stmts[1..]))),
-            }
+            },
         }
     }
-}
-
-#[allow(dead_code)]
-pub fn translate<F: Frame>(ast: &[AstDecl]) -> Vec<Stmt> {
-    let mut translator: Translator<F> = Translator::new();
-    ast.iter()
-        .map(|decl| decl.translate(&mut translator))
-        .collect()
 }
 
 pub struct Translator<F: Frame> {
     functions: HashMap<usize, F>,
     function: Option<usize>,
+    labels: usize,
 }
 
 impl<F: Frame> Translator<F> {
-    fn new() -> Self {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
         Self {
             functions: HashMap::new(),
             function: None,
+            labels: 0,
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn translate(&mut self, ast: &[AstDecl]) -> Vec<Stmt> {
+        ast.iter().map(|decl| decl.translate(self)).collect()
+    }
+
+    fn label(&mut self) -> String {
+        let label = format!("L{}", self.labels);
+        self.labels += 1;
+        label
     }
 }
 
@@ -185,9 +189,9 @@ impl Translate<Stmt> for AstStmt {
         match self {
             AstStmt::If(c) => {
                 let condition = c.condition.translate(translator);
-                let t = String::new();
-                let f = String::new();
-                let done = String::new();
+                let t = translator.label();
+                let f = translator.label();
+                let done = translator.label();
                 let is: Vec<Stmt> = c.is.iter().map(|stmt| stmt.translate(translator)).collect();
                 let otherwise: Vec<Stmt> = c
                     .otherwise
@@ -224,9 +228,9 @@ impl Translate<Stmt> for AstStmt {
             }
             AstStmt::While(c) => {
                 let condition = c.condition.translate(translator);
-                let t = String::new();
-                let f = String::new();
-                let test = String::new();
+                let t = translator.label();
+                let f = translator.label();
+                let test = translator.label();
                 let mut body: Vec<Stmt> = c
                     .body
                     .iter()
@@ -276,7 +280,7 @@ impl Translate<Stmt> for AstStmt {
                 let id = translator.function.unwrap();
                 let name = var.name.to_string();
                 let frame = translator.functions.get_mut(&id).unwrap();
-                let target: Box<Expr> = frame.allocate(&name);
+                let target = frame.allocate(&name);
                 let expr = Box::new(var.expr.translate(translator));
                 Stmt::MoveMem { target, expr }
             }
@@ -310,14 +314,17 @@ impl Translate<Stmt> for AstDecl {
 mod tests {
     use std::error::Error;
 
-    use crate::{ast, Source};
+    use crate::{ast, kyir::Translator, Source};
 
     use super::arch::amd64::Amd64;
 
     #[test]
     fn exp() -> Result<(), Box<dyn Error>> {
         let ast = ast::Ast::from_source(&Source::new("test-cases/conditions.kya")?)?;
-        super::translate::<Amd64>(&ast.nodes);
+        let mut translator: Translator<Amd64> = Translator::new();
+        let res = translator.translate(&ast.nodes);
+        dbg!(&res);
+        dbg!(&translator.functions);
 
         Ok(())
     }

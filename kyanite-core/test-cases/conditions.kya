@@ -1,27 +1,18 @@
-fun foo(a: int, b: bool, c: int, d: int, e: int, f: int): int {
-   let g: int = 5;
-   let h: bool = true;
-   let i: int = 7;
-   println(g);
-   return i;
-}
-
-fun bar(): int {
-   return 5 * 12 + 17 * 3 / 3;
-}
-
-fun test() {
-   if 5 > 6 {
-      println(5);
-   } else {
-      if true {
-         println(7);
-      } else {
-         println(6);
-      }
+fun factorial(a: int): int {
+   if a == 0 {
+      return 1;
    }
+   return a * factorial(a - 1);
+}
 
-   while true {
-      println(true);
+fun bar(a: int): int {
+   return 5 + 2 * a;
+}
+
+fun main() {
+   if true {
+      factorial(bar(2));
+   } else {
+      println(1);
    }
 }
