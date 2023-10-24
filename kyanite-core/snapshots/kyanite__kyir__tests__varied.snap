@@ -46,7 +46,7 @@ expression: "&res"
                                     "L0",
                                 ),
                                 right: Some(
-                                    MoveTemp {
+                                    Move {
                                         target: Temp(
                                             "rax",
                                         ),
@@ -82,7 +82,7 @@ expression: "&res"
             ),
         },
         right: Some(
-            MoveTemp {
+            Move {
                 target: Temp(
                     "rax",
                 ),
@@ -125,7 +125,7 @@ expression: "&res"
             },
         ),
     },
-    MoveTemp {
+    Move {
         target: Temp(
             "rax",
         ),
@@ -154,7 +154,7 @@ expression: "&res"
         ),
     },
     Seq {
-        left: MoveMem {
+        left: Move {
             target: Mem(
                 Binary(
                     Plus,
@@ -171,7 +171,7 @@ expression: "&res"
             ),
         },
         right: Some(
-            MoveTemp {
+            Move {
                 target: Temp(
                     "rax",
                 ),
@@ -183,7 +183,7 @@ expression: "&res"
                             Plus,
                             ESeq {
                                 stmt: Seq {
-                                    left: MoveTemp {
+                                    left: Move {
                                         target: Temp(
                                             "N0",
                                         ),
@@ -200,7 +200,7 @@ expression: "&res"
                                         ),
                                     },
                                     right: Some(
-                                        MoveMem {
+                                        Move {
                                             target: Temp(
                                                 "N0",
                                             ),
@@ -224,7 +224,7 @@ expression: "&res"
                             },
                             ESeq {
                                 stmt: Seq {
-                                    left: MoveTemp {
+                                    left: Move {
                                         target: Temp(
                                             "N1",
                                         ),
@@ -241,7 +241,7 @@ expression: "&res"
                                         ),
                                     },
                                     right: Some(
-                                        MoveMem {
+                                        Move {
                                             target: Temp(
                                                 "N1",
                                             ),
@@ -266,7 +266,7 @@ expression: "&res"
                         ),
                         ESeq {
                             stmt: Seq {
-                                left: MoveTemp {
+                                left: Move {
                                     target: Temp(
                                         "N2",
                                     ),
@@ -283,7 +283,7 @@ expression: "&res"
                                     ),
                                 },
                                 right: Some(
-                                    MoveMem {
+                                    Move {
                                         target: Temp(
                                             "N2",
                                         ),
@@ -308,7 +308,7 @@ expression: "&res"
                     ),
                     ESeq {
                         stmt: Seq {
-                            left: MoveTemp {
+                            left: Move {
                                 target: Temp(
                                     "N3",
                                 ),
@@ -325,7 +325,7 @@ expression: "&res"
                                 ),
                             },
                             right: Some(
-                                MoveMem {
+                                Move {
                                     target: Temp(
                                         "N3",
                                     ),
@@ -352,7 +352,7 @@ expression: "&res"
         ),
     },
     Seq {
-        left: MoveMem {
+        left: Move {
             target: Mem(
                 Binary(
                     Plus,
@@ -366,7 +366,7 @@ expression: "&res"
             ),
             expr: ESeq {
                 stmt: Seq {
-                    left: MoveMem {
+                    left: Move {
                         target: Binary(
                             Plus,
                             Temp(
@@ -382,7 +382,7 @@ expression: "&res"
                     },
                     right: Some(
                         Seq {
-                            left: MoveMem {
+                            left: Move {
                                 target: Binary(
                                     Plus,
                                     Temp(
@@ -398,7 +398,7 @@ expression: "&res"
                             },
                             right: Some(
                                 Seq {
-                                    left: MoveMem {
+                                    left: Move {
                                         target: Binary(
                                             Plus,
                                             Temp(
@@ -413,7 +413,7 @@ expression: "&res"
                                         ),
                                     },
                                     right: Some(
-                                        MoveMem {
+                                        Move {
                                             target: Binary(
                                                 Plus,
                                                 Temp(
@@ -440,7 +440,7 @@ expression: "&res"
         },
         right: Some(
             Seq {
-                left: MoveMem {
+                left: Move {
                     target: Mem(
                         Binary(
                             Plus,
@@ -453,7 +453,7 @@ expression: "&res"
                         ),
                     ),
                     expr: ESeq {
-                        stmt: MoveMem {
+                        stmt: Move {
                             target: Binary(
                                 Plus,
                                 Temp(
@@ -474,7 +474,7 @@ expression: "&res"
                 },
                 right: Some(
                     Seq {
-                        left: MoveMem {
+                        left: Move {
                             target: Mem(
                                 Binary(
                                     Plus,
@@ -492,7 +492,7 @@ expression: "&res"
                         },
                         right: Some(
                             Seq {
-                                left: MoveMem {
+                                left: Move {
                                     target: Mem(
                                         Binary(
                                             Plus,
@@ -504,17 +504,25 @@ expression: "&res"
                                             ),
                                         ),
                                     ),
-                                    expr: Mem(
-                                        Binary(
-                                            Plus,
-                                            Temp(
-                                                "rbp",
+                                    expr: ESeq {
+                                        stmt: Move {
+                                            target: Temp(
+                                                "N7",
                                             ),
-                                            ConstInt(
-                                                -24,
+                                            expr: Binary(
+                                                Plus,
+                                                Temp(
+                                                    "rbp",
+                                                ),
+                                                ConstInt(
+                                                    -24,
+                                                ),
                                             ),
+                                        },
+                                        expr: Temp(
+                                            "N7",
                                         ),
-                                    ),
+                                    },
                                 },
                                 right: Some(
                                     Seq {

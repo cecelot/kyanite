@@ -54,7 +54,7 @@ impl Frame for Amd64 {
                 return Box::new(Expr::ESeq {
                     stmt: Box::new(Stmt::Seq {
                         // movq offset(%rbp), %temp
-                        left: Box::new(Stmt::MoveTemp {
+                        left: Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
                             expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
                                 BinOp::Plus,
@@ -63,7 +63,7 @@ impl Frame for Amd64 {
                             )))),
                         }),
                         // movq index*8(%temp), %temp
-                        right: Some(Box::new(Stmt::MoveMem {
+                        right: Some(Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
                             expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
                                 BinOp::Plus,
@@ -79,7 +79,6 @@ impl Frame for Amd64 {
             }
         }
         let offset = if let Some(index) = index {
-            dbg!(&ident, &offset);
             // The address mapped to `ident` is one word before the start of the record in the frame
             // because one word is used to store where the record begins, so index + 1
             offset - i64::try_from((index + 1) * Self::word_size()).unwrap()

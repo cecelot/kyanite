@@ -48,13 +48,8 @@ pub enum Expr {
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
-    /// Moves `expr` into the temporary specified by `target` (an [`Expr::Temp`])
-    MoveTemp {
-        target: Box<Expr>,
-        expr: Box<Expr>,
-    },
-    /// Moves `expr` into the location in the stack frame specified by `target` (an [`Expr::Binary`])
-    MoveMem {
+    /// Moves `expr` into the location specified by `target` (either a temporary or a memory offset in the frame)
+    Move {
         target: Box<Expr>,
         expr: Box<Expr>,
     },
@@ -74,6 +69,42 @@ pub enum Stmt {
         t: String,
         f: String,
     },
+}
+
+impl Stmt {
+    fn fix<F: Frame>(translator: &mut Translator<'_, F>, expr: Box<Expr>) -> Expr {
+        // Refuse to handle moves from memory address to memory address because unsupported
+        let temp = translator.name();
+        Expr::ESeq {
+            stmt: Box::new(Self::Move {
+                target: Box::new(Expr::Temp(temp.clone())),
+                expr,
+            }),
+            expr: Box::new(Expr::Temp(temp)),
+        }
+    }
+
+    fn checked_move<F: Frame>(
+        translator: &mut Translator<'_, F>,
+        target: Box<Expr>,
+        expr: Expr,
+    ) -> Self {
+        let expr = match expr {
+            Expr::Mem(expr) => Self::fix(translator, expr),
+            Expr::ESeq { stmt, expr } => {
+                if matches!(*expr, Expr::Mem(_)) {
+                    Self::fix(translator, expr)
+                } else {
+                    Expr::ESeq { stmt, expr }
+                }
+            }
+            _ => expr,
+        };
+        Self::Move {
+            target,
+            expr: Box::new(expr),
+        }
+    }
 }
 
 trait Flatten<R, A> {
@@ -249,13 +280,16 @@ impl Translate<Expr> for AstExpr {
                 let stmts: Vec<Stmt> = initializers
                     .into_iter()
                     .enumerate()
-                    .map(|(index, expr)| Stmt::MoveMem {
-                        target: Box::new(Expr::Binary(
-                            BinOp::Plus,
-                            Box::new(Expr::Temp(registers.frame.to_string())),
-                            Box::new(Expr::ConstInt(end + i64::try_from(index * 8).unwrap())),
-                        )),
-                        expr: Box::new(expr),
+                    .map(|(index, expr)| {
+                        Stmt::checked_move(
+                            translator,
+                            Box::new(Expr::Binary(
+                                BinOp::Plus,
+                                Box::new(Expr::Temp(registers.frame.to_string())),
+                                Box::new(Expr::ConstInt(end + i64::try_from(index * 8).unwrap())),
+                            )),
+                            expr,
+                        )
                     })
                     .collect();
                 // Evaluate the initializers, then return start address of initialized memory for record
@@ -345,22 +379,26 @@ impl Translate<Stmt> for AstStmt {
             }
             AstStmt::Assign(assign) => {
                 let target = Box::new(assign.target.translate(translator));
-                let expr = Box::new(assign.expr.translate(translator));
-                Stmt::MoveMem { target, expr }
+                let expr = assign.expr.translate(translator);
+                Stmt::checked_move(translator, target, expr)
             }
             AstStmt::Expr(e) => Stmt::Expr(Box::new(e.translate(translator))),
-            AstStmt::Return(ret) => Stmt::MoveTemp {
-                target: Box::new(Expr::Temp(registers.ret.value.to_string())),
-                expr: Box::new(ret.expr.translate(translator)),
-            },
+            AstStmt::Return(ret) => {
+                let expr = ret.expr.translate(translator);
+                Stmt::checked_move(
+                    translator,
+                    Box::new(Expr::Temp(registers.ret.value.to_string())),
+                    expr,
+                )
+            }
             AstStmt::Var(var) => {
                 let id = translator.function.unwrap();
                 let name = var.name.to_string();
                 let frame = translator.functions.get_mut(&id).unwrap();
                 // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
                 let target = frame.allocate(translator.symbols, &name, None);
-                let expr = Box::new(var.expr.translate(translator));
-                Stmt::MoveMem { target, expr }
+                let expr = var.expr.translate(translator);
+                Stmt::checked_move(translator, target, expr)
             }
         }
     }
