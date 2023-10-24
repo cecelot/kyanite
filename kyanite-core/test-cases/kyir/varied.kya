@@ -1,0 +1,47 @@
+rec Foo {
+   x: int,
+   y: int,
+   bar: Bar,
+   baz: Baz,
+}
+
+rec Bar {
+   z: int,
+}
+
+rec Baz {
+   w: int
+}
+
+fun factorial(a: int): int {
+   if a == 0 {
+      return 1;
+   }
+   return a * factorial(a - 1);
+}
+
+fun misc(a: int): int {
+   return 5 + 2 * a;
+}
+
+fun with_foo(foo: Foo): int {
+   let dummy: int = 0;
+   return foo.x + foo.y + foo.bar.z + foo.baz.w;
+}
+
+fun main() {
+   let foo: Foo = Foo:init(
+      x: 1,
+      y: 2,
+      bar: Bar:init(z: 3),
+      baz: Baz:init(w: 4)
+   );
+   let bar: Bar = Bar:init(z: 5);
+   let baz: int = 5;
+   let qux: int = foo.bar.z;
+   if true {
+      factorial(misc(2));
+   } else {
+      println(1);
+   }
+}

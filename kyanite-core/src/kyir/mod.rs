@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use crate::{
     ast::Expr as AstExpr,
-    ast::{Decl as AstDecl, Stmt as AstStmt},
-    token::TokenKind,
+    ast::{node::RecordDecl, Decl as AstDecl, Initializer, Stmt as AstStmt, Type},
+    pass::{AccessMap, SymbolTable},
+    token::{Token, TokenKind},
 };
 
 use self::arch::Frame;
@@ -42,8 +43,7 @@ pub enum Expr {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     Mem(Box<Expr>),
     Call(String, Vec<Expr>),
-    // logical comparison requires ESeq
-    // ESeq(Stmt, Box<Expr>),
+    ESeq { stmt: Box<Stmt>, expr: Box<Expr> },
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +53,7 @@ pub enum Stmt {
         target: Box<Expr>,
         expr: Box<Expr>,
     },
-    /// Moves `expr` into the location in the stack frame specified by `target` (a [`Expr::Binary`])
+    /// Moves `expr` into the location in the stack frame specified by `target` (an [`Expr::Binary`])
     MoveMem {
         target: Box<Expr>,
         expr: Box<Expr>,
@@ -76,6 +76,37 @@ pub enum Stmt {
     },
 }
 
+trait Flatten<R, A> {
+    fn flatten(&self, aux: A) -> R;
+}
+
+impl<F: Frame> Flatten<Vec<Expr>, &'_ mut Translator<'_, F>> for Vec<Initializer> {
+    fn flatten(&self, translator: &'_ mut Translator<'_, F>) -> Vec<Expr> {
+        self.iter()
+            .flat_map(|init| match &init.expr {
+                AstExpr::Init(nested) => nested.initializers.flatten(translator),
+                _ => vec![init.expr.translate(translator)],
+            })
+            .collect()
+    }
+}
+
+impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for RecordDecl {
+    fn flatten(&self, symbols: &'_ SymbolTable) -> Vec<(String, Type)> {
+        self.fields
+            .iter()
+            .flat_map(|field| match Type::from(&field.ty) {
+                Type::UserDefined(name) => symbols
+                    .get(&Token::from(name))
+                    .unwrap()
+                    .record()
+                    .flatten(symbols),
+                _ => vec![(field.name.to_string(), Type::from(&field.ty))],
+            })
+            .collect()
+    }
+}
+
 impl From<&[Stmt]> for Stmt {
     fn from(stmts: &[Stmt]) -> Self {
         match stmts.len() {
@@ -89,19 +120,25 @@ impl From<&[Stmt]> for Stmt {
     }
 }
 
-pub struct Translator<F: Frame> {
+pub struct Translator<'a, F: Frame> {
     functions: HashMap<usize, F>,
     function: Option<usize>,
+    accesses: &'a AccessMap,
+    symbols: &'a SymbolTable,
     labels: usize,
+    names: usize,
 }
 
-impl<F: Frame> Translator<F> {
+impl<'a, F: Frame> Translator<'a, F> {
     #[allow(dead_code)]
-    pub fn new() -> Self {
+    pub fn new(accesses: &'a AccessMap, symbols: &'a SymbolTable) -> Self {
         Self {
             functions: HashMap::new(),
             function: None,
+            accesses,
+            symbols,
             labels: 0,
+            names: 0,
         }
     }
 
@@ -110,10 +147,21 @@ impl<F: Frame> Translator<F> {
         ast.iter().map(|decl| decl.translate(self)).collect()
     }
 
+    fn frame(&self) -> &F {
+        let id: usize = self.function.unwrap();
+        self.functions.get(&id).unwrap()
+    }
+
     fn label(&mut self) -> String {
         let label = format!("L{}", self.labels);
         self.labels += 1;
         label
+    }
+
+    fn name(&mut self) -> String {
+        let name = format!("N{}", self.names);
+        self.names += 1;
+        name
     }
 }
 
@@ -159,11 +207,7 @@ impl Translate<Expr> for AstExpr {
                         .collect(),
                 )
             }
-            AstExpr::Ident(ident) => {
-                let id = translator.function.unwrap();
-                let frame = translator.functions.get(&id).unwrap();
-                *frame.get(&ident.name.to_string())
-            }
+            AstExpr::Ident(ident) => *translator.frame().get(&ident.name.to_string(), None, None),
             AstExpr::Unary(unary) => match unary.op.kind {
                 TokenKind::Minus => Expr::Binary(
                     BinOp::Minus,
@@ -177,8 +221,49 @@ impl Translate<Expr> for AstExpr {
                 ),
                 _ => unreachable!("not a valid unary operator"),
             },
-            AstExpr::Access(_) => todo!(),
-            AstExpr::Init(_) => todo!(),
+            AstExpr::Access(access) => {
+                let temp = translator.name();
+                let frame = translator.frame();
+                let (symbols, _, _) = translator.accesses.get(&access.id).unwrap();
+                let rec = symbols.first().unwrap().record();
+                let flat = rec.flatten(translator.symbols);
+                let parent = access.chain.first().unwrap().ident().name.to_string();
+                let last = access.chain.last().unwrap().ident().name.to_string();
+                let (index, _) = flat
+                    .iter()
+                    .enumerate()
+                    .find(|(_, (name, _))| name == &last)
+                    .unwrap();
+                *frame.get(&parent, Some(temp), Some(index))
+            }
+            AstExpr::Init(init) => {
+                let registers = F::registers();
+                let ty = Type::from(&init.name);
+                let initializers = init.initializers.flatten(translator);
+                let name = translator.name();
+                let id = translator.function.unwrap();
+                let frame = translator.functions.get_mut(&id).unwrap();
+                frame.allocate(translator.symbols, &name, Some(&ty));
+                let begin = frame.get_offset(&name);
+                let end = begin - i64::try_from((initializers.len() - 1) * 8).unwrap();
+                let stmts: Vec<Stmt> = initializers
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, expr)| Stmt::MoveMem {
+                        target: Box::new(Expr::Binary(
+                            BinOp::Plus,
+                            Box::new(Expr::Temp(registers.frame.to_string())),
+                            Box::new(Expr::ConstInt(end + i64::try_from(index * 8).unwrap())),
+                        )),
+                        expr: Box::new(expr),
+                    })
+                    .collect();
+                // Evaluate the initializers, then return start address of initialized memory for record
+                Expr::ESeq {
+                    stmt: Box::new(Stmt::from(&stmts[..])),
+                    expr: Box::new(Expr::ConstInt(begin)),
+                }
+            }
         }
     }
 }
@@ -259,15 +344,7 @@ impl Translate<Stmt> for AstStmt {
                 }
             }
             AstStmt::Assign(assign) => {
-                let target = match assign.target {
-                    AstExpr::Ident(ref ident) => {
-                        let id = translator.function.unwrap();
-                        let frame = translator.functions.get(&id).unwrap();
-                        frame.get(&ident.name.to_string())
-                    }
-                    AstExpr::Access(_) => todo!(),
-                    _ => unreachable!(),
-                };
+                let target = Box::new(assign.target.translate(translator));
                 let expr = Box::new(assign.expr.translate(translator));
                 Stmt::MoveMem { target, expr }
             }
@@ -280,7 +357,8 @@ impl Translate<Stmt> for AstStmt {
                 let id = translator.function.unwrap();
                 let name = var.name.to_string();
                 let frame = translator.functions.get_mut(&id).unwrap();
-                let target = frame.allocate(&name);
+                // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
+                let target = frame.allocate(translator.symbols, &name, None);
                 let expr = Box::new(var.expr.translate(translator));
                 Stmt::MoveMem { target, expr }
             }
@@ -304,28 +382,49 @@ impl Translate<Stmt> for AstDecl {
                     .collect();
                 Stmt::from(&stmts[..])
             }
-            AstDecl::Record(_) => todo!(),
+            AstDecl::Record(_) => Stmt::Noop,
             AstDecl::Constant(_) => todo!(),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
+macro_rules! assert_ir {
+    ($($path:expr => $name:ident),*) => {
+        #[cfg(test)]
+        mod tests {
+            use std::collections::HashMap;
 
-    use crate::{ast, kyir::Translator, Source};
+            use crate::{
+                ast,
+                kyir::Translator,
+                pass::{SymbolTable, TypeCheckPass},
+                PipelineError, Source,
+            };
 
-    use super::arch::amd64::Amd64;
+            use super::arch::amd64::Amd64;
 
-    #[test]
-    fn exp() -> Result<(), Box<dyn Error>> {
-        let ast = ast::Ast::from_source(&Source::new("test-cases/conditions.kya")?)?;
-        let mut translator: Translator<Amd64> = Translator::new();
-        let res = translator.translate(&ast.nodes);
-        dbg!(&res);
-        dbg!(&translator.functions);
+            $(
+                #[test]
+                fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                    let source = Source::new($path)?;
+                    let ast = ast::Ast::from_source(&source)?;
+                    let symbols = SymbolTable::from(&ast.nodes);
+                    let mut accesses = HashMap::new();
+                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+                    pass.run().map_err(PipelineError::TypeError)?;
+                    let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
+                    let res = translator.translate(&ast.nodes);
+                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
+                        insta::assert_debug_snapshot!(&res);
+                    });
 
-        Ok(())
-    }
+                    Ok(())
+                }
+            )*
+        }
+    };
 }
+
+assert_ir!(
+    "test-cases/kyir/varied.kya" => varied
+);

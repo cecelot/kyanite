@@ -1,40 +1,91 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::node::FuncDecl,
-    kyir::{BinOp, Expr},
+    ast::{node::FuncDecl, Type},
+    kyir::{BinOp, Expr, Stmt},
+    pass::{Symbol, SymbolTable},
+    token::Token,
 };
 
 use super::{Frame, RegisterMap, ReturnRegisters};
 
 #[derive(Debug)]
 pub struct Amd64 {
-    /// Map of local variable names to their offsets from the frame pointer
-    locals: HashMap<String, i64>,
-    formals: Vec<(String, &'static str)>,
+    variables: HashMap<String, i64>,
+    formals: Vec<(&'static str, String)>,
+    offset: i64,
 }
 
 impl Frame for Amd64 {
     fn new(func: &FuncDecl) -> Self {
-        let registers: RegisterMap = Self::registers();
+        let registers = Self::registers();
         assert!(func.params.len() <= 6);
+        let mut variables = HashMap::new();
+        let mut offset = 0;
+        for (i, param) in func.params.iter().enumerate() {
+            variables.insert(param.name.to_string(), offset);
+            offset += i64::try_from((i + 1) * Self::word_size()).unwrap();
+        }
         Self {
-            locals: HashMap::new(),
             formals: func
                 .params
                 .iter()
                 .enumerate()
-                .map(|(i, param)| (param.name.to_string(), registers.argument[i]))
+                .map(|(i, param)| (registers.argument[i], param.name.to_string()))
                 .collect(),
+            variables,
+            offset,
         }
     }
 
-    fn get(&self, ident: &str) -> Box<Expr> {
-        if let Some((name, _)) = self.formals.iter().find(|(name, _)| name == ident) {
-            return Box::new(Expr::Temp(name.to_string()));
-        }
-        let offset = self.locals.get(ident).copied().unwrap();
+    fn get_offset(&self, ident: &str) -> i64 {
+        self.variables.get(ident).copied().unwrap()
+    }
+
+    fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Box<Expr> {
+        let offset = self.get_offset(ident);
         let registers = Self::registers();
+        if self.formals.iter().any(|(_, name)| ident == name) {
+            if let (Some(temp), Some(index)) = (temp, index) {
+                // Special case: record field access on a function argument, so it is not in the
+                // current frame (passed to the function using `lea`). So: first move the record
+                // ptr into %temp, then dereference it, accessing the (index*8)th word.
+                // Finally, return %temp.
+                return Box::new(Expr::ESeq {
+                    stmt: Box::new(Stmt::Seq {
+                        // movq offset(%rbp), %temp
+                        left: Box::new(Stmt::MoveTemp {
+                            target: Box::new(Expr::Temp(temp.clone())),
+                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
+                                BinOp::Plus,
+                                Box::new(Expr::Temp(registers.frame.to_string())),
+                                Box::new(Expr::ConstInt(offset)),
+                            )))),
+                        }),
+                        // movq index*8(%temp), %temp
+                        right: Some(Box::new(Stmt::MoveMem {
+                            target: Box::new(Expr::Temp(temp.clone())),
+                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
+                                BinOp::Plus,
+                                Box::new(Expr::Temp(temp.clone())),
+                                Box::new(Expr::ConstInt(
+                                    i64::try_from(index * Self::word_size()).unwrap(),
+                                )),
+                            )))),
+                        })),
+                    }),
+                    expr: Box::new(Expr::Temp(temp)),
+                });
+            }
+        }
+        let offset = if let Some(index) = index {
+            dbg!(&ident, &offset);
+            // The address mapped to `ident` is one word before the start of the record in the frame
+            // because one word is used to store where the record begins, so index + 1
+            offset - i64::try_from((index + 1) * Self::word_size()).unwrap()
+        } else {
+            offset
+        };
         Box::new(Expr::Mem(Box::new(Expr::Binary(
             BinOp::Plus,
             Box::new(Expr::Temp(registers.frame.to_string())),
@@ -42,10 +93,18 @@ impl Frame for Amd64 {
         ))))
     }
 
-    fn allocate(&mut self, ident: &str) -> Box<Expr> {
-        let offset = self.offset();
-        self.locals.insert(ident.to_string(), offset);
-        self.get(ident)
+    fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Box<Expr> {
+        let start = self.offset;
+        self.offset -= i64::try_from(match ty {
+            Some(Type::UserDefined(ty)) => match symbols.get(&Token::from(ty.clone())).unwrap() {
+                Symbol::Record(rec) => rec.fields.len() * Self::word_size(),
+                _ => unreachable!(),
+            },
+            _ => 8,
+        })
+        .unwrap();
+        self.variables.insert(ident.to_string(), start);
+        self.get(ident, None, None)
     }
 
     fn prologue(&self) -> String {
@@ -56,12 +115,11 @@ impl Frame for Amd64 {
             "movq %{}, %{}\n",
             registers.stack, registers.frame
         ));
-        let offset = self.offset();
         for (i, (_, formal)) in self.formals.iter().enumerate() {
             prologue.push_str(&format!(
                 "movq %{}, {}(%{})\n",
                 formal,
-                offset - i64::try_from(i * Self::word_size()).unwrap(),
+                i64::try_from(i * Self::word_size()).unwrap(),
                 registers.frame
             ));
         }
@@ -92,11 +150,7 @@ impl Frame for Amd64 {
     }
 
     fn offset(&self) -> i64 {
-        let offset: i64 = ((self.locals.len() + 1) * Self::word_size())
-            .try_into()
-            .unwrap();
-        // Offsets are negative from the frame pointer
-        -offset
+        self.offset
     }
 
     fn word_size() -> usize {

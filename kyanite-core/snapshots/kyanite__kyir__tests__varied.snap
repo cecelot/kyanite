@@ -1,0 +1,602 @@
+---
+source: kyanite-core/src/kyir/mod.rs
+expression: "&res"
+---
+[
+    Noop,
+    Noop,
+    Noop,
+    Seq {
+        left: Seq {
+            left: Seq {
+                left: Seq {
+                    left: Seq {
+                        left: CJump {
+                            op: Cmp(
+                                Equal,
+                            ),
+                            left: Binary(
+                                Cmp(
+                                    Equal,
+                                ),
+                                Mem(
+                                    Binary(
+                                        Plus,
+                                        Temp(
+                                            "rbp",
+                                        ),
+                                        ConstInt(
+                                            0,
+                                        ),
+                                    ),
+                                ),
+                                ConstInt(
+                                    0,
+                                ),
+                            ),
+                            right: ConstInt(
+                                1,
+                            ),
+                            t: "L0",
+                            f: "L1",
+                        },
+                        right: Some(
+                            Seq {
+                                left: Label(
+                                    "L0",
+                                ),
+                                right: Some(
+                                    MoveTemp {
+                                        target: Temp(
+                                            "rax",
+                                        ),
+                                        expr: ConstInt(
+                                            1,
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                    right: Some(
+                        Jump(
+                            "L2",
+                        ),
+                    ),
+                },
+                right: Some(
+                    Seq {
+                        left: Label(
+                            "L1",
+                        ),
+                        right: Some(
+                            Noop,
+                        ),
+                    },
+                ),
+            },
+            right: Some(
+                Label(
+                    "L2",
+                ),
+            ),
+        },
+        right: Some(
+            MoveTemp {
+                target: Temp(
+                    "rax",
+                ),
+                expr: Binary(
+                    Mul,
+                    Mem(
+                        Binary(
+                            Plus,
+                            Temp(
+                                "rbp",
+                            ),
+                            ConstInt(
+                                0,
+                            ),
+                        ),
+                    ),
+                    Call(
+                        "factorial",
+                        [
+                            Binary(
+                                Minus,
+                                Mem(
+                                    Binary(
+                                        Plus,
+                                        Temp(
+                                            "rbp",
+                                        ),
+                                        ConstInt(
+                                            0,
+                                        ),
+                                    ),
+                                ),
+                                ConstInt(
+                                    1,
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+            },
+        ),
+    },
+    MoveTemp {
+        target: Temp(
+            "rax",
+        ),
+        expr: Binary(
+            Plus,
+            ConstInt(
+                5,
+            ),
+            Binary(
+                Mul,
+                ConstInt(
+                    2,
+                ),
+                Mem(
+                    Binary(
+                        Plus,
+                        Temp(
+                            "rbp",
+                        ),
+                        ConstInt(
+                            0,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    },
+    Seq {
+        left: MoveMem {
+            target: Mem(
+                Binary(
+                    Plus,
+                    Temp(
+                        "rbp",
+                    ),
+                    ConstInt(
+                        8,
+                    ),
+                ),
+            ),
+            expr: ConstInt(
+                0,
+            ),
+        },
+        right: Some(
+            MoveTemp {
+                target: Temp(
+                    "rax",
+                ),
+                expr: Binary(
+                    Plus,
+                    Binary(
+                        Plus,
+                        Binary(
+                            Plus,
+                            ESeq {
+                                stmt: Seq {
+                                    left: MoveTemp {
+                                        target: Temp(
+                                            "N0",
+                                        ),
+                                        expr: Mem(
+                                            Binary(
+                                                Plus,
+                                                Temp(
+                                                    "rbp",
+                                                ),
+                                                ConstInt(
+                                                    0,
+                                                ),
+                                            ),
+                                        ),
+                                    },
+                                    right: Some(
+                                        MoveMem {
+                                            target: Temp(
+                                                "N0",
+                                            ),
+                                            expr: Mem(
+                                                Binary(
+                                                    Plus,
+                                                    Temp(
+                                                        "N0",
+                                                    ),
+                                                    ConstInt(
+                                                        0,
+                                                    ),
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                },
+                                expr: Temp(
+                                    "N0",
+                                ),
+                            },
+                            ESeq {
+                                stmt: Seq {
+                                    left: MoveTemp {
+                                        target: Temp(
+                                            "N1",
+                                        ),
+                                        expr: Mem(
+                                            Binary(
+                                                Plus,
+                                                Temp(
+                                                    "rbp",
+                                                ),
+                                                ConstInt(
+                                                    0,
+                                                ),
+                                            ),
+                                        ),
+                                    },
+                                    right: Some(
+                                        MoveMem {
+                                            target: Temp(
+                                                "N1",
+                                            ),
+                                            expr: Mem(
+                                                Binary(
+                                                    Plus,
+                                                    Temp(
+                                                        "N1",
+                                                    ),
+                                                    ConstInt(
+                                                        8,
+                                                    ),
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                },
+                                expr: Temp(
+                                    "N1",
+                                ),
+                            },
+                        ),
+                        ESeq {
+                            stmt: Seq {
+                                left: MoveTemp {
+                                    target: Temp(
+                                        "N2",
+                                    ),
+                                    expr: Mem(
+                                        Binary(
+                                            Plus,
+                                            Temp(
+                                                "rbp",
+                                            ),
+                                            ConstInt(
+                                                0,
+                                            ),
+                                        ),
+                                    ),
+                                },
+                                right: Some(
+                                    MoveMem {
+                                        target: Temp(
+                                            "N2",
+                                        ),
+                                        expr: Mem(
+                                            Binary(
+                                                Plus,
+                                                Temp(
+                                                    "N2",
+                                                ),
+                                                ConstInt(
+                                                    16,
+                                                ),
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                            expr: Temp(
+                                "N2",
+                            ),
+                        },
+                    ),
+                    ESeq {
+                        stmt: Seq {
+                            left: MoveTemp {
+                                target: Temp(
+                                    "N3",
+                                ),
+                                expr: Mem(
+                                    Binary(
+                                        Plus,
+                                        Temp(
+                                            "rbp",
+                                        ),
+                                        ConstInt(
+                                            0,
+                                        ),
+                                    ),
+                                ),
+                            },
+                            right: Some(
+                                MoveMem {
+                                    target: Temp(
+                                        "N3",
+                                    ),
+                                    expr: Mem(
+                                        Binary(
+                                            Plus,
+                                            Temp(
+                                                "N3",
+                                            ),
+                                            ConstInt(
+                                                24,
+                                            ),
+                                        ),
+                                    ),
+                                },
+                            ),
+                        },
+                        expr: Temp(
+                            "N3",
+                        ),
+                    },
+                ),
+            },
+        ),
+    },
+    Seq {
+        left: MoveMem {
+            target: Mem(
+                Binary(
+                    Plus,
+                    Temp(
+                        "rbp",
+                    ),
+                    ConstInt(
+                        0,
+                    ),
+                ),
+            ),
+            expr: ESeq {
+                stmt: Seq {
+                    left: MoveMem {
+                        target: Binary(
+                            Plus,
+                            Temp(
+                                "rbp",
+                            ),
+                            ConstInt(
+                                -32,
+                            ),
+                        ),
+                        expr: ConstInt(
+                            1,
+                        ),
+                    },
+                    right: Some(
+                        Seq {
+                            left: MoveMem {
+                                target: Binary(
+                                    Plus,
+                                    Temp(
+                                        "rbp",
+                                    ),
+                                    ConstInt(
+                                        -24,
+                                    ),
+                                ),
+                                expr: ConstInt(
+                                    2,
+                                ),
+                            },
+                            right: Some(
+                                Seq {
+                                    left: MoveMem {
+                                        target: Binary(
+                                            Plus,
+                                            Temp(
+                                                "rbp",
+                                            ),
+                                            ConstInt(
+                                                -16,
+                                            ),
+                                        ),
+                                        expr: ConstInt(
+                                            3,
+                                        ),
+                                    },
+                                    right: Some(
+                                        MoveMem {
+                                            target: Binary(
+                                                Plus,
+                                                Temp(
+                                                    "rbp",
+                                                ),
+                                                ConstInt(
+                                                    -8,
+                                                ),
+                                            ),
+                                            expr: ConstInt(
+                                                4,
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        },
+                    ),
+                },
+                expr: ConstInt(
+                    -8,
+                ),
+            },
+        },
+        right: Some(
+            Seq {
+                left: MoveMem {
+                    target: Mem(
+                        Binary(
+                            Plus,
+                            Temp(
+                                "rbp",
+                            ),
+                            ConstInt(
+                                -40,
+                            ),
+                        ),
+                    ),
+                    expr: ESeq {
+                        stmt: MoveMem {
+                            target: Binary(
+                                Plus,
+                                Temp(
+                                    "rbp",
+                                ),
+                                ConstInt(
+                                    -48,
+                                ),
+                            ),
+                            expr: ConstInt(
+                                5,
+                            ),
+                        },
+                        expr: ConstInt(
+                            -48,
+                        ),
+                    },
+                },
+                right: Some(
+                    Seq {
+                        left: MoveMem {
+                            target: Mem(
+                                Binary(
+                                    Plus,
+                                    Temp(
+                                        "rbp",
+                                    ),
+                                    ConstInt(
+                                        -56,
+                                    ),
+                                ),
+                            ),
+                            expr: ConstInt(
+                                5,
+                            ),
+                        },
+                        right: Some(
+                            Seq {
+                                left: MoveMem {
+                                    target: Mem(
+                                        Binary(
+                                            Plus,
+                                            Temp(
+                                                "rbp",
+                                            ),
+                                            ConstInt(
+                                                -64,
+                                            ),
+                                        ),
+                                    ),
+                                    expr: Mem(
+                                        Binary(
+                                            Plus,
+                                            Temp(
+                                                "rbp",
+                                            ),
+                                            ConstInt(
+                                                -24,
+                                            ),
+                                        ),
+                                    ),
+                                },
+                                right: Some(
+                                    Seq {
+                                        left: Seq {
+                                            left: Seq {
+                                                left: Seq {
+                                                    left: CJump {
+                                                        op: Cmp(
+                                                            Equal,
+                                                        ),
+                                                        left: ConstInt(
+                                                            1,
+                                                        ),
+                                                        right: ConstInt(
+                                                            1,
+                                                        ),
+                                                        t: "L3",
+                                                        f: "L4",
+                                                    },
+                                                    right: Some(
+                                                        Seq {
+                                                            left: Label(
+                                                                "L3",
+                                                            ),
+                                                            right: Some(
+                                                                Expr(
+                                                                    Call(
+                                                                        "factorial",
+                                                                        [
+                                                                            Call(
+                                                                                "misc",
+                                                                                [
+                                                                                    ConstInt(
+                                                                                        2,
+                                                                                    ),
+                                                                                ],
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                                right: Some(
+                                                    Jump(
+                                                        "L5",
+                                                    ),
+                                                ),
+                                            },
+                                            right: Some(
+                                                Seq {
+                                                    left: Label(
+                                                        "L4",
+                                                    ),
+                                                    right: Some(
+                                                        Expr(
+                                                            Call(
+                                                                "println",
+                                                                [
+                                                                    ConstInt(
+                                                                        1,
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                        right: Some(
+                                            Label(
+                                                "L5",
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            },
+        ),
+    },
+]

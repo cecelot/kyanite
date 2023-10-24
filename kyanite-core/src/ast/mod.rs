@@ -161,6 +161,13 @@ impl NodeSpan for Expr {
 }
 
 impl Expr {
+    pub fn ident(&self) -> &node::Ident {
+        match self {
+            Expr::Ident(ident) => ident,
+            _ => panic!("called `Expr::ident()` on a non-ident"),
+        }
+    }
+
     pub fn ty(&self) -> Type {
         match self {
             Expr::Str(..) => Type::Str,

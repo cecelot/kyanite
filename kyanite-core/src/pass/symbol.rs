@@ -18,6 +18,13 @@ pub enum Symbol {
 }
 
 impl Symbol {
+    pub fn record(&self) -> &node::RecordDecl {
+        match self {
+            Symbol::Record(rec) => rec,
+            _ => panic!("called `Symbol::record()` on a non-record symbol"),
+        }
+    }
+
     pub fn ty(&self) -> Type {
         match self {
             Self::Record(rec) => Type::from(&rec.name),

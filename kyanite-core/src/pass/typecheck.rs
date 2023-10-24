@@ -59,7 +59,7 @@ pub enum TypeError {
     NotProperty(Token, Type),
 }
 
-type AccessMap = HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>;
+pub type AccessMap = HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>;
 
 pub struct TypeCheckPass<'a> {
     program: &'a Vec<Decl>,
