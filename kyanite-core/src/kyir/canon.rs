@@ -14,18 +14,18 @@ trait CallRewrite<R> {
 impl CallRewrite<Vec<Expr>> for Vec<Expr> {
     fn rewrite(self, immediate: bool) -> Vec<Expr> {
         self.into_iter()
-            .map(|arg| {
-                let temp = Temp::new();
-                match arg {
-                    Expr::Call(..) => Expr::ESeq {
+            .map(|arg| match arg {
+                Expr::Call(..) => {
+                    let temp = Temp::new();
+                    Expr::ESeq {
                         stmt: Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
                             expr: Box::new(arg.rewrite(immediate)),
                         }),
                         expr: Box::new(Expr::Temp(temp)),
-                    },
-                    _ => arg,
+                    }
                 }
+                _ => arg,
             })
             .collect()
     }

@@ -83,7 +83,7 @@ expression: "&res"
                 stmt: Seq {
                     left: Move {
                         target: Temp(
-                            "T2",
+                            "T1",
                         ),
                         expr: Call(
                             "bar",
@@ -105,14 +105,14 @@ expression: "&res"
                     right: None,
                 },
                 expr: Temp(
-                    "T2",
+                    "T1",
                 ),
             },
             right: ESeq {
                 stmt: Seq {
                     left: Move {
                         target: Temp(
-                            "T4",
+                            "T2",
                         ),
                         expr: Call(
                             "bar",
@@ -134,7 +134,7 @@ expression: "&res"
                     right: None,
                 },
                 expr: Temp(
-                    "T4",
+                    "T2",
                 ),
             },
         },
@@ -158,13 +158,13 @@ expression: "&res"
                     ESeq {
                         stmt: Move {
                             target: Temp(
-                                "T5",
+                                "T3",
                             ),
                             expr: ESeq {
                                 stmt: Seq {
                                     left: Move {
                                         target: Temp(
-                                            "T9",
+                                            "T6",
                                         ),
                                         expr: Call(
                                             "bar",
@@ -172,13 +172,13 @@ expression: "&res"
                                                 ESeq {
                                                     stmt: Move {
                                                         target: Temp(
-                                                            "T6",
+                                                            "T4",
                                                         ),
                                                         expr: ESeq {
                                                             stmt: Seq {
                                                                 left: Move {
                                                                     target: Temp(
-                                                                        "T8",
+                                                                        "T5",
                                                                     ),
                                                                     expr: Call(
                                                                         "baz",
@@ -192,12 +192,12 @@ expression: "&res"
                                                                 right: None,
                                                             },
                                                             expr: Temp(
-                                                                "T8",
+                                                                "T5",
                                                             ),
                                                         },
                                                     },
                                                     expr: Temp(
-                                                        "T6",
+                                                        "T4",
                                                     ),
                                                 },
                                             ],
@@ -206,24 +206,24 @@ expression: "&res"
                                     right: None,
                                 },
                                 expr: Temp(
-                                    "T9",
+                                    "T6",
                                 ),
                             },
                         },
                         expr: Temp(
-                            "T5",
+                            "T3",
                         ),
                     },
                     ESeq {
                         stmt: Move {
                             target: Temp(
-                                "T10",
+                                "T7",
                             ),
                             expr: ESeq {
                                 stmt: Seq {
                                     left: Move {
                                         target: Temp(
-                                            "T14",
+                                            "T10",
                                         ),
                                         expr: Call(
                                             "bar",
@@ -231,13 +231,13 @@ expression: "&res"
                                                 ESeq {
                                                     stmt: Move {
                                                         target: Temp(
-                                                            "T11",
+                                                            "T8",
                                                         ),
                                                         expr: ESeq {
                                                             stmt: Seq {
                                                                 left: Move {
                                                                     target: Temp(
-                                                                        "T13",
+                                                                        "T9",
                                                                     ),
                                                                     expr: Call(
                                                                         "baz",
@@ -251,12 +251,12 @@ expression: "&res"
                                                                 right: None,
                                                             },
                                                             expr: Temp(
-                                                                "T13",
+                                                                "T9",
                                                             ),
                                                         },
                                                     },
                                                     expr: Temp(
-                                                        "T11",
+                                                        "T8",
                                                     ),
                                                 },
                                             ],
@@ -265,12 +265,12 @@ expression: "&res"
                                     right: None,
                                 },
                                 expr: Temp(
-                                    "T14",
+                                    "T10",
                                 ),
                             },
                         },
                         expr: Temp(
-                            "T10",
+                            "T7",
                         ),
                     },
                 ],
