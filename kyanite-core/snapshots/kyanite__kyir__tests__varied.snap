@@ -15,25 +15,25 @@ expression: "&res"
                             op: Cmp(
                                 Equal,
                             ),
-                            left: Binary(
-                                Cmp(
+                            left: Binary {
+                                op: Cmp(
                                     Equal,
                                 ),
-                                Mem(
-                                    Binary(
-                                        Plus,
-                                        Temp(
+                                left: Mem(
+                                    Binary {
+                                        op: Plus,
+                                        left: Temp(
                                             "rbp",
                                         ),
-                                        ConstInt(
+                                        right: ConstInt(
                                             0,
                                         ),
-                                    ),
+                                    },
                                 ),
-                                ConstInt(
+                                right: ConstInt(
                                     0,
                                 ),
-                            ),
+                            },
                             right: ConstInt(
                                 1,
                             ),
@@ -86,42 +86,42 @@ expression: "&res"
                 target: Temp(
                     "rax",
                 ),
-                expr: Binary(
-                    Mul,
-                    Mem(
-                        Binary(
-                            Plus,
-                            Temp(
+                expr: Binary {
+                    op: Mul,
+                    left: Mem(
+                        Binary {
+                            op: Plus,
+                            left: Temp(
                                 "rbp",
                             ),
-                            ConstInt(
+                            right: ConstInt(
                                 0,
                             ),
-                        ),
+                        },
                     ),
-                    Call(
+                    right: Call(
                         "factorial",
                         [
-                            Binary(
-                                Minus,
-                                Mem(
-                                    Binary(
-                                        Plus,
-                                        Temp(
+                            Binary {
+                                op: Minus,
+                                left: Mem(
+                                    Binary {
+                                        op: Plus,
+                                        left: Temp(
                                             "rbp",
                                         ),
-                                        ConstInt(
+                                        right: ConstInt(
                                             0,
                                         ),
-                                    ),
+                                    },
                                 ),
-                                ConstInt(
+                                right: ConstInt(
                                     1,
                                 ),
-                            ),
+                            },
                         ],
                     ),
-                ),
+                },
             },
         ),
     },
@@ -129,42 +129,42 @@ expression: "&res"
         target: Temp(
             "rax",
         ),
-        expr: Binary(
-            Plus,
-            ConstInt(
+        expr: Binary {
+            op: Plus,
+            left: ConstInt(
                 5,
             ),
-            Binary(
-                Mul,
-                ConstInt(
+            right: Binary {
+                op: Mul,
+                left: ConstInt(
                     2,
                 ),
-                Mem(
-                    Binary(
-                        Plus,
-                        Temp(
+                right: Mem(
+                    Binary {
+                        op: Plus,
+                        left: Temp(
                             "rbp",
                         ),
-                        ConstInt(
+                        right: ConstInt(
                             0,
                         ),
-                    ),
+                    },
                 ),
-            ),
-        ),
+            },
+        },
     },
     Seq {
         left: Move {
             target: Mem(
-                Binary(
-                    Plus,
-                    Temp(
+                Binary {
+                    op: Plus,
+                    left: Temp(
                         "rbp",
                     ),
-                    ConstInt(
-                        8,
+                    right: ConstInt(
+                        -8,
                     ),
-                ),
+                },
             ),
             expr: ConstInt(
                 0,
@@ -175,207 +175,207 @@ expression: "&res"
                 target: Temp(
                     "rax",
                 ),
-                expr: Binary(
-                    Plus,
-                    Binary(
-                        Plus,
-                        Binary(
-                            Plus,
-                            ESeq {
+                expr: Binary {
+                    op: Plus,
+                    left: Binary {
+                        op: Plus,
+                        left: Binary {
+                            op: Plus,
+                            left: ESeq {
                                 stmt: Seq {
                                     left: Move {
                                         target: Temp(
-                                            "N0",
+                                            "T8",
                                         ),
                                         expr: Mem(
-                                            Binary(
-                                                Plus,
-                                                Temp(
+                                            Binary {
+                                                op: Plus,
+                                                left: Temp(
                                                     "rbp",
                                                 ),
-                                                ConstInt(
+                                                right: ConstInt(
                                                     0,
                                                 ),
-                                            ),
+                                            },
                                         ),
                                     },
                                     right: Some(
                                         Move {
                                             target: Temp(
-                                                "N0",
+                                                "T8",
                                             ),
                                             expr: Mem(
-                                                Binary(
-                                                    Plus,
-                                                    Temp(
-                                                        "N0",
+                                                Binary {
+                                                    op: Plus,
+                                                    left: Temp(
+                                                        "T8",
                                                     ),
-                                                    ConstInt(
+                                                    right: ConstInt(
                                                         0,
                                                     ),
-                                                ),
+                                                },
                                             ),
                                         },
                                     ),
                                 },
                                 expr: Temp(
-                                    "N0",
+                                    "T8",
                                 ),
                             },
-                            ESeq {
+                            right: ESeq {
                                 stmt: Seq {
                                     left: Move {
                                         target: Temp(
-                                            "N1",
+                                            "T9",
                                         ),
                                         expr: Mem(
-                                            Binary(
-                                                Plus,
-                                                Temp(
+                                            Binary {
+                                                op: Plus,
+                                                left: Temp(
                                                     "rbp",
                                                 ),
-                                                ConstInt(
+                                                right: ConstInt(
                                                     0,
                                                 ),
-                                            ),
+                                            },
                                         ),
                                     },
                                     right: Some(
                                         Move {
                                             target: Temp(
-                                                "N1",
+                                                "T9",
                                             ),
                                             expr: Mem(
-                                                Binary(
-                                                    Plus,
-                                                    Temp(
-                                                        "N1",
+                                                Binary {
+                                                    op: Plus,
+                                                    left: Temp(
+                                                        "T9",
                                                     ),
-                                                    ConstInt(
+                                                    right: ConstInt(
                                                         8,
                                                     ),
-                                                ),
+                                                },
                                             ),
                                         },
                                     ),
                                 },
                                 expr: Temp(
-                                    "N1",
+                                    "T9",
                                 ),
                             },
-                        ),
-                        ESeq {
+                        },
+                        right: ESeq {
                             stmt: Seq {
                                 left: Move {
                                     target: Temp(
-                                        "N2",
+                                        "T10",
                                     ),
                                     expr: Mem(
-                                        Binary(
-                                            Plus,
-                                            Temp(
+                                        Binary {
+                                            op: Plus,
+                                            left: Temp(
                                                 "rbp",
                                             ),
-                                            ConstInt(
+                                            right: ConstInt(
                                                 0,
                                             ),
-                                        ),
+                                        },
                                     ),
                                 },
                                 right: Some(
                                     Move {
                                         target: Temp(
-                                            "N2",
+                                            "T10",
                                         ),
                                         expr: Mem(
-                                            Binary(
-                                                Plus,
-                                                Temp(
-                                                    "N2",
+                                            Binary {
+                                                op: Plus,
+                                                left: Temp(
+                                                    "T10",
                                                 ),
-                                                ConstInt(
+                                                right: ConstInt(
                                                     16,
                                                 ),
-                                            ),
+                                            },
                                         ),
                                     },
                                 ),
                             },
                             expr: Temp(
-                                "N2",
+                                "T10",
                             ),
                         },
-                    ),
-                    ESeq {
+                    },
+                    right: ESeq {
                         stmt: Seq {
                             left: Move {
                                 target: Temp(
-                                    "N3",
+                                    "T11",
                                 ),
                                 expr: Mem(
-                                    Binary(
-                                        Plus,
-                                        Temp(
+                                    Binary {
+                                        op: Plus,
+                                        left: Temp(
                                             "rbp",
                                         ),
-                                        ConstInt(
+                                        right: ConstInt(
                                             0,
                                         ),
-                                    ),
+                                    },
                                 ),
                             },
                             right: Some(
                                 Move {
                                     target: Temp(
-                                        "N3",
+                                        "T11",
                                     ),
                                     expr: Mem(
-                                        Binary(
-                                            Plus,
-                                            Temp(
-                                                "N3",
+                                        Binary {
+                                            op: Plus,
+                                            left: Temp(
+                                                "T11",
                                             ),
-                                            ConstInt(
+                                            right: ConstInt(
                                                 24,
                                             ),
-                                        ),
+                                        },
                                     ),
                                 },
                             ),
                         },
                         expr: Temp(
-                            "N3",
+                            "T11",
                         ),
                     },
-                ),
+                },
             },
         ),
     },
     Seq {
         left: Move {
             target: Mem(
-                Binary(
-                    Plus,
-                    Temp(
+                Binary {
+                    op: Plus,
+                    left: Temp(
                         "rbp",
                     ),
-                    ConstInt(
+                    right: ConstInt(
                         0,
                     ),
-                ),
+                },
             ),
             expr: ESeq {
                 stmt: Seq {
                     left: Move {
-                        target: Binary(
-                            Plus,
-                            Temp(
+                        target: Binary {
+                            op: Plus,
+                            left: Temp(
                                 "rbp",
                             ),
-                            ConstInt(
+                            right: ConstInt(
                                 -32,
                             ),
-                        ),
+                        },
                         expr: ConstInt(
                             1,
                         ),
@@ -383,15 +383,15 @@ expression: "&res"
                     right: Some(
                         Seq {
                             left: Move {
-                                target: Binary(
-                                    Plus,
-                                    Temp(
+                                target: Binary {
+                                    op: Plus,
+                                    left: Temp(
                                         "rbp",
                                     ),
-                                    ConstInt(
+                                    right: ConstInt(
                                         -24,
                                     ),
-                                ),
+                                },
                                 expr: ConstInt(
                                     2,
                                 ),
@@ -399,30 +399,30 @@ expression: "&res"
                             right: Some(
                                 Seq {
                                     left: Move {
-                                        target: Binary(
-                                            Plus,
-                                            Temp(
+                                        target: Binary {
+                                            op: Plus,
+                                            left: Temp(
                                                 "rbp",
                                             ),
-                                            ConstInt(
+                                            right: ConstInt(
                                                 -16,
                                             ),
-                                        ),
+                                        },
                                         expr: ConstInt(
                                             3,
                                         ),
                                     },
                                     right: Some(
                                         Move {
-                                            target: Binary(
-                                                Plus,
-                                                Temp(
+                                            target: Binary {
+                                                op: Plus,
+                                                left: Temp(
                                                     "rbp",
                                                 ),
-                                                ConstInt(
+                                                right: ConstInt(
                                                     -8,
                                                 ),
-                                            ),
+                                            },
                                             expr: ConstInt(
                                                 4,
                                             ),
@@ -442,27 +442,27 @@ expression: "&res"
             Seq {
                 left: Move {
                     target: Mem(
-                        Binary(
-                            Plus,
-                            Temp(
+                        Binary {
+                            op: Plus,
+                            left: Temp(
                                 "rbp",
                             ),
-                            ConstInt(
+                            right: ConstInt(
                                 -40,
                             ),
-                        ),
+                        },
                     ),
                     expr: ESeq {
                         stmt: Move {
-                            target: Binary(
-                                Plus,
-                                Temp(
+                            target: Binary {
+                                op: Plus,
+                                left: Temp(
                                     "rbp",
                                 ),
-                                ConstInt(
+                                right: ConstInt(
                                     -48,
                                 ),
-                            ),
+                            },
                             expr: ConstInt(
                                 5,
                             ),
@@ -476,15 +476,15 @@ expression: "&res"
                     Seq {
                         left: Move {
                             target: Mem(
-                                Binary(
-                                    Plus,
-                                    Temp(
+                                Binary {
+                                    op: Plus,
+                                    left: Temp(
                                         "rbp",
                                     ),
-                                    ConstInt(
+                                    right: ConstInt(
                                         -56,
                                     ),
-                                ),
+                                },
                             ),
                             expr: ConstInt(
                                 5,
@@ -494,33 +494,33 @@ expression: "&res"
                             Seq {
                                 left: Move {
                                     target: Mem(
-                                        Binary(
-                                            Plus,
-                                            Temp(
+                                        Binary {
+                                            op: Plus,
+                                            left: Temp(
                                                 "rbp",
                                             ),
-                                            ConstInt(
+                                            right: ConstInt(
                                                 -64,
                                             ),
-                                        ),
+                                        },
                                     ),
                                     expr: ESeq {
                                         stmt: Move {
                                             target: Temp(
-                                                "N7",
+                                                "T15",
                                             ),
-                                            expr: Binary(
-                                                Plus,
-                                                Temp(
+                                            expr: Binary {
+                                                op: Plus,
+                                                left: Temp(
                                                     "rbp",
                                                 ),
-                                                ConstInt(
+                                                right: ConstInt(
                                                     -24,
                                                 ),
-                                            ),
+                                            },
                                         },
                                         expr: Temp(
-                                            "N7",
+                                            "T15",
                                         ),
                                     },
                                 },

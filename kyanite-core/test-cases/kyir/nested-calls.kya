@@ -1,0 +1,21 @@
+fun foo(a: int, b: int): int {
+    return a * b;
+}
+
+fun bar(a: int): int {
+    return a;
+}
+
+fun baz(b: int): int {
+    return b;
+}
+
+fun binary(a: int, b: int): int {
+    return bar(a) + bar(b);
+}
+
+fun main() {
+    let x: int = foo(bar(baz(5)), bar(baz(6)));
+    let y: int = binary(5, 6);
+    binary(9, 10);
+}

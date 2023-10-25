@@ -1,0 +1,323 @@
+---
+source: kyanite-core/src/kyir/canon.rs
+expression: "&res"
+---
+[
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Binary {
+            op: Mul,
+            left: Mem(
+                Binary {
+                    op: Plus,
+                    left: Temp(
+                        "rbp",
+                    ),
+                    right: ConstInt(
+                        0,
+                    ),
+                },
+            ),
+            right: ESeq {
+                stmt: Move {
+                    target: Temp(
+                        "T0",
+                    ),
+                    expr: Binary {
+                        op: Plus,
+                        left: Temp(
+                            "rbp",
+                        ),
+                        right: ConstInt(
+                            -8,
+                        ),
+                    },
+                },
+                expr: Temp(
+                    "T0",
+                ),
+            },
+        },
+    },
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Mem(
+            Binary {
+                op: Plus,
+                left: Temp(
+                    "rbp",
+                ),
+                right: ConstInt(
+                    0,
+                ),
+            },
+        ),
+    },
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Mem(
+            Binary {
+                op: Plus,
+                left: Temp(
+                    "rbp",
+                ),
+                right: ConstInt(
+                    0,
+                ),
+            },
+        ),
+    },
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Binary {
+            op: Plus,
+            left: ESeq {
+                stmt: Seq {
+                    left: Move {
+                        target: Temp(
+                            "T2",
+                        ),
+                        expr: Call(
+                            "bar",
+                            [
+                                Mem(
+                                    Binary {
+                                        op: Plus,
+                                        left: Temp(
+                                            "rbp",
+                                        ),
+                                        right: ConstInt(
+                                            0,
+                                        ),
+                                    },
+                                ),
+                            ],
+                        ),
+                    },
+                    right: None,
+                },
+                expr: Temp(
+                    "T2",
+                ),
+            },
+            right: ESeq {
+                stmt: Seq {
+                    left: Move {
+                        target: Temp(
+                            "T4",
+                        ),
+                        expr: Call(
+                            "bar",
+                            [
+                                Mem(
+                                    Binary {
+                                        op: Plus,
+                                        left: Temp(
+                                            "rbp",
+                                        ),
+                                        right: ConstInt(
+                                            -8,
+                                        ),
+                                    },
+                                ),
+                            ],
+                        ),
+                    },
+                    right: None,
+                },
+                expr: Temp(
+                    "T4",
+                ),
+            },
+        },
+    },
+    Seq {
+        left: Move {
+            target: Mem(
+                Binary {
+                    op: Plus,
+                    left: Temp(
+                        "rbp",
+                    ),
+                    right: ConstInt(
+                        0,
+                    ),
+                },
+            ),
+            expr: Call(
+                "foo",
+                [
+                    ESeq {
+                        stmt: Move {
+                            target: Temp(
+                                "T5",
+                            ),
+                            expr: ESeq {
+                                stmt: Seq {
+                                    left: Move {
+                                        target: Temp(
+                                            "T9",
+                                        ),
+                                        expr: Call(
+                                            "bar",
+                                            [
+                                                ESeq {
+                                                    stmt: Move {
+                                                        target: Temp(
+                                                            "T6",
+                                                        ),
+                                                        expr: ESeq {
+                                                            stmt: Seq {
+                                                                left: Move {
+                                                                    target: Temp(
+                                                                        "T8",
+                                                                    ),
+                                                                    expr: Call(
+                                                                        "baz",
+                                                                        [
+                                                                            ConstInt(
+                                                                                5,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                },
+                                                                right: None,
+                                                            },
+                                                            expr: Temp(
+                                                                "T8",
+                                                            ),
+                                                        },
+                                                    },
+                                                    expr: Temp(
+                                                        "T6",
+                                                    ),
+                                                },
+                                            ],
+                                        ),
+                                    },
+                                    right: None,
+                                },
+                                expr: Temp(
+                                    "T9",
+                                ),
+                            },
+                        },
+                        expr: Temp(
+                            "T5",
+                        ),
+                    },
+                    ESeq {
+                        stmt: Move {
+                            target: Temp(
+                                "T10",
+                            ),
+                            expr: ESeq {
+                                stmt: Seq {
+                                    left: Move {
+                                        target: Temp(
+                                            "T14",
+                                        ),
+                                        expr: Call(
+                                            "bar",
+                                            [
+                                                ESeq {
+                                                    stmt: Move {
+                                                        target: Temp(
+                                                            "T11",
+                                                        ),
+                                                        expr: ESeq {
+                                                            stmt: Seq {
+                                                                left: Move {
+                                                                    target: Temp(
+                                                                        "T13",
+                                                                    ),
+                                                                    expr: Call(
+                                                                        "baz",
+                                                                        [
+                                                                            ConstInt(
+                                                                                6,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                },
+                                                                right: None,
+                                                            },
+                                                            expr: Temp(
+                                                                "T13",
+                                                            ),
+                                                        },
+                                                    },
+                                                    expr: Temp(
+                                                        "T11",
+                                                    ),
+                                                },
+                                            ],
+                                        ),
+                                    },
+                                    right: None,
+                                },
+                                expr: Temp(
+                                    "T14",
+                                ),
+                            },
+                        },
+                        expr: Temp(
+                            "T10",
+                        ),
+                    },
+                ],
+            ),
+        },
+        right: Some(
+            Seq {
+                left: Move {
+                    target: Mem(
+                        Binary {
+                            op: Plus,
+                            left: Temp(
+                                "rbp",
+                            ),
+                            right: ConstInt(
+                                -8,
+                            ),
+                        },
+                    ),
+                    expr: Call(
+                        "binary",
+                        [
+                            ConstInt(
+                                5,
+                            ),
+                            ConstInt(
+                                6,
+                            ),
+                        ],
+                    ),
+                },
+                right: Some(
+                    Expr(
+                        Call(
+                            "binary",
+                            [
+                                ConstInt(
+                                    9,
+                                ),
+                                ConstInt(
+                                    10,
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            },
+        ),
+    },
+]

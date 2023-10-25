@@ -24,7 +24,7 @@ impl Frame for Amd64 {
         let mut offset = 0;
         for (i, param) in func.params.iter().enumerate() {
             variables.insert(param.name.to_string(), offset);
-            offset += i64::try_from((i + 1) * Self::word_size()).unwrap();
+            offset -= i64::try_from((i + 1) * Self::word_size()).unwrap();
         }
         Self {
             formals: func
@@ -56,22 +56,22 @@ impl Frame for Amd64 {
                         // movq offset(%rbp), %temp
                         left: Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
-                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
-                                BinOp::Plus,
-                                Box::new(Expr::Temp(registers.frame.to_string())),
-                                Box::new(Expr::ConstInt(offset)),
-                            )))),
+                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary {
+                                op: BinOp::Plus,
+                                left: Box::new(Expr::Temp(registers.frame.to_string())),
+                                right: Box::new(Expr::ConstInt(offset)),
+                            }))),
                         }),
                         // movq index*8(%temp), %temp
                         right: Some(Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
-                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary(
-                                BinOp::Plus,
-                                Box::new(Expr::Temp(temp.clone())),
-                                Box::new(Expr::ConstInt(
+                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary {
+                                op: BinOp::Plus,
+                                left: Box::new(Expr::Temp(temp.clone())),
+                                right: Box::new(Expr::ConstInt(
                                     i64::try_from(index * Self::word_size()).unwrap(),
                                 )),
-                            )))),
+                            }))),
                         })),
                     }),
                     expr: Box::new(Expr::Temp(temp)),
@@ -85,11 +85,11 @@ impl Frame for Amd64 {
         } else {
             offset
         };
-        Box::new(Expr::Mem(Box::new(Expr::Binary(
-            BinOp::Plus,
-            Box::new(Expr::Temp(registers.frame.to_string())),
-            Box::new(Expr::ConstInt(offset)),
-        ))))
+        Box::new(Expr::Mem(Box::new(Expr::Binary {
+            op: BinOp::Plus,
+            left: Box::new(Expr::Temp(registers.frame.to_string())),
+            right: Box::new(Expr::ConstInt(offset)),
+        })))
     }
 
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Box<Expr> {

@@ -1,0 +1,120 @@
+---
+source: kyanite-core/src/kyir/mod.rs
+expression: "&res"
+---
+[
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Binary {
+            op: Mul,
+            left: Mem(
+                Binary {
+                    op: Plus,
+                    left: Temp(
+                        "rbp",
+                    ),
+                    right: ConstInt(
+                        0,
+                    ),
+                },
+            ),
+            right: ESeq {
+                stmt: Move {
+                    target: Temp(
+                        "T0",
+                    ),
+                    expr: Binary {
+                        op: Plus,
+                        left: Temp(
+                            "rbp",
+                        ),
+                        right: ConstInt(
+                            -8,
+                        ),
+                    },
+                },
+                expr: Temp(
+                    "T0",
+                ),
+            },
+        },
+    },
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Mem(
+            Binary {
+                op: Plus,
+                left: Temp(
+                    "rbp",
+                ),
+                right: ConstInt(
+                    0,
+                ),
+            },
+        ),
+    },
+    Move {
+        target: Temp(
+            "rax",
+        ),
+        expr: Mem(
+            Binary {
+                op: Plus,
+                left: Temp(
+                    "rbp",
+                ),
+                right: ConstInt(
+                    0,
+                ),
+            },
+        ),
+    },
+    Move {
+        target: Mem(
+            Binary {
+                op: Plus,
+                left: Temp(
+                    "rbp",
+                ),
+                right: ConstInt(
+                    0,
+                ),
+            },
+        ),
+        expr: Call(
+            "foo",
+            [
+                Call(
+                    "bar",
+                    [
+                        Call(
+                            "baz",
+                            [
+                                ConstInt(
+                                    5,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Call(
+                    "bar",
+                    [
+                        Call(
+                            "baz",
+                            [
+                                ConstInt(
+                                    6,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    },
+]
