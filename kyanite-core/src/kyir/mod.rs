@@ -13,9 +13,12 @@ use crate::{
 use self::arch::Frame;
 
 mod arch;
+mod blocks;
 mod canon;
+mod eseq;
+mod rewrite;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinOp {
     Plus,
     Minus,
@@ -47,7 +50,7 @@ impl From<TokenKind> for BinOp {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RelOp {
     Equal,
     NotEqual,
@@ -76,7 +79,7 @@ impl Label {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     ConstInt(i64),
     ConstFloat(f64),
@@ -91,10 +94,19 @@ pub enum Expr {
     ESeq {
         stmt: Box<Stmt>,
         expr: Box<Expr>,
+        id: usize,
     },
 }
 
-#[derive(Debug, Clone)]
+impl Expr {
+    fn eseq(stmt: Box<Stmt>, expr: Box<Expr>) -> Self {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
+        Self::ESeq { stmt, expr, id }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     /// Moves `expr` into the location specified by `target` (either a temporary or a memory offset in the frame)
     Move {
@@ -122,24 +134,24 @@ pub enum Stmt {
 fn fix(expr: Box<Expr>) -> Expr {
     // Refuse to handle moves from memory address to memory address because unsupported
     let temp = Temp::new();
-    Expr::ESeq {
-        stmt: Box::new(Stmt::Move {
+    Expr::eseq(
+        Box::new(Stmt::Move {
             target: Box::new(Expr::Temp(temp.clone())),
             expr,
         }),
-        expr: Box::new(Expr::Temp(temp)),
-    }
+        Box::new(Expr::Temp(temp)),
+    )
 }
 
 impl Expr {
     fn checked_binary(op: BinOp, left: Box<Expr>, right: Expr) -> Self {
         let right = match (&*left, right) {
             (Expr::Mem(_), Expr::Mem(expr)) => fix(expr),
-            (Expr::Mem(_), Expr::ESeq { stmt, expr }) => {
+            (Expr::Mem(_), Expr::ESeq { stmt, expr, id }) => {
                 if matches!(*expr, Expr::Mem(_)) {
                     fix(expr)
                 } else {
-                    Expr::ESeq { stmt, expr }
+                    Expr::ESeq { stmt, expr, id }
                 }
             }
             (_, right) => right,
@@ -156,11 +168,11 @@ impl Stmt {
     fn checked_move(target: Box<Expr>, expr: Expr) -> Self {
         let expr = match (&*target, expr) {
             (Expr::Mem(_), Expr::Mem(expr)) => fix(expr),
-            (Expr::Mem(_), Expr::ESeq { stmt, expr }) => {
+            (Expr::Mem(_), Expr::ESeq { stmt, expr, id }) => {
                 if matches!(*expr, Expr::Mem(_)) {
                     fix(expr)
                 } else {
-                    Expr::ESeq { stmt, expr }
+                    Expr::ESeq { stmt, expr, id }
                 }
             }
             (_, expr) => expr,
@@ -168,6 +180,14 @@ impl Stmt {
         Self::Move {
             target,
             expr: Box::new(expr),
+        }
+    }
+
+    fn label(&self) -> String {
+        match self {
+            Stmt::Seq { left, .. } => left.label(),
+            Stmt::Label(label) => label.clone(),
+            _ => panic!("called `Stmt::label()` on a non-label statement"),
         }
     }
 }
@@ -234,7 +254,6 @@ impl<'a, F: Frame> Translator<'a, F> {
         }
     }
 
-    #[allow(dead_code)]
     pub fn translate(&mut self, ast: &[AstDecl]) -> Vec<Stmt> {
         ast.iter().map(|decl| decl.translate(self)).collect()
     }
@@ -334,6 +353,7 @@ impl Translate<Expr> for AstExpr {
                 Expr::ESeq {
                     stmt: Box::new(Stmt::from(&stmts[..])),
                     expr: Box::new(Expr::ConstInt(begin)),
+                    id,
                 }
             }
         }
@@ -446,10 +466,9 @@ impl Translate<Stmt> for AstDecl {
                 translator.functions.insert(function.id, frame);
                 translator.function = Some(function.id);
                 // Translate the body of the function
-                let stmts: Vec<Stmt> = function
-                    .body
-                    .iter()
-                    .map(|stmt| stmt.translate(translator))
+                let stmts: Vec<Stmt> = vec![Stmt::Label(function.name.to_string())]
+                    .into_iter()
+                    .chain(function.body.iter().map(|stmt| stmt.translate(translator)))
                     .collect();
                 Stmt::from(&stmts[..])
             }
@@ -459,45 +478,45 @@ impl Translate<Stmt> for AstDecl {
     }
 }
 
-macro_rules! assert_ir {
-    ($($path:expr => $name:ident),*) => {
-        #[cfg(test)]
-        mod tests {
-            use std::collections::HashMap;
+// FIXME: omit because serialized labels and temporaries may differ between runs
+// macro_rules! assert_ir {
+//     ($($path:expr => $name:ident),*) => {
+//         #[cfg(test)]
+//         mod tests {
+//             use std::collections::HashMap;
 
-            use crate::{
-                ast,
-                kyir::Translator,
-                pass::{SymbolTable, TypeCheckPass},
-                PipelineError, Source,
-            };
+//             use crate::{
+//                 ast,
+//                 kyir::Translator,
+//                 pass::{SymbolTable, TypeCheckPass},
+//                 PipelineError, Source,
+//             };
 
-            use super::arch::amd64::Amd64;
+//             use super::arch::amd64::Amd64;
 
-            $(
-                #[test]
-                fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let source = Source::new($path)?;
-                    let ast = ast::Ast::from_source(&source)?;
-                    let symbols = SymbolTable::from(&ast.nodes);
-                    let mut accesses = HashMap::new();
-                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
-                    pass.run().map_err(PipelineError::TypeError)?;
-                    let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
-                    let res = translator.translate(&ast.nodes);
-                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
-                        insta::assert_debug_snapshot!(&res);
-                    });
+//             $(
+//                 #[test]
+//                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
+//                     let source = Source::new($path)?;
+//                     let ast = ast::Ast::from_source(&source)?;
+//                     let symbols = SymbolTable::from(&ast.nodes);
+//                     let mut accesses = HashMap::new();
+//                     let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+//                     pass.run().map_err(PipelineError::TypeError)?;
+//                     let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
+//                     let res = translator.translate(&ast.nodes);
+//                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
+//                         insta::assert_debug_snapshot!(&res);
+//                     });
 
-                    Ok(())
-                }
-            )*
-        }
-    };
-}
+//                     Ok(())
+//                 }
+//             )*
+//         }
+//     };
+// }
 
-// omit because serialized labels and temporaries may differ between runs
-assert_ir!(
-    // "test-cases/kyir/varied.kya" => varied,
-    // "test-cases/kyir/nested-calls.kya" => nested_calls
-);
+// assert_ir!(
+//     "test-cases/kyir/varied.kya" => varied,
+//     "test-cases/kyir/nested-calls.kya" => nested_calls
+// );

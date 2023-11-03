@@ -1,99 +1,82 @@
-use super::{Expr, Stmt, Temp};
+use std::collections::HashMap;
+
+use crate::kyir::Expr;
+
+use super::{blocks::BasicBlocks, eseq::ESeqs, rewrite::Rewrite, Stmt};
+
+pub trait Extract {
+    fn extract(self, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Expr>)>);
+}
+
+impl Extract for Stmt {
+    fn extract(self, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Expr>)>) {
+        match self {
+            Stmt::Seq { left, right } => {
+                left.extract(ir, replacements);
+                if let Some(right) = right {
+                    right.extract(ir, replacements);
+                }
+            }
+            Stmt::Move { expr, target } => {
+                update(&expr, ir, replacements);
+                ir.push(Stmt::Move {
+                    target: target.clone(),
+                    expr: expr.clone(),
+                });
+            }
+            Stmt::Label(_) => ir.push(self),
+            Stmt::Noop => ir.push(self),
+            Stmt::Jump(_) => ir.push(self),
+            Stmt::Expr(_) => ir.push(self),
+            Stmt::CJump {
+                left,
+                right,
+                op,
+                t,
+                f,
+            } => {
+                update(&right, ir, replacements);
+                update(&left, ir, replacements);
+                ir.push(Stmt::CJump {
+                    left: left.clone(),
+                    right: right.clone(),
+                    op,
+                    t,
+                    f,
+                });
+            }
+        }
+    }
+}
+
+fn update(expr: &Expr, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Expr>)>) {
+    let mut nested = vec![];
+    expr.eseqs(&mut nested);
+    for expr in nested.iter().rev() {
+        if let Expr::ESeq {
+            stmt,
+            expr: temp,
+            id: search,
+        } = expr
+        {
+            if let Stmt::Seq { left, right } = *stmt.clone() {
+                ir.push(*left);
+                if let Some(right) = right {
+                    ir.push(*right);
+                }
+            } else {
+                ir.push(*stmt.clone());
+            }
+            replacements.push((*search, temp.clone()));
+        } else {
+            unreachable!()
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Canon {
     ir: Vec<Stmt>,
-}
-
-/// Rewrite any [`Expr::Call`] to [`Expr::ESeq`] if it is not
-/// the immediate child of a [`Stmt::Move`] or [`Stmt::Exp`]
-trait CallRewrite<R> {
-    fn rewrite(self, immediate: bool) -> R;
-}
-
-impl CallRewrite<Vec<Expr>> for Vec<Expr> {
-    fn rewrite(self, immediate: bool) -> Vec<Expr> {
-        self.into_iter()
-            .map(|arg| match arg {
-                Expr::Call(..) => {
-                    let temp = Temp::new();
-                    Expr::ESeq {
-                        stmt: Box::new(Stmt::Move {
-                            target: Box::new(Expr::Temp(temp.clone())),
-                            expr: Box::new(arg.rewrite(immediate)),
-                        }),
-                        expr: Box::new(Expr::Temp(temp)),
-                    }
-                }
-                _ => arg,
-            })
-            .collect()
-    }
-}
-
-impl CallRewrite<Expr> for Expr {
-    fn rewrite(self, immediate: bool) -> Expr {
-        match self {
-            Expr::Call(name, args) => {
-                let args = args.rewrite(false);
-                if !immediate {
-                    let temp = Temp::new();
-                    Expr::ESeq {
-                        stmt: Box::new(Stmt::Seq {
-                            left: Box::new(Stmt::Move {
-                                target: Box::new(Expr::Temp(temp.clone())),
-                                expr: Box::new(Expr::Call(name, args)),
-                            }),
-                            right: None,
-                        }),
-                        expr: Box::new(Expr::Temp(temp)),
-                    }
-                } else {
-                    Expr::Call(name, args)
-                }
-            }
-            Expr::Binary { left, right, op } => {
-                let left = left.rewrite(false);
-                let right = right.rewrite(false);
-                Expr::Binary {
-                    left: Box::new(left),
-                    right: Box::new(right),
-                    op,
-                }
-            }
-            _ => self,
-        }
-    }
-}
-
-impl CallRewrite<Stmt> for Stmt {
-    fn rewrite(self, _: bool) -> Stmt {
-        match self {
-            Stmt::Expr(e) => Stmt::Expr(Box::new(e.rewrite(true))),
-            Stmt::Seq { left, right } => Stmt::Seq {
-                left: Box::new(left.rewrite(false)),
-                right: right.map(|item| Box::new(item.rewrite(false))),
-            },
-            Stmt::Move { target, expr } => Stmt::Move {
-                target,
-                expr: Box::new(expr.rewrite(true)),
-            },
-            Stmt::CJump {
-                left,
-                right,
-                t,
-                f,
-                op,
-            } => Stmt::CJump {
-                left: Box::new(left.rewrite(false)),
-                right: Box::new(right.rewrite(false)),
-                t,
-                f,
-                op,
-            },
-            _ => self,
-        }
-    }
 }
 
 impl Canon {
@@ -110,51 +93,69 @@ impl Canon {
             .into_iter()
             .map(|item| item.rewrite(false))
             .collect();
-        // TODO: eliminate `Expr::ESeq`
-        self.ir
+        let mut ir = HashMap::new();
+        let mut replacements = vec![];
+        for item in self.ir.into_iter() {
+            let name = item.label();
+            let mut body = vec![];
+            item.extract(&mut body, &mut replacements);
+            ir.insert(name, body);
+        }
+        for (search, temp) in replacements {
+            for item in ir.values_mut() {
+                for stmt in item.iter_mut() {
+                    stmt.replace(search, &temp);
+                }
+            }
+        }
+        let mut basic_blocks = BasicBlocks::new(ir);
+        basic_blocks.build();
+        dbg!(&basic_blocks.blocks);
+        vec![]
     }
 }
 
-macro_rules! assert_ir {
-    ($($path:expr => $name:ident),*) => {
-        #[cfg(test)]
-        mod tests {
-            use std::collections::HashMap;
+// FIXME: omit because serialized labels and temporaries may differ between runs
+// macro_rules! assert_ir {
+//     ($($path:expr => $name:ident),*) => {
+//         #[cfg(test)]
+//         mod tests {
+//             use std::collections::HashMap;
 
-            use crate::{
-                ast,
-                kyir::{Translator, arch::amd64::Amd64},
-                pass::{SymbolTable, TypeCheckPass},
-                PipelineError, Source,
-            };
+//             use crate::{
+//                 ast,
+//                 kyir::{Translator, arch::amd64::Amd64},
+//                 pass::{SymbolTable, TypeCheckPass},
+//                 PipelineError, Source,
+//             };
 
-            use super::Canon;
+//             use super::Canon;
 
-            $(
-                #[test]
-                fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let source = Source::new($path)?;
-                    let ast = ast::Ast::from_source(&source)?;
-                    let symbols = SymbolTable::from(&ast.nodes);
-                    let mut accesses = HashMap::new();
-                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
-                    pass.run().map_err(PipelineError::TypeError)?;
-                    let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
-                    let res = translator.translate(&ast.nodes);
-                    let canon = Canon::new(res);
-                    let res = canon.canonicalize();
-                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
-                        insta::assert_debug_snapshot!(&res);
-                    });
+//             $(
+//                 #[test]
+//                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
+//                     let source = Source::new($path)?;
+//                     let ast = ast::Ast::from_source(&source)?;
+//                     let symbols = SymbolTable::from(&ast.nodes);
+//                     let mut accesses = HashMap::new();
+//                     let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+//                     pass.run().map_err(PipelineError::TypeError)?;
+//                     let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
+//                     let res = translator.translate(&ast.nodes);
+//                     let canon = Canon::new(res);
+//                     let canonicalized = canon.canonicalize();
+//                     dbg!(&canonicalized);
+//                     // insta::with_settings!({snapshot_path => "../../snapshots"}, {
+//                     //     insta::assert_debug_snapshot!(&res);
+//                     // });
 
-                    Ok(())
-                }
-            )*
-        }
-    };
-}
+//                     Ok(())
+//                 }
+//             )*
+//         }
+//     };
+// }
 
-// omit because serialized labels and temporaries may differ between runs
-assert_ir!(
-    // "test-cases/kyir/nested-calls.kya" => nested_calls
-);
+// assert_ir!(
+//     "test-cases/kyir/nested-calls.kya" => nested_calls
+// );

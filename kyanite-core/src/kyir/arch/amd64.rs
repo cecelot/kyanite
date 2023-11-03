@@ -51,8 +51,8 @@ impl Frame for Amd64 {
                 // current frame (passed to the function using `lea`). So: first move the record
                 // ptr into %temp, then dereference it, accessing the (index*8)th word.
                 // Finally, return %temp.
-                return Box::new(Expr::ESeq {
-                    stmt: Box::new(Stmt::Seq {
+                return Box::new(Expr::eseq(
+                    Box::new(Stmt::Seq {
                         // movq offset(%rbp), %temp
                         left: Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
@@ -74,8 +74,8 @@ impl Frame for Amd64 {
                             }))),
                         })),
                     }),
-                    expr: Box::new(Expr::Temp(temp)),
-                });
+                    Box::new(Expr::Temp(temp)),
+                ));
             }
         }
         let offset = if let Some(index) = index {
