@@ -332,7 +332,7 @@ impl Translate<Expr> for AstExpr {
                 let frame = translator.functions.get_mut(&id).unwrap();
                 frame.allocate(translator.symbols, &name, Some(&ty));
                 let begin = frame.get_offset(&name);
-                let end = begin - i64::try_from((initializers.len() - 1) * 8).unwrap();
+                let end = begin - i64::try_from((initializers.len() - 1) * F::word_size()).unwrap();
                 let stmts: Vec<Stmt> = initializers
                     .into_iter()
                     .enumerate()
@@ -342,7 +342,7 @@ impl Translate<Expr> for AstExpr {
                                 op: BinOp::Plus,
                                 left: Box::new(Expr::Temp(registers.frame.to_string())),
                                 right: Box::new(Expr::ConstInt(
-                                    end + i64::try_from(index * 8).unwrap(),
+                                    end + i64::try_from(index * F::word_size()).unwrap(),
                                 )),
                             }),
                             expr,
