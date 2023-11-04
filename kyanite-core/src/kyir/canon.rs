@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::kyir::Expr;
+use crate::kyir::{blocks::TraceSchedule, Expr};
 
 use super::{blocks::BasicBlocks, eseq::ESeqs, rewrite::Rewrite, Stmt};
 
@@ -108,9 +108,21 @@ impl Canon {
                 }
             }
         }
-        let mut basic_blocks = BasicBlocks::new(ir);
-        basic_blocks.build();
-        dbg!(&basic_blocks.blocks);
+        let blocks = BasicBlocks::new(ir);
+        dbg!(&blocks.substitutions);
+        let traces = TraceSchedule::new(blocks.blocks.into_iter().collect());
+        let trace_labels = traces
+            .traces
+            .iter()
+            .map(|trace| {
+                trace
+                    .iter()
+                    .map(|block| block.label.clone())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        dbg!(&traces);
+        dbg!(&trace_labels);
         vec![]
     }
 }
@@ -143,8 +155,7 @@ impl Canon {
 //                     let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
 //                     let res = translator.translate(&ast.nodes);
 //                     let canon = Canon::new(res);
-//                     let canonicalized = canon.canonicalize();
-//                     dbg!(&canonicalized);
+//                     let _ = canon.canonicalize();
 //                     // insta::with_settings!({snapshot_path => "../../snapshots"}, {
 //                     //     insta::assert_debug_snapshot!(&res);
 //                     // });
