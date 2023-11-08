@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::VecDeque;
 
 use crate::kyir::{blocks::TraceSchedule, Expr};
 
@@ -87,43 +87,28 @@ impl Canon {
 
     #[allow(dead_code)]
     pub fn canonicalize(mut self) -> Vec<Stmt> {
-        // Replace all `Expr::Call` with `Expr::ESeq`
         self.ir = self
             .ir
             .into_iter()
             .map(|item| item.rewrite(false))
             .collect();
-        let mut ir = HashMap::new();
+        let mut ir = vec![];
         let mut replacements = vec![];
         for item in self.ir.into_iter() {
             let name = item.label();
             let mut body = vec![];
             item.extract(&mut body, &mut replacements);
-            ir.insert(name, body);
+            ir.push((name, body));
         }
         for (search, temp) in replacements {
-            for item in ir.values_mut() {
+            for (_, item) in ir.iter_mut() {
                 for stmt in item.iter_mut() {
                     stmt.replace(search, &temp);
                 }
             }
         }
-        let blocks = BasicBlocks::new(ir);
-        dbg!(&blocks.substitutions);
-        let traces = TraceSchedule::new(blocks.blocks.into_iter().collect());
-        let trace_labels = traces
-            .traces
-            .iter()
-            .map(|trace| {
-                trace
-                    .iter()
-                    .map(|block| block.label.clone())
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        dbg!(&traces);
-        dbg!(&trace_labels);
-        vec![]
+        let blocks = BasicBlocks::from_functions(ir);
+        TraceSchedule::from_blocks(VecDeque::from(blocks))
     }
 }
 
@@ -155,7 +140,8 @@ impl Canon {
 //                     let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
 //                     let res = translator.translate(&ast.nodes);
 //                     let canon = Canon::new(res);
-//                     let _ = canon.canonicalize();
+//                     let res = canon.canonicalize();
+//                     dbg!(&res);
 //                     // insta::with_settings!({snapshot_path => "../../snapshots"}, {
 //                     //     insta::assert_debug_snapshot!(&res);
 //                     // });

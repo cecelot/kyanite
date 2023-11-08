@@ -6,6 +6,10 @@ pub trait Rewrite<R> {
     fn rewrite(self, immediate: bool) -> R;
 }
 
+pub trait Substitute {
+    fn substitute(&mut self, substitutions: &[(String, String)]);
+}
+
 impl Rewrite<Vec<Expr>> for Vec<Expr> {
     fn rewrite(self, immediate: bool) -> Vec<Expr> {
         self.into_iter()
@@ -23,6 +27,14 @@ impl Rewrite<Vec<Expr>> for Vec<Expr> {
                 _ => arg,
             })
             .collect()
+    }
+}
+
+impl Substitute for Vec<Expr> {
+    fn substitute(&mut self, substitutions: &[(String, String)]) {
+        for arg in self.iter_mut() {
+            arg.substitute(substitutions);
+        }
     }
 }
 
@@ -57,6 +69,22 @@ impl Rewrite<Expr> for Expr {
                 }
             }
             _ => self,
+        }
+    }
+}
+
+impl Substitute for Expr {
+    fn substitute(&mut self, substitutions: &[(String, String)]) {
+        match self {
+            Expr::Temp(_) => {}
+            Expr::ConstInt(_) => {}
+            Expr::ConstFloat(_) => {}
+            Expr::Mem(_) => {}
+            Expr::Call(..) => {}
+            Expr::Binary { .. } => {}
+            Expr::ESeq { stmt, .. } => {
+                stmt.substitute(substitutions);
+            }
         }
     }
 }
@@ -97,6 +125,33 @@ impl Rewrite<Stmt> for Stmt {
                 }
             }
             _ => self,
+        }
+    }
+}
+
+impl Substitute for Stmt {
+    fn substitute(&mut self, substitutions: &[(String, String)]) {
+        match self {
+            Stmt::Seq { left, right } => {
+                left.substitute(substitutions);
+                if let Some(right) = right {
+                    right.substitute(substitutions);
+                }
+            }
+            Stmt::Move { target, .. } => {
+                target.substitute(substitutions);
+            }
+            Stmt::CJump { .. } => {}
+            Stmt::Expr(expr) => expr.substitute(substitutions),
+            Stmt::Label(_) => {}
+            Stmt::Noop => {}
+            Stmt::Jump(j) => {
+                for (from, to) in substitutions {
+                    if j == from {
+                        *j = to.clone();
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 
-use super::Stmt;
+use crate::kyir::Label;
+
+use super::{rewrite::Substitute, Stmt};
 
 #[derive(Debug, Clone)]
 pub struct BasicBlock {
@@ -28,25 +30,33 @@ impl BasicBlock {
 #[derive(Debug)]
 pub struct BasicBlocks {
     pub(super) blocks: Vec<BasicBlock>,
-    pub(super) substitutions: Vec<(String, String)>,
-    functions: HashMap<String, Vec<Stmt>>,
+    functions: Vec<(String, Vec<Stmt>)>,
+}
+
+impl Substitute for BasicBlocks {
+    fn substitute(&mut self, substitutions: &[(String, String)]) {
+        for block in &mut self.blocks {
+            for stmt in &mut block.body {
+                stmt.substitute(substitutions);
+            }
+        }
+    }
 }
 
 impl BasicBlocks {
-    pub fn new(functions: HashMap<String, Vec<Stmt>>) -> Self {
+    pub fn from_functions(functions: Vec<(String, Vec<Stmt>)>) -> Vec<BasicBlock> {
         let mut substitutions = vec![];
-        let mut blocks = Self {
+        let mut builder = Self {
             functions,
             blocks: vec![],
-            substitutions: vec![],
         };
-        blocks.build(&mut substitutions);
-        blocks.substitutions = substitutions;
-        blocks
+        builder.build(&mut substitutions);
+        builder.substitute(&substitutions);
+        builder.blocks
     }
 
     fn build(&mut self, substitutions: &mut Vec<(String, String)>) {
-        for function in self.functions.values_mut() {
+        for (_, function) in self.functions.iter_mut() {
             let name = Self::consume(function);
             assert!(matches!(name, Stmt::Label(_)));
             let mut blocks = Self::block(name.label(), function, substitutions, &name);
@@ -121,14 +131,69 @@ impl BasicBlocks {
 }
 
 #[derive(Debug)]
-pub struct TraceSchedule {
-    pub(super) traces: Vec<Vec<BasicBlock>>,
-}
+pub struct TraceSchedule(Vec<Vec<BasicBlock>>);
 
 impl TraceSchedule {
-    pub fn new(mut blocks: VecDeque<BasicBlock>) -> Self {
-        let mut marks: HashMap<String, bool> = HashMap::new();
+    pub fn from_blocks(blocks: VecDeque<BasicBlock>) -> Vec<Stmt> {
+        let mut traces = Self::traces(blocks);
+        Self::unconditionals(&mut traces);
+        Self::conditionals(&mut traces);
+        Self::stmts(traces)
+    }
+
+    fn conditionals(traces: &mut [Vec<BasicBlock>]) {
+        let insertions = Self::insertions(traces);
+        for insertion in insertions {
+            let ((i, j), block) = insertion;
+            traces[i].insert(j + 1, block);
+        }
+    }
+
+    fn insertions(traces: &mut [Vec<BasicBlock>]) -> Vec<((usize, usize), BasicBlock)> {
+        let labels: Vec<Vec<_>> = traces
+            .iter()
+            .map(|trace| trace.iter().map(|block| block.label.clone()).collect())
+            .collect();
+        let mut insertions = vec![];
+        for (i, trace) in traces.iter_mut().enumerate() {
+            for (j, block) in trace.iter_mut().enumerate() {
+                let next = labels.get(i).and_then(|labels| labels.get(j + 1));
+                if let Some(Stmt::CJump { f, .. }) = block.body.last_mut() {
+                    if let Some(next) = next {
+                        if f != next {
+                            let prev = f.clone();
+                            let label = Label::new();
+                            *f = label.clone();
+                            insertions
+                                .push(((i, j), BasicBlock::new(label, vec![Stmt::Jump(prev)])));
+                        }
+                    }
+                }
+            }
+        }
+        insertions
+    }
+
+    fn unconditionals(traces: &mut [Vec<BasicBlock>]) {
+        for trace in traces {
+            if trace.len() >= 2 {
+                for i in 0..trace.len() - 2 {
+                    let j = i + 1;
+                    let right = trace[j].label.clone();
+                    let left = &mut trace[i];
+                    if let (Some(Stmt::Jump(l)), r) = (&left.body.last(), &right) {
+                        if l == r {
+                            left.body.remove(left.body.len() - 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn traces(mut blocks: VecDeque<BasicBlock>) -> Vec<Vec<BasicBlock>> {
         let mut traces = vec![];
+        let mut marks: HashMap<String, bool> = HashMap::new();
         while !blocks.is_empty() {
             let mut trace = vec![];
             let mut block = blocks.pop_front().unwrap();
@@ -157,6 +222,17 @@ impl TraceSchedule {
             }
             traces.push(trace);
         }
-        Self { traces }
+        traces
+    }
+
+    fn stmts(traces: Vec<Vec<BasicBlock>>) -> Vec<Stmt> {
+        traces
+            .into_iter()
+            .flat_map(|trace| {
+                trace
+                    .into_iter()
+                    .flat_map(|block| vec![Stmt::Label(block.label)].into_iter().chain(block.body))
+            })
+            .collect()
     }
 }
