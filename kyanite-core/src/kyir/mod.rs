@@ -12,9 +12,9 @@ use crate::{
 
 use self::arch::Frame;
 
-mod arch;
+pub mod arch;
 mod blocks;
-mod canon;
+pub mod canon;
 mod eseq;
 mod rewrite;
 
@@ -60,12 +60,12 @@ pub enum RelOp {
     GreaterEqual,
 }
 
-struct Temp;
+pub struct Temp;
 struct Label;
 
 impl Temp {
     #[allow(clippy::new_ret_no_self)]
-    fn new() -> String {
+    pub fn new() -> String {
         static ID: AtomicUsize = AtomicUsize::new(0);
         format!("T{}", ID.fetch_add(1, Ordering::SeqCst))
     }
@@ -104,6 +104,45 @@ impl Expr {
         let id = ID.fetch_add(1, Ordering::SeqCst);
         Self::ESeq { stmt, expr, id }
     }
+
+    pub fn condition(&self) -> RelOp {
+        match self {
+            Expr::Binary {
+                op: BinOp::Cmp(rel),
+                ..
+            } => *rel,
+            Expr::ConstInt(_) => RelOp::Equal,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn temp(self) -> String {
+        match self {
+            Expr::Temp(t) => t,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn temp_and(&self, rhs: &str) -> bool {
+        match self {
+            Expr::Temp(t) => t == rhs,
+            _ => false,
+        }
+    }
+
+    pub fn int(&self) -> i64 {
+        match self {
+            Expr::ConstInt(i) => *i,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn binary(self) -> (BinOp, Box<Self>, Box<Self>) {
+        match self {
+            Expr::Binary { op, left, right } => (op, left, right),
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -124,8 +163,7 @@ pub enum Stmt {
     Noop,
     CJump {
         op: BinOp,
-        left: Box<Expr>,
-        right: Box<Expr>,
+        condition: Box<Expr>,
         t: String,
         f: String,
     },
@@ -237,7 +275,7 @@ impl From<&[Stmt]> for Stmt {
 }
 
 pub struct Translator<'a, F: Frame> {
-    functions: HashMap<usize, F>,
+    pub functions: HashMap<usize, F>,
     function: Option<usize>,
     accesses: &'a AccessMap,
     symbols: &'a SymbolTable,
@@ -365,7 +403,14 @@ impl Translate<Stmt> for AstStmt {
         let registers = F::registers();
         match self {
             AstStmt::If(c) => {
-                let condition = c.condition.translate(translator);
+                let condition = match &c.condition {
+                    AstExpr::Int(i, _) => Expr::Binary {
+                        op: BinOp::Cmp(RelOp::Equal),
+                        left: Box::new(Expr::ConstInt(*i)),
+                        right: Box::new(Expr::ConstInt(0)),
+                    },
+                    c => c.translate(translator),
+                };
                 let t = Label::new();
                 let f = Label::new();
                 let done = Label::new();
@@ -382,9 +427,8 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Seq {
                                 left: Box::new(Stmt::CJump {
-                                    op: BinOp::Cmp(RelOp::Equal),
-                                    left: Box::new(condition),
-                                    right: Box::new(Expr::ConstInt(1)),
+                                    op: BinOp::Cmp(condition.condition()),
+                                    condition: Box::new(condition),
                                     t: t.clone(),
                                     f: f.clone(),
                                 }),
@@ -404,7 +448,14 @@ impl Translate<Stmt> for AstStmt {
                 }
             }
             AstStmt::While(c) => {
-                let condition = c.condition.translate(translator);
+                let condition = match &c.condition {
+                    AstExpr::Int(i, _) => Expr::Binary {
+                        op: BinOp::Cmp(RelOp::Equal),
+                        left: Box::new(Expr::ConstInt(*i)),
+                        right: Box::new(Expr::ConstInt(0)),
+                    },
+                    c => c.translate(translator),
+                };
                 let t = Label::new();
                 let f = Label::new();
                 let test = Label::new();
@@ -420,9 +471,8 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Label(test)),
                             right: Some(Box::new(Stmt::CJump {
-                                op: BinOp::Cmp(RelOp::Equal),
-                                left: Box::new(condition),
-                                right: Box::new(Expr::ConstInt(1)),
+                                op: BinOp::Cmp(condition.condition()),
+                                condition: Box::new(condition),
                                 t: t.clone(),
                                 f: f.clone(),
                             })),

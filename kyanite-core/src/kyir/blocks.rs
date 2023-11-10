@@ -138,7 +138,22 @@ impl TraceSchedule {
         let mut traces = Self::traces(blocks);
         Self::unconditionals(&mut traces);
         Self::conditionals(&mut traces);
-        Self::stmts(traces)
+        let mut blocks = Self::blocks(traces);
+        let main = blocks.pop().unwrap();
+        let jmp = main.body.last().unwrap();
+        if let Stmt::CJump { ref f, .. } = jmp {
+            let idx = blocks
+                .iter()
+                .map(|block| block.label.clone())
+                .position(|label| label == *f)
+                .unwrap();
+            blocks.insert(idx, main);
+            let (left, right) = blocks.split_at(idx);
+            Self::stmts(right.iter().cloned().chain(left.to_vec()).collect())
+        } else {
+            blocks.insert(0, main);
+            Self::stmts(blocks)
+        }
     }
 
     fn conditionals(traces: &mut [Vec<BasicBlock>]) {
@@ -225,14 +240,17 @@ impl TraceSchedule {
         traces
     }
 
-    fn stmts(traces: Vec<Vec<BasicBlock>>) -> Vec<Stmt> {
+    fn blocks(traces: Vec<Vec<BasicBlock>>) -> Vec<BasicBlock> {
         traces
             .into_iter()
-            .flat_map(|trace| {
-                trace
-                    .into_iter()
-                    .flat_map(|block| vec![Stmt::Label(block.label)].into_iter().chain(block.body))
-            })
+            .flat_map(|trace| trace.into_iter())
+            .collect()
+    }
+
+    fn stmts(blocks: Vec<BasicBlock>) -> Vec<Stmt> {
+        blocks
+            .into_iter()
+            .flat_map(|block| vec![Stmt::Label(block.label)].into_iter().chain(block.body))
             .collect()
     }
 }

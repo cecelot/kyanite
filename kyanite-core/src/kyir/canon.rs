@@ -29,17 +29,14 @@ impl Extract for Stmt {
             Stmt::Jump(_) => ir.push(self),
             Stmt::Expr(_) => ir.push(self),
             Stmt::CJump {
-                left,
-                right,
+                condition,
                 op,
                 t,
                 f,
             } => {
-                update(&right, ir, replacements);
-                update(&left, ir, replacements);
+                update(&condition, ir, replacements);
                 ir.push(Stmt::CJump {
-                    left: left.clone(),
-                    right: right.clone(),
+                    condition,
                     op,
                     t,
                     f,
@@ -90,8 +87,9 @@ impl Canon {
         self.ir = self
             .ir
             .into_iter()
-            .map(|item| item.rewrite(false))
+            .map(|item| item.rewrite(false, false))
             .collect();
+        self.ir.retain(|item| !matches!(item, Stmt::Noop));
         let mut ir = vec![];
         let mut replacements = vec![];
         for item in self.ir.into_iter() {

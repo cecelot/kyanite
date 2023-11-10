@@ -70,9 +70,8 @@ impl<'a> ESeqs<'a> for Stmt {
                 }
             }
             Stmt::Jump(_) => {}
-            Stmt::CJump { left, right, .. } => {
-                left.replace(search, temp);
-                right.replace(search, temp);
+            Stmt::CJump { condition, .. } => {
+                condition.replace(search, temp);
             }
             Stmt::Label(_) => {}
             Stmt::Move { target, expr } => {
@@ -95,9 +94,8 @@ impl<'a> ESeqs<'a> for Stmt {
                 }
             }
             Stmt::Jump(_) => {}
-            Stmt::CJump { left, right, .. } => {
-                left.eseqs(list);
-                right.eseqs(list);
+            Stmt::CJump { condition, .. } => {
+                condition.eseqs(list);
             }
             Stmt::Label(_) => {}
             Stmt::Move { target, expr } => {

@@ -23,8 +23,11 @@ impl Frame for Amd64 {
         let mut variables = HashMap::new();
         let mut offset = 0;
         for (i, param) in func.params.iter().enumerate() {
+            if i == 0 {
+                offset -= i64::try_from(Self::word_size()).unwrap();
+            }
             variables.insert(param.name.to_string(), offset);
-            offset -= i64::try_from((i + 1) * Self::word_size()).unwrap();
+            offset -= i64::try_from(Self::word_size()).unwrap();
         }
         Self {
             formals: func
@@ -93,7 +96,7 @@ impl Frame for Amd64 {
     }
 
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Box<Expr> {
-        let start = self.offset;
+        let rec = self.offset;
         self.offset -= i64::try_from(match ty {
             Some(Type::UserDefined(ty)) => match symbols.get(&Token::from(ty.clone())).unwrap() {
                 Symbol::Record(rec) => rec.fields.len() * Self::word_size(),
@@ -102,7 +105,14 @@ impl Frame for Amd64 {
             _ => 8,
         })
         .unwrap();
-        self.variables.insert(ident.to_string(), start);
+        self.variables.insert(
+            ident.to_string(),
+            if matches!(ty, Some(Type::UserDefined(_))) {
+                rec
+            } else {
+                self.offset
+            },
+        );
         self.get(ident, None, None)
     }
 
@@ -114,11 +124,11 @@ impl Frame for Amd64 {
             "movq %{}, %{}\n",
             registers.stack, registers.frame
         ));
-        for (i, (_, formal)) in self.formals.iter().enumerate() {
+        for (i, (formal, _)) in self.formals.iter().enumerate() {
             prologue.push_str(&format!(
                 "movq %{}, {}(%{})\n",
                 formal,
-                i64::try_from(i * Self::word_size()).unwrap(),
+                -i64::try_from((i + 1) * Self::word_size()).unwrap(),
                 registers.frame
             ));
         }
@@ -129,7 +139,7 @@ impl Frame for Amd64 {
         let registers = Self::registers();
         let mut epilogue = String::with_capacity(3);
         epilogue.push_str(&format!("popq %{}\n", registers.frame));
-        epilogue.push_str("ret\n");
+        epilogue.push_str("retq\n");
         epilogue
     }
 

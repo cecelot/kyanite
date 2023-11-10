@@ -1,0 +1,22 @@
+fun qux(x: int, y: int): int {
+    return x * y;
+}
+
+fun main() {
+    let foo: int = qux(2, 3);
+    if foo >= 10 {
+        6 + 6;
+        if foo >= 10 {
+            8 + 8;
+        } else {
+            9 + 9;
+        }
+    } else {
+        if true {
+            7 + 7;
+        } else {
+            15 + 15;
+        }
+    }
+    12 + 12;
+}

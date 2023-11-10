@@ -5,7 +5,7 @@ use crate::{
 
 use super::Expr;
 
-pub(super) mod amd64;
+pub mod amd64;
 
 pub struct ReturnRegisters {
     pub address: &'static str,
