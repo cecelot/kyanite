@@ -1,5 +1,6 @@
 use crate::{
     ast::{node::FuncDecl, Type},
+    codegen::Instr,
     pass::SymbolTable,
 };
 
@@ -13,10 +14,10 @@ pub struct ReturnRegisters {
 }
 
 pub struct RegisterMap {
-    pub callee: Vec<&'static str>,
-    pub caller: Vec<&'static str>,
-    pub temporary: Vec<&'static str>,
-    pub argument: Vec<&'static str>,
+    pub callee: &'static [&'static str],
+    pub caller: &'static [&'static str],
+    pub temporary: &'static [&'static str],
+    pub argument: &'static [&'static str],
     pub ret: ReturnRegisters,
     pub frame: &'static str,
     pub stack: &'static str,
@@ -30,8 +31,8 @@ pub trait Frame {
     fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Box<Expr>;
     fn get_offset(&self, ident: &str) -> i64;
     fn offset(&self) -> i64;
-    fn prologue(&self) -> String;
-    fn epilogue(&self) -> String;
+    fn prologue(&self) -> Vec<Instr>;
+    fn epilogue(&self) -> Vec<Instr>;
     fn registers() -> RegisterMap;
     fn word_size() -> usize;
 }

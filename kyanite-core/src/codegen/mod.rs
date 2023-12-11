@@ -1,8 +1,11 @@
 #![allow(dead_code)]
+mod liveness;
 pub mod llvm;
 
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 pub use llvm::Ir;
 pub use llvm::IrError;
@@ -12,8 +15,8 @@ use crate::{
     kyir::{arch::Frame, BinOp, Expr, RelOp, Stmt, Temp},
 };
 
-#[derive(Debug)]
-pub enum AsmInstr {
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum Instr {
     Oper {
         opcode: Opcode,
         dst: String,
@@ -26,7 +29,49 @@ pub enum AsmInstr {
     FrameValue {
         offset: i64,
     },
-    Raw(String),
+}
+
+impl Instr {
+    pub fn to(&self) -> Option<String> {
+        match self {
+            Instr::Oper { jump, .. } => jump.as_ref().cloned(),
+            _ => None,
+        }
+    }
+
+    pub fn jump(&self) -> bool {
+        matches!(
+            self,
+            Instr::Oper {
+                opcode: Opcode::Jump,
+                ..
+            }
+        )
+    }
+
+    pub fn label(&self) -> Option<String> {
+        match self {
+            Instr::Oper {
+                opcode: Opcode::Label(label),
+                ..
+            } => Some(label.clone()),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct AsmInstr {
+    instr: Instr,
+    id: usize,
+}
+
+impl AsmInstr {
+    pub fn new(instr: Instr) -> Self {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
+        Self { instr, id }
+    }
 }
 
 impl Display for Opcode {
@@ -51,14 +96,17 @@ impl Display for Opcode {
             Opcode::Sub => write!(f, "subq"),
             Opcode::Mul => write!(f, "imulq"),
             Opcode::Div => write!(f, "idivq"),
+            Opcode::Push => write!(f, "pushq"),
+            Opcode::Pop => write!(f, "popq"),
+            Opcode::Ret => write!(f, "retq"),
         }
     }
 }
 
 impl Display for AsmInstr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AsmInstr::Oper {
+        match &self.instr {
+            Instr::Oper {
                 opcode,
                 dst,
                 src,
@@ -69,26 +117,21 @@ impl Display for AsmInstr {
                     Opcode::CJump(_) => write!(f, "{} {}", opcode, jump.as_ref().unwrap())?,
                     _ => write!(f, "{} {} {}", opcode, src, dst)?,
                 }
-
                 Ok(())
             }
-            AsmInstr::Call { name } => {
+            Instr::Call { name } => {
                 write!(f, "callq {name}")?;
                 Ok(())
             }
-            AsmInstr::FrameValue { offset } => {
+            Instr::FrameValue { offset } => {
                 write!(f, "{}(%rbp)", offset)?;
-                Ok(())
-            }
-            AsmInstr::Raw(raw) => {
-                write!(f, "{}", raw)?;
                 Ok(())
             }
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Opcode {
     Label(String),
     Move,
@@ -99,6 +142,9 @@ pub enum Opcode {
     Sub,
     Mul,
     Div,
+    Push,
+    Pop,
+    Ret,
 }
 
 impl From<BinOp> for RelOp {
@@ -163,10 +209,28 @@ impl<F: Frame> Codegen<F> {
         for stmt in ir {
             self.stmt(stmt);
         }
+        self.epilogues();
     }
 
-    fn emit(&mut self, instr: AsmInstr) {
-        self.asm.push(instr);
+    fn epilogues(&mut self) {
+        let mut instrs = vec![];
+        for (name, id) in &self.idents {
+            let function = self.functions.get(id).unwrap();
+            instrs.push(AsmInstr::new(Instr::Oper {
+                opcode: Opcode::Label(format!("{}.epilogue", name)),
+                src: String::new(),
+                dst: String::new(),
+                jump: None,
+            }));
+            for instr in function.epilogue() {
+                instrs.push(AsmInstr::new(instr));
+            }
+        }
+        self.asm.append(&mut instrs);
+    }
+
+    fn emit(&mut self, instr: Instr) {
+        self.asm.push(AsmInstr::new(instr));
     }
 
     fn stmt(&mut self, stmt: Stmt) {
@@ -175,7 +239,7 @@ impl<F: Frame> Codegen<F> {
                 self.expr(*e, false);
             }
             Stmt::Jump(label) => {
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::Jump,
                     dst: String::new(),
                     src: String::new(),
@@ -193,7 +257,7 @@ impl<F: Frame> Codegen<F> {
                 if let Expr::Binary { ref left, .. } = *expr {
                     if left.temp_and("rbp") {
                         let (rbp, offset) = Self::access(*expr);
-                        self.emit(AsmInstr::Oper {
+                        self.emit(Instr::Oper {
                             opcode: Opcode::Move,
                             dst: target.temp(),
                             src: format!("{offset}(%{rbp})"),
@@ -206,7 +270,7 @@ impl<F: Frame> Codegen<F> {
                     Expr::Mem(_) => {
                         let temp = Temp::new();
                         let (rbp, offset) = Self::access(*expr);
-                        self.emit(AsmInstr::Oper {
+                        self.emit(Instr::Oper {
                             opcode: Opcode::Move,
                             dst: temp.clone(),
                             src: format!("{offset}(%{rbp})"),
@@ -223,7 +287,7 @@ impl<F: Frame> Codegen<F> {
                     }
                     _ => target.temp(),
                 };
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::Move,
                     dst,
                     src,
@@ -232,7 +296,7 @@ impl<F: Frame> Codegen<F> {
             }
             Stmt::Label(label) => {
                 let id = self.idents.get(&label).copied();
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::Label(label),
                     dst: String::new(),
                     src: String::new(),
@@ -240,14 +304,16 @@ impl<F: Frame> Codegen<F> {
                 });
                 if let Some(id) = id {
                     let function = self.functions.get(&id).unwrap();
-                    self.emit(AsmInstr::Raw(function.prologue()));
+                    for instr in function.prologue() {
+                        self.emit(instr);
+                    }
                 }
             }
             Stmt::CJump {
                 t, op, condition, ..
             } => {
                 self.expr(*condition, false);
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::CJump(op.into()),
                     dst: String::new(),
                     src: String::new(),
@@ -262,7 +328,7 @@ impl<F: Frame> Codegen<F> {
             Expr::Binary { op, left, right } => {
                 let right = self.expr(*right, false);
                 let left = self.expr(*left, true);
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::from(op),
                     dst: left.clone(),
                     src: right,
@@ -272,7 +338,7 @@ impl<F: Frame> Codegen<F> {
             }
             Expr::ConstInt(i) => {
                 let name = Temp::new();
-                self.emit(AsmInstr::Oper {
+                self.emit(Instr::Oper {
                     opcode: Opcode::Move,
                     dst: name.clone(),
                     src: format!("${i}"),
@@ -287,7 +353,7 @@ impl<F: Frame> Codegen<F> {
                 let src = name.clone();
                 let (rbp, offset) = Self::access(*mem);
                 let dst = format!("{offset}(%{rbp})");
-                let mut oper = AsmInstr::Oper {
+                let mut oper = Instr::Oper {
                     opcode: Opcode::Move,
                     dst,
                     src,
@@ -295,7 +361,7 @@ impl<F: Frame> Codegen<F> {
                 };
                 if lhs {
                     match oper {
-                        AsmInstr::Oper {
+                        Instr::Oper {
                             ref mut dst,
                             ref mut src,
                             ..
@@ -313,7 +379,7 @@ impl<F: Frame> Codegen<F> {
                     .into_iter()
                     .map(|arg| self.expr(arg, false))
                     .enumerate()
-                    .map(|(i, arg)| AsmInstr::Oper {
+                    .map(|(i, arg)| Instr::Oper {
                         opcode: Opcode::Move,
                         dst: F::registers().argument[i].into(),
                         src: arg,
@@ -323,7 +389,7 @@ impl<F: Frame> Codegen<F> {
                 for arg in args {
                     self.emit(arg);
                 }
-                self.emit(AsmInstr::Call { name });
+                self.emit(Instr::Call { name });
                 format!("%{}", F::registers().ret.value)
             }
             Expr::ESeq { .. } => unreachable!(),
@@ -340,34 +406,37 @@ impl<F: Frame> Codegen<F> {
     }
 }
 
-// TODO: testing
-// #[cfg(test)]
-// mod tests {
-//     use std::collections::HashMap;
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
 
-//     use crate::{
-//         ast,
-//         kyir::{arch::amd64::Amd64, canon::Canon, Translator},
-//         pass::{SymbolTable, TypeCheckPass},
-//         PipelineError, Source,
-//     };
+    use crate::{
+        ast,
+        codegen::liveness::{Graph, LiveRanges},
+        kyir::{arch::amd64::Amd64, canon::Canon, Translator},
+        pass::{SymbolTable, TypeCheckPass},
+        PipelineError, Source,
+    };
 
-//     use super::Codegen;
+    use super::Codegen;
 
-//     #[test]
-//     fn compile() -> Result<(), Box<dyn std::error::Error>> {
-//         let source = Source::in_memory(include_str!("other-test.kya").to_string());
-//         let ast = ast::Ast::from_source(&source)?;
-//         let symbols = SymbolTable::from(&ast.nodes);
-//         let mut accesses = HashMap::new();
-//         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
-//         pass.run().map_err(PipelineError::TypeError)?;
-//         let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
-//         let ir = translator.translate(&ast.nodes);
-//         let canon = Canon::new(ir);
-//         let ir = canon.canonicalize();
-//         let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
-//         println!("{}", codegen);
-//         Ok(())
-//     }
-// }
+    #[test]
+    fn compile() -> Result<(), Box<dyn std::error::Error>> {
+        let source = Source::in_memory(include_str!("test.kya").to_string());
+        let ast = ast::Ast::from_source(&source)?;
+        let symbols = SymbolTable::from(&ast.nodes);
+        let mut accesses = HashMap::new();
+        let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+        pass.run().map_err(PipelineError::TypeError)?;
+        let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
+        let ir = translator.translate(&ast.nodes);
+        let canon = Canon::new(ir);
+        let ir = canon.canonicalize();
+        let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
+        let graph = Graph::from(&codegen.asm);
+        let ranges = LiveRanges::from(graph);
+        println!("{}", ranges.get("T0"));
+        println!("{}", ranges.get("T1"));
+        Ok(())
+    }
+}

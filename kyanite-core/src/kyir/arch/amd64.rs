@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{node::FuncDecl, Type},
+    codegen::{Instr, Opcode},
     kyir::{BinOp, Expr, Stmt},
     pass::{Symbol, SymbolTable},
     token::Token,
@@ -116,39 +117,60 @@ impl Frame for Amd64 {
         self.get(ident, None, None)
     }
 
-    fn prologue(&self) -> String {
+    fn prologue(&self) -> Vec<Instr> {
         let registers = Self::registers();
-        let mut prologue = String::new();
-        prologue.push_str(&format!("pushq %{}\n", registers.frame));
-        prologue.push_str(&format!(
-            "movq %{}, %{}\n",
-            registers.stack, registers.frame
-        ));
+        let mut prologue = vec![];
+        prologue.push(Instr::Oper {
+            opcode: Opcode::Push,
+            src: registers.frame.to_string(),
+            dst: String::new(),
+            jump: None,
+        });
+        prologue.push(Instr::Oper {
+            opcode: Opcode::Move,
+            src: registers.stack.to_string(),
+            dst: registers.frame.to_string(),
+            jump: None,
+        });
         for (i, (formal, _)) in self.formals.iter().enumerate() {
-            prologue.push_str(&format!(
-                "movq %{}, {}(%{})\n",
-                formal,
-                -i64::try_from((i + 1) * Self::word_size()).unwrap(),
-                registers.frame
-            ));
+            prologue.push(Instr::Oper {
+                opcode: Opcode::Move,
+                src: formal.to_string(),
+                dst: format!(
+                    "{}(%{})",
+                    -i64::try_from((i + 1) * Self::word_size()).unwrap(),
+                    registers.frame
+                ),
+                jump: None,
+            });
         }
         prologue
     }
 
-    fn epilogue(&self) -> String {
+    fn epilogue(&self) -> Vec<Instr> {
         let registers = Self::registers();
-        let mut epilogue = String::with_capacity(3);
-        epilogue.push_str(&format!("popq %{}\n", registers.frame));
-        epilogue.push_str("retq\n");
-        epilogue
+        vec![
+            Instr::Oper {
+                opcode: Opcode::Pop,
+                src: registers.frame.to_string(),
+                dst: String::new(),
+                jump: None,
+            },
+            Instr::Oper {
+                opcode: Opcode::Ret,
+                src: String::new(),
+                dst: String::new(),
+                jump: None,
+            },
+        ]
     }
 
     fn registers() -> RegisterMap {
         RegisterMap {
-            caller: vec!["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
-            callee: vec!["rbx", "r12", "r13", "r14", "r15", "rsp", "rbp"],
-            temporary: vec!["rax", "r10", "r11"],
-            argument: vec!["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
+            caller: &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
+            callee: &["rbx", "r12", "r13", "r14", "r15", "rsp", "rbp"],
+            temporary: &["rax", "r10", "r11"],
+            argument: &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
             ret: ReturnRegisters {
                 address: "rip",
                 value: "rax",
