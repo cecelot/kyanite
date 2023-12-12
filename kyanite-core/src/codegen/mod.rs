@@ -255,11 +255,11 @@ impl<F: Frame> Codegen<F> {
             }
             Stmt::Move { target, expr } => {
                 if let Expr::Binary { ref left, .. } = *expr {
-                    if left.temp_and("rbp") {
+                    if left.temp().is_some_and(|t| t == "rbp") {
                         let (rbp, offset) = Self::access(*expr);
                         self.emit(Instr::Oper {
                             opcode: Opcode::Move,
-                            dst: target.temp(),
+                            dst: target.temp().unwrap(),
                             src: format!("{offset}(%{rbp})"),
                             jump: None,
                         });
@@ -285,7 +285,7 @@ impl<F: Frame> Codegen<F> {
                         let (rbp, offset) = Self::access(*target);
                         format!("{offset}(%{rbp})")
                     }
-                    _ => target.temp(),
+                    _ => target.temp().unwrap(),
                 };
                 self.emit(Instr::Oper {
                     opcode: Opcode::Move,
@@ -368,7 +368,7 @@ impl<F: Frame> Codegen<F> {
                         } => {
                             std::mem::swap(dst, src);
                         }
-                        _ => unreachable!(),
+                        _ => panic!("Expected `Instr::Oper`"),
                     }
                 }
                 self.emit(oper);
@@ -392,17 +392,17 @@ impl<F: Frame> Codegen<F> {
                 self.emit(Instr::Call { name });
                 format!("%{}", F::registers().ret.value)
             }
-            Expr::ESeq { .. } => unreachable!(),
+            Expr::ESeq { .. } => panic!("`Expr::ESeq` not removed by canonicalization"),
         }
     }
 
     fn access(mem: Expr) -> (String, i64) {
         let (_, left, right) = match mem {
-            Expr::Mem(expr) => expr.binary(),
+            Expr::Mem(expr) => expr.binary().unwrap(),
             Expr::Binary { op, left, right } => (op, left, right),
-            _ => unreachable!(),
+            _ => panic!("Expected `Expr::Mem` or `Expr::Binary`"),
         };
-        (left.temp(), right.int())
+        (left.temp().unwrap(), right.int().unwrap())
     }
 }
 

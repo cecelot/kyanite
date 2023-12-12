@@ -66,7 +66,7 @@ fn update(expr: &Expr, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Ex
             }
             replacements.push((*search, temp.clone()));
         } else {
-            unreachable!()
+            panic!("Expected `Expr::ESeq`")
         }
     }
 }

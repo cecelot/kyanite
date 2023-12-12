@@ -2,28 +2,38 @@
 source: kyanite-core/src/parse.rs
 expression: parser.errors
 ---
-- filename: test-cases/parser/toplevel.kya
-  heading: unexpected identifier
-  source: foo
-  span:
-    line: 1
-    column: 1
-    length: 3
-  text: "expected one of `fun`, `const` here"
-- filename: test-cases/parser/toplevel.kya
-  heading: expected ; but found fun
-  source: "fun bar(): void {}"
-  span:
-    line: 5
-    column: 1
-    length: 3
-  text: expected ; here
-- filename: test-cases/parser/toplevel.kya
-  heading: unexpected identifier
-  source: "        baz"
-  span:
-    line: 7
-    column: 9
-    length: 3
-  text: "expected one of `fun`, `const` here"
-
+[
+    PreciseError {
+        filename: "test-cases/parser/toplevel.kya",
+        heading: "unexpected identifier",
+        source: "foo",
+        span: Span {
+            line: 1,
+            column: 1,
+            length: 3,
+        },
+        text: "expected one of `fun`, `const` here",
+    },
+    PreciseError {
+        filename: "test-cases/parser/toplevel.kya",
+        heading: "expected ; but found fun",
+        source: "fun bar(): void {}",
+        span: Span {
+            line: 5,
+            column: 1,
+            length: 3,
+        },
+        text: "expected ; here",
+    },
+    PreciseError {
+        filename: "test-cases/parser/toplevel.kya",
+        heading: "unexpected identifier",
+        source: "        baz",
+        span: Span {
+            line: 7,
+            column: 9,
+            length: 3,
+        },
+        text: "expected one of `fun`, `const` here",
+    },
+]

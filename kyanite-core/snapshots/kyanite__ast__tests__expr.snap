@@ -2,247 +2,387 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-nodes:
-  - Function:
-      name:
-        kind: Identifier
-        lexeme: main
-        span:
-          line: 1
-          column: 5
-          length: 4
-      params: []
-      ty: ~
-      body:
-        - Expr:
-            Call:
-              left:
-                Ident:
-                  name:
-                    kind: Identifier
-                    lexeme: println
-                    span:
-                      line: 2
-                      column: 5
-                      length: 7
-              args:
-                - Binary:
-                    left:
-                      Binary:
-                        left:
-                          Binary:
-                            left:
-                              Float:
-                                - 5
-                                - kind: Literal
-                                  lexeme: "5."
-                                  span:
-                                    line: 2
-                                    column: 13
-                                    length: 2
-                            op:
-                              kind: Star
-                              lexeme: ~
-                              span:
-                                line: 2
-                                column: 16
-                                length: 1
-                            right:
-                              Float:
-                                - 100
-                                - kind: Literal
-                                  lexeme: "100."
-                                  span:
-                                    line: 2
-                                    column: 18
-                                    length: 4
-                        op:
-                          kind: Plus
-                          lexeme: ~
-                          span:
-                            line: 2
-                            column: 23
-                            length: 1
-                        right:
-                          Float:
-                            - 15
-                            - kind: Literal
-                              lexeme: "15."
-                              span:
-                                line: 2
-                                column: 25
-                                length: 3
-                    op:
-                      kind: Minus
-                      lexeme: ~
-                      span:
-                        line: 2
-                        column: 29
-                        length: 1
-                    right:
-                      Binary:
-                        left:
-                          Float:
-                            - 7
-                            - kind: Literal
-                              lexeme: "7."
-                              span:
-                                line: 2
-                                column: 31
-                                length: 2
-                        op:
-                          kind: Slash
-                          lexeme: ~
-                          span:
-                            line: 2
-                            column: 34
-                            length: 1
-                        right:
-                          Float:
-                            - 8
-                            - kind: Literal
-                              lexeme: "8."
-                              span:
-                                line: 2
-                                column: 36
-                                length: 2
-              parens:
-                - kind: LeftParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 12
-                    length: 1
-                - kind: RightParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 38
-                    length: 1
-              delimiters: []
-        - Expr:
-            Call:
-              left:
-                Ident:
-                  name:
-                    kind: Identifier
-                    lexeme: println
-                    span:
-                      line: 3
-                      column: 5
-                      length: 7
-              args:
-                - Binary:
-                    left:
-                      Binary:
-                        left:
-                          Binary:
-                            left:
-                              Binary:
-                                left:
-                                  Int:
-                                    - 5
-                                    - kind: Literal
-                                      lexeme: "5"
-                                      span:
-                                        line: 3
-                                        column: 13
-                                        length: 1
-                                op:
-                                  kind: Star
-                                  lexeme: ~
-                                  span:
-                                    line: 3
-                                    column: 15
-                                    length: 1
-                                right:
-                                  Int:
-                                    - 100
-                                    - kind: Literal
-                                      lexeme: "100"
-                                      span:
-                                        line: 3
-                                        column: 17
-                                        length: 3
-                            op:
-                              kind: Plus
-                              lexeme: ~
-                              span:
-                                line: 3
-                                column: 21
-                                length: 1
-                            right:
-                              Int:
-                                - 15
-                                - kind: Literal
-                                  lexeme: "15"
-                                  span:
-                                    line: 3
-                                    column: 23
-                                    length: 2
-                        op:
-                          kind: Minus
-                          lexeme: ~
-                          span:
-                            line: 3
-                            column: 26
-                            length: 1
-                        right:
-                          Binary:
-                            left:
-                              Int:
-                                - 7
-                                - kind: Literal
-                                  lexeme: "7"
-                                  span:
-                                    line: 3
-                                    column: 28
-                                    length: 1
-                            op:
-                              kind: Slash
-                              lexeme: ~
-                              span:
-                                line: 3
-                                column: 30
-                                length: 1
-                            right:
-                              Int:
-                                - 8
-                                - kind: Literal
-                                  lexeme: "8"
-                                  span:
-                                    line: 3
-                                    column: 32
-                                    length: 1
-                    op:
-                      kind: GreaterEqual
-                      lexeme: ~
-                      span:
-                        line: 3
-                        column: 35
-                        length: 2
-                    right:
-                      Int:
-                        - 7
-                        - kind: Literal
-                          lexeme: "7"
-                          span:
-                            line: 3
-                            column: 37
-                            length: 1
-              parens:
-                - kind: LeftParen
-                  lexeme: ~
-                  span:
-                    line: 3
-                    column: 12
-                    length: 1
-                - kind: RightParen
-                  lexeme: ~
-                  span:
-                    line: 3
-                    column: 38
-                    length: 1
-              delimiters: []
-      external: false
-
+Ast {
+    nodes: [
+        Function(
+            FuncDecl {
+                name: Token {
+                    kind: Identifier,
+                    lexeme: Some(
+                        "main",
+                    ),
+                    span: Span {
+                        line: 1,
+                        column: 5,
+                        length: 4,
+                    },
+                },
+                params: [],
+                ty: None,
+                body: [
+                    Expr(
+                        Call(
+                            Call {
+                                left: Ident(
+                                    Ident {
+                                        name: Token {
+                                            kind: Identifier,
+                                            lexeme: Some(
+                                                "println",
+                                            ),
+                                            span: Span {
+                                                line: 2,
+                                                column: 5,
+                                                length: 7,
+                                            },
+                                        },
+                                    },
+                                ),
+                                args: [
+                                    Binary(
+                                        Binary {
+                                            left: Binary(
+                                                Binary {
+                                                    left: Binary(
+                                                        Binary {
+                                                            left: Float(
+                                                                5.0,
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "5.",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 2,
+                                                                        column: 13,
+                                                                        length: 2,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            op: Token {
+                                                                kind: Star,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 16,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                            right: Float(
+                                                                100.0,
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "100.",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 2,
+                                                                        column: 18,
+                                                                        length: 4,
+                                                                    },
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Token {
+                                                        kind: Plus,
+                                                        lexeme: None,
+                                                        span: Span {
+                                                            line: 2,
+                                                            column: 23,
+                                                            length: 1,
+                                                        },
+                                                    },
+                                                    right: Float(
+                                                        15.0,
+                                                        Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "15.",
+                                                            ),
+                                                            span: Span {
+                                                                line: 2,
+                                                                column: 25,
+                                                                length: 3,
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Token {
+                                                kind: Minus,
+                                                lexeme: None,
+                                                span: Span {
+                                                    line: 2,
+                                                    column: 29,
+                                                    length: 1,
+                                                },
+                                            },
+                                            right: Binary(
+                                                Binary {
+                                                    left: Float(
+                                                        7.0,
+                                                        Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "7.",
+                                                            ),
+                                                            span: Span {
+                                                                line: 2,
+                                                                column: 31,
+                                                                length: 2,
+                                                            },
+                                                        },
+                                                    ),
+                                                    op: Token {
+                                                        kind: Slash,
+                                                        lexeme: None,
+                                                        span: Span {
+                                                            line: 2,
+                                                            column: 34,
+                                                            length: 1,
+                                                        },
+                                                    },
+                                                    right: Float(
+                                                        8.0,
+                                                        Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "8.",
+                                                            ),
+                                                            span: Span {
+                                                                line: 2,
+                                                                column: 36,
+                                                                length: 2,
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                parens: (
+                                    Token {
+                                        kind: LeftParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 12,
+                                            length: 1,
+                                        },
+                                    },
+                                    Token {
+                                        kind: RightParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 38,
+                                            length: 1,
+                                        },
+                                    },
+                                ),
+                                delimiters: [],
+                            },
+                        ),
+                    ),
+                    Expr(
+                        Call(
+                            Call {
+                                left: Ident(
+                                    Ident {
+                                        name: Token {
+                                            kind: Identifier,
+                                            lexeme: Some(
+                                                "println",
+                                            ),
+                                            span: Span {
+                                                line: 3,
+                                                column: 5,
+                                                length: 7,
+                                            },
+                                        },
+                                    },
+                                ),
+                                args: [
+                                    Binary(
+                                        Binary {
+                                            left: Binary(
+                                                Binary {
+                                                    left: Binary(
+                                                        Binary {
+                                                            left: Binary(
+                                                                Binary {
+                                                                    left: Int(
+                                                                        5,
+                                                                        Token {
+                                                                            kind: Literal,
+                                                                            lexeme: Some(
+                                                                                "5",
+                                                                            ),
+                                                                            span: Span {
+                                                                                line: 3,
+                                                                                column: 13,
+                                                                                length: 1,
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                    op: Token {
+                                                                        kind: Star,
+                                                                        lexeme: None,
+                                                                        span: Span {
+                                                                            line: 3,
+                                                                            column: 15,
+                                                                            length: 1,
+                                                                        },
+                                                                    },
+                                                                    right: Int(
+                                                                        100,
+                                                                        Token {
+                                                                            kind: Literal,
+                                                                            lexeme: Some(
+                                                                                "100",
+                                                                            ),
+                                                                            span: Span {
+                                                                                line: 3,
+                                                                                column: 17,
+                                                                                length: 3,
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                },
+                                                            ),
+                                                            op: Token {
+                                                                kind: Plus,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 3,
+                                                                    column: 21,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                            right: Int(
+                                                                15,
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "15",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 3,
+                                                                        column: 23,
+                                                                        length: 2,
+                                                                    },
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                    op: Token {
+                                                        kind: Minus,
+                                                        lexeme: None,
+                                                        span: Span {
+                                                            line: 3,
+                                                            column: 26,
+                                                            length: 1,
+                                                        },
+                                                    },
+                                                    right: Binary(
+                                                        Binary {
+                                                            left: Int(
+                                                                7,
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "7",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 3,
+                                                                        column: 28,
+                                                                        length: 1,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            op: Token {
+                                                                kind: Slash,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 3,
+                                                                    column: 30,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                            right: Int(
+                                                                8,
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "8",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 3,
+                                                                        column: 32,
+                                                                        length: 1,
+                                                                    },
+                                                                },
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                            op: Token {
+                                                kind: GreaterEqual,
+                                                lexeme: None,
+                                                span: Span {
+                                                    line: 3,
+                                                    column: 34,
+                                                    length: 2,
+                                                },
+                                            },
+                                            right: Int(
+                                                7,
+                                                Token {
+                                                    kind: Literal,
+                                                    lexeme: Some(
+                                                        "7",
+                                                    ),
+                                                    span: Span {
+                                                        line: 3,
+                                                        column: 37,
+                                                        length: 1,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                ],
+                                parens: (
+                                    Token {
+                                        kind: LeftParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 3,
+                                            column: 12,
+                                            length: 1,
+                                        },
+                                    },
+                                    Token {
+                                        kind: RightParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 3,
+                                            column: 38,
+                                            length: 1,
+                                        },
+                                    },
+                                ),
+                                delimiters: [],
+                            },
+                        ),
+                    ),
+                ],
+                external: false,
+                id: 0,
+            },
+        ),
+    ],
+}

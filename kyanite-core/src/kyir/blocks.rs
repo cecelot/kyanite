@@ -21,7 +21,7 @@ impl BasicBlock {
             .filter(|block| match self.body.last() {
                 Some(Stmt::Jump(l)) => l == &block.label,
                 Some(Stmt::CJump { t, f, .. }) => t == &block.label || f == &block.label,
-                _ => unreachable!(),
+                _ => false,
             })
             .collect()
     }

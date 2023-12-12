@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use inkwell::{
     builder::Builder,
@@ -16,7 +16,7 @@ use crate::{
         node::{self, RecordDecl},
         Decl, Expr, Stmt, Type,
     },
-    pass::{Symbol, SymbolTable},
+    pass::{AccessMap, Symbol, SymbolTable},
     token::{Span, Token, TokenKind},
 };
 use builtins::Builtins;
@@ -86,18 +86,18 @@ pub struct Ir<'a, 'ctx> {
     fpm: &'a PassManager<FunctionValue<'ctx>>,
 
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
-    pub records: HashMap<String, (StructType<'ctx>, RecordDecl)>,
+    pub records: HashMap<String, (StructType<'ctx>, Rc<RecordDecl>)>,
     function: Option<FunctionValue<'ctx>>,
     symbols: SymbolTable,
 
-    accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
+    accesses: AccessMap,
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
     pub fn from_ast(
         program: &mut Vec<Decl>,
         symbols: SymbolTable,
-        accesses: HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>,
+        accesses: AccessMap,
     ) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
@@ -126,7 +126,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         };
 
         // Inject builtin function declarations
-        Builtins::new(&mut ir)?;
+        Builtins::inject(&mut ir)?;
 
         // entrypoint - compile all toplevel nodes
         for node in program {
@@ -177,13 +177,13 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .iter()
                 .map(|f| match Type::from(&f.ty) {
                     Type::UserDefined(name) => {
-                        let symbol = self.symbols.get(&Token::from(name)).unwrap().clone();
+                        let symbol = self.symbols.get(&name).unwrap().clone();
                         match symbol {
                             Symbol::Record(rec) => self.build_struct(&rec).into(),
                             _ => unreachable!(),
                         }
                     }
-                    ty => ty.as_llvm_basic_type(self),
+                    ty => ty.to_basic_type_enum(self),
                 })
                 .collect::<Vec<BasicTypeEnum>>()
                 .as_slice(),
@@ -191,15 +191,15 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         )
     }
 
-    fn record(&mut self, record: &node::RecordDecl) -> Result<BasicValueEnum<'ctx>, IrError> {
+    fn record(&mut self, record: &Rc<node::RecordDecl>) -> Result<BasicValueEnum<'ctx>, IrError> {
         let rec = self.build_struct(record);
         self.records
-            .insert(String::from(&record.name), (rec, record.clone()));
+            .insert(record.name.to_string(), (rec, Rc::clone(record)));
         Ok(self.context.i64_type().const_int(0, false).into())
     }
 
     fn init(&mut self, init: &node::Init) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let (rec, _) = *self.records.get(&String::from(&init.name)).unwrap();
+        let (rec, _) = *self.records.get(&init.name.to_string()).unwrap();
         let mut values = vec![];
         for init in &init.initializers {
             values.push(
@@ -212,30 +212,28 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn indices(&mut self, access: &node::Access) -> (Vec<(u32, Type)>, Type) {
-        let (symbols, indices, ty) = self.accesses.remove(&access.id).unwrap();
-        let indices = symbols
+        let access = self.accesses.remove(&access.id).unwrap();
+        let indices = access
+            .symbols
             .iter()
-            .zip(indices)
+            .zip(access.indices)
             .map(|(symbol, index)| (u32::try_from(index).unwrap(), symbol.ty()))
             .collect();
-        (indices, ty)
+        (indices, access.ty)
     }
 
     fn gep(&mut self, access: &node::Access) -> (PointerValue<'ctx>, BasicTypeEnum<'ctx>) {
         let (ptr, ty) = match access.chain.first().unwrap() {
-            Expr::Ident(ident) => self
-                .variables
-                .get(&String::from(&ident.name))
-                .unwrap()
-                .clone(),
+            Expr::Ident(ident) => self.variables.get(&ident.name.to_string()).unwrap().clone(),
             Expr::Call(_) => todo!(),
             _ => unimplemented!(),
         };
         let (indices, last) = self.indices(access);
-        let (ty, _) = self
+        let ty = self
             .records
-            .get(&String::from(&Token::from(&ty)))
-            .cloned()
+            .get(&ty.to_string())
+            .map(|(ty, _)| ty)
+            .copied()
             .unwrap();
         let gep = indices.iter().skip(1).fold(
             self.builder
@@ -243,11 +241,11 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .unwrap(),
             |gep, (index, ty)| {
                 self.builder
-                    .build_struct_gep(ty.as_llvm_basic_type(self), gep, *index, "tmp")
+                    .build_struct_gep(ty.to_basic_type_enum(self), gep, *index, "tmp")
                     .unwrap()
             },
         );
-        (gep, last.as_llvm_basic_type(self))
+        (gep, last.to_basic_type_enum(self))
     }
 
     fn access(&mut self, access: &node::Access) -> Result<BasicValueEnum<'ctx>, IrError> {
@@ -261,39 +259,30 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let args: Vec<BasicMetadataTypeEnum> = func
             .params
             .iter()
-            .map(|p| Type::from(&p.ty).as_llvm_basic_type(self).into())
+            .map(|p| p.ty.to_basic_type_enum(self).into())
             .collect();
         let types = args.as_slice();
 
         // `fn_type` creates a function type with the specified `types` (argument types)
-        let fn_ty = if Type::from(func.ty.as_ref()) == Type::Void {
+        let fn_ty = if func.ty == Type::Void {
             self.context.void_type().fn_type(types, false)
         } else {
-            Type::from(func.ty.as_ref())
-                .as_llvm_basic_type(self)
-                .fn_type(types, false)
+            func.ty.to_basic_type_enum(self).fn_type(types, false)
         };
 
         // Adds the function to the module as a complete function value
         let val = self
             .module
-            .add_function(&String::from(&func.name), fn_ty, None);
+            .add_function(&func.name.to_string(), fn_ty, None);
 
         // Iterate through the function arguments and assign names to them
         for (i, arg) in val.get_param_iter().enumerate() {
+            let name = func.params[i].name.to_string();
             match arg {
-                BasicValueEnum::IntValue(_) => arg
-                    .into_int_value()
-                    .set_name(&String::from(&func.params[i].name)),
-                BasicValueEnum::FloatValue(_) => arg
-                    .into_float_value()
-                    .set_name(&String::from(&func.params[i].name)),
-                BasicValueEnum::PointerValue(_) => arg
-                    .into_pointer_value()
-                    .set_name(&String::from(&func.params[i].name)),
-                BasicValueEnum::StructValue(_) => arg
-                    .into_struct_value()
-                    .set_name(&String::from(&func.params[i].name)),
+                BasicValueEnum::IntValue(_) => arg.into_int_value().set_name(&name),
+                BasicValueEnum::FloatValue(_) => arg.into_float_value().set_name(&name),
+                BasicValueEnum::PointerValue(_) => arg.into_pointer_value().set_name(&name),
+                BasicValueEnum::StructValue(_) => arg.into_struct_value().set_name(&name),
                 _ => unimplemented!("formal parameter type `{arg}` is not implemented"),
             };
         }
@@ -302,10 +291,17 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     /// Wraps the main function
-    pub fn main(&mut self, func: &mut node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+    pub fn main(&mut self, func: &Rc<node::FuncDecl>) -> Result<FunctionValue<'ctx>, IrError> {
         // Rename the main function to avoid conflicts with the wrapper
-        func.name.lexeme = Some("_main".into());
-        self.function(func)?;
+        let mut modified = node::FuncDecl::new(
+            func.name.clone(),
+            func.params.clone(),
+            func.ty.clone(),
+            func.body.clone(),
+            func.external,
+        );
+        modified.name.lexeme = Some("_main");
+        self.function(&Rc::new(modified))?;
 
         // TODO: collect CLI arguments
         let types: &[BasicMetadataTypeEnum] = &[];
@@ -325,9 +321,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     /// Compiles a function body into a `FunctionValue`
-    pub fn function(&mut self, func: &mut node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+    pub fn function(&mut self, func: &Rc<node::FuncDecl>) -> Result<FunctionValue<'ctx>, IrError> {
         // Special case main function
-        if String::from(&func.name) == "main" {
+        if func.name == "main" {
             return self.main(func);
         }
         // Compile our function prototype and set as current function
@@ -346,20 +342,18 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
         // Iterate through the function prototype, create allocations for each argument and add it to variables map
         for (i, arg) in proto.get_param_iter().enumerate() {
-            let name = String::from(&func.params[i].name);
+            let name = func.params[i].name.to_string();
             let allocation = self.alloca(&name, &arg);
             self.builder.build_store(allocation, arg);
-            self.variables.insert(
-                String::from(&func.params[i].name),
-                (allocation, Type::from(&func.params[i].ty)),
-            );
+            self.variables
+                .insert(name, (allocation, (&func.params[i].ty).into()));
         }
 
         // Compile the body of the function
         self.block(&func.body)?;
 
         // Add a return statement on behalf of the user if the function returns void
-        if Type::from(func.ty.as_ref()) == Type::Void {
+        if func.ty == Type::Void {
             self.builder.build_return(None);
         }
 
@@ -394,7 +388,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     /// Injects a string literal
-    fn str(&mut self, s: &String) -> Result<AnyValueEnum<'ctx>, IrError> {
+    fn str(&mut self, s: &str) -> Result<AnyValueEnum<'ctx>, IrError> {
         // Figure out the actual bytes of the string excluding the opening and closing quotes
         let bytes = s[1..s.len() - 1].as_bytes().to_vec();
         // Create a global string pointer with the appropriate length of zeroed out bytes
@@ -426,8 +420,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn var(&mut self, var: &node::VarDecl) -> Result<AnyValueEnum<'ctx>, IrError> {
         let ty = Type::from(&var.ty);
-        let name = String::from(&var.name);
-
+        let name = var.name.to_string();
         let value = self
             .expr(&var.expr)?
             .try_into()
@@ -435,7 +428,6 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let alloca = self.alloca(&name, &value);
         self.builder.build_store(alloca, value);
         self.variables.insert(name, (alloca, ty));
-
         Ok(value.into())
     }
 
@@ -443,7 +435,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // Retreive the pointer to the variable in question
         let ptr = match &assign.target {
             Expr::Ident(ref ident) => {
-                let name = String::from(&ident.name);
+                let name = ident.name.to_string();
                 match self.variables.get(&name) {
                     Some((ptr, _)) => *ptr,
                     None => return Err(IrError::Undefined(name)),
@@ -521,7 +513,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // Retreive the name of the function
         // (this needs to be updated when member access is implemented)
         let name = match *call.left {
-            Expr::Ident(ref ident) => String::from(&ident.name),
+            Expr::Ident(ref ident) => ident.name.to_string(),
             Expr::Access(_) => todo!(),
             _ => unimplemented!(),
         };
@@ -534,7 +526,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .map_or_else(
                     // Dummy value if the function returns void
                     || self.context.i64_type().const_int(0, false).into(),
-                    |val| val,
+                    std::convert::identity,
                 )),
             None => Err(IrError::UndefinedFunction(name.to_string())),
         }
@@ -550,9 +542,10 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn ident(&mut self, ident: &node::Ident) -> Result<BasicValueEnum<'ctx>, IrError> {
-        match self.variables.get(&String::from(&ident.name)) {
-            Some(var) => Ok(self.load(var, var.1.as_llvm_basic_type(self), ident)),
-            None => Err(IrError::Undefined(String::from(&ident.name))),
+        let name = ident.name.to_string();
+        match self.variables.get(&name) {
+            Some(var) => Ok(self.load(var, var.1.to_basic_type_enum(self), ident)),
+            None => Err(IrError::Undefined(name)),
         }
     }
 
@@ -612,11 +605,50 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 }
 
+trait ToBasicTypeEnum {
+    fn to_basic_type_enum<'ctx>(&self, ir: &Ir<'_, 'ctx>) -> BasicTypeEnum<'ctx>;
+}
+
+impl ToBasicTypeEnum for Type {
+    fn to_basic_type_enum<'ctx>(&self, ir: &Ir<'_, 'ctx>) -> BasicTypeEnum<'ctx> {
+        match self {
+            Type::Int => ir.context.i64_type().into(),
+            Type::Float => ir.context.f64_type().into(),
+            Type::Str => ir
+                .context
+                .i8_type()
+                .ptr_type(AddressSpace::default())
+                .into(),
+            Type::Bool => ir.context.bool_type().into(),
+            // TODO: this may be something other than a record in the future
+            Type::UserDefined(name) => ir
+                .records
+                .get(name)
+                .expect("called before all records built")
+                .0
+                .into(),
+            Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
+        }
+    }
+}
+
+impl ToBasicTypeEnum for Token {
+    fn to_basic_type_enum<'ctx>(&self, ir: &Ir<'_, 'ctx>) -> BasicTypeEnum<'ctx> {
+        Type::from(self).to_basic_type_enum(ir)
+    }
+}
+
+impl ToBasicTypeEnum for Option<Token> {
+    fn to_basic_type_enum<'ctx>(&self, ir: &Ir<'_, 'ctx>) -> BasicTypeEnum<'ctx> {
+        Type::from(self.as_ref()).to_basic_type_enum(ir)
+    }
+}
+
 fn main() -> node::Call {
     node::Call::new(
         Box::new(init::ident(Token {
             kind: TokenKind::Identifier,
-            lexeme: Some("_main".into()),
+            lexeme: Some("_main"),
             span: Span::new(0, 0, 0),
         })),
         vec![],

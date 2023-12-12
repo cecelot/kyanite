@@ -1,71 +1,111 @@
 ---
-source: kyanite-core/src/token.rs
+source: kyanite-core/src/token/mod.rs
 expression: stream.tokens
 ---
-- kind: Fun
-  lexeme: ~
-  span:
-    line: 1
-    column: 1
-    length: 3
-- kind: Identifier
-  lexeme: main
-  span:
-    line: 1
-    column: 5
-    length: 4
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 9
-    length: 1
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 10
-    length: 1
-- kind: LeftBrace
-  lexeme: ~
-  span:
-    line: 1
-    column: 12
-    length: 1
-- kind: Identifier
-  lexeme: println
-  span:
-    line: 2
-    column: 4
-    length: 7
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 11
-    length: 1
-- kind: Literal
-  lexeme: "\"Hello, world!\""
-  span:
-    line: 2
-    column: 12
-    length: 15
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 27
-    length: 1
-- kind: Semicolon
-  lexeme: ~
-  span:
-    line: 2
-    column: 28
-    length: 1
-- kind: RightBrace
-  lexeme: ~
-  span:
-    line: 3
-    column: 1
-    length: 1
-
+[
+    Token {
+        kind: Fun,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 1,
+            length: 3,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "main",
+        ),
+        span: Span {
+            line: 1,
+            column: 5,
+            length: 4,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 9,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 10,
+            length: 1,
+        },
+    },
+    Token {
+        kind: LeftBrace,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "println",
+        ),
+        span: Span {
+            line: 2,
+            column: 4,
+            length: 7,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 11,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "\"Hello, world!\"",
+        ),
+        span: Span {
+            line: 2,
+            column: 12,
+            length: 15,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 27,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Semicolon,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 28,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightBrace,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 1,
+            length: 1,
+        },
+    },
+]

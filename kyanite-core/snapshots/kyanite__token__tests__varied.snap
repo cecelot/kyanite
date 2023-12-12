@@ -1,61 +1,83 @@
 ---
-source: kyanite-core/src/token.rs
+source: kyanite-core/src/token/mod.rs
 expression: stream.errors
 ---
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `@`"
-  source: "@fun main ### (): int {@"
-  span:
-    line: 1
-    column: 1
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `#`"
-  source: "@fun main ### (): int {@"
-  span:
-    line: 1
-    column: 11
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `#`"
-  source: "@fun main ### (): int {@"
-  span:
-    line: 1
-    column: 12
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `#`"
-  source: "@fun main ### (): int {@"
-  span:
-    line: 1
-    column: 13
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `@`"
-  source: "@fun main ### (): int {@"
-  span:
-    line: 1
-    column: 24
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `^`"
-  source: "    print ^ ln(\"Hello, world&\\n\");"
-  span:
-    line: 2
-    column: 11
-    length: 1
-  text: not a token
-- filename: test-cases/tokens/varied.kya
-  heading: "unexpected character `&`"
-  source: "    retur & n 0;"
-  span:
-    line: 4
-    column: 11
-    length: 1
-  text: not a token
-
+[
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `@`",
+        source: "@fun main ### (): int {@",
+        span: Span {
+            line: 1,
+            column: 1,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `#`",
+        source: "@fun main ### (): int {@",
+        span: Span {
+            line: 1,
+            column: 11,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `#`",
+        source: "@fun main ### (): int {@",
+        span: Span {
+            line: 1,
+            column: 12,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `#`",
+        source: "@fun main ### (): int {@",
+        span: Span {
+            line: 1,
+            column: 13,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `@`",
+        source: "@fun main ### (): int {@",
+        span: Span {
+            line: 1,
+            column: 24,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `^`",
+        source: "    print ^ ln(\"Hello, world&\\n\");",
+        span: Span {
+            line: 2,
+            column: 11,
+            length: 1,
+        },
+        text: "not a token",
+    },
+    PreciseError {
+        filename: "test-cases/tokens/varied.kya",
+        heading: "unexpected character `&`",
+        source: "    retur & n 0;",
+        span: Span {
+            line: 4,
+            column: 11,
+            length: 1,
+        },
+        text: "not a token",
+    },
+]

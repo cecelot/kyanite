@@ -2,20 +2,27 @@
 source: kyanite-core/src/parse.rs
 expression: parser.errors
 ---
-- filename: test-cases/parser/nested.kya
-  heading: unexpected fun
-  source: "    println(fun);"
-  span:
-    line: 2
-    column: 13
-    length: 3
-  text: "expected one of `identifier`, `literal`, `(` here"
-- filename: test-cases/parser/nested.kya
-  heading: expected ; but found identifier
-  source: "    println(x)"
-  span:
-    line: 6
-    column: 5
-    length: 7
-  text: expected ; here
-
+[
+    PreciseError {
+        filename: "test-cases/parser/nested.kya",
+        heading: "unexpected fun",
+        source: "    println(fun);",
+        span: Span {
+            line: 2,
+            column: 13,
+            length: 3,
+        },
+        text: "expected one of `identifier`, `literal`, `(` here",
+    },
+    PreciseError {
+        filename: "test-cases/parser/nested.kya",
+        heading: "expected ; but found identifier",
+        source: "    println(x)",
+        span: Span {
+            line: 6,
+            column: 5,
+            length: 7,
+        },
+        text: "expected ; here",
+    },
+]

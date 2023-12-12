@@ -2,23 +2,39 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-nodes:
-  - Function:
-      name:
-        kind: Identifier
-        lexeme: foo
-        span:
-          line: 1
-          column: 5
-          length: 3
-      params: []
-      ty:
-        kind: Identifier
-        lexeme: void
-        span:
-          line: 1
-          column: 12
-          length: 4
-      body: []
-      external: false
-
+Ast {
+    nodes: [
+        Function(
+            FuncDecl {
+                name: Token {
+                    kind: Identifier,
+                    lexeme: Some(
+                        "foo",
+                    ),
+                    span: Span {
+                        line: 1,
+                        column: 5,
+                        length: 3,
+                    },
+                },
+                params: [],
+                ty: Some(
+                    Token {
+                        kind: Identifier,
+                        lexeme: Some(
+                            "void",
+                        ),
+                        span: Span {
+                            line: 1,
+                            column: 12,
+                            length: 4,
+                        },
+                    },
+                ),
+                body: [],
+                external: false,
+                id: 0,
+            },
+        ),
+    ],
+}

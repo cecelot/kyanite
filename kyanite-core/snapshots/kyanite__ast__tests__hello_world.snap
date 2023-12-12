@@ -2,51 +2,86 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-nodes:
-  - Function:
-      name:
-        kind: Identifier
-        lexeme: main
-        span:
-          line: 1
-          column: 5
-          length: 4
-      params: []
-      ty: ~
-      body:
-        - Expr:
-            Call:
-              left:
-                Ident:
-                  name:
-                    kind: Identifier
-                    lexeme: println
-                    span:
-                      line: 2
-                      column: 4
-                      length: 7
-              args:
-                - Str:
-                    - "\"Hello, world!\""
-                    - kind: Literal
-                      lexeme: "\"Hello, world!\""
-                      span:
-                        line: 2
-                        column: 12
-                        length: 15
-              parens:
-                - kind: LeftParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 11
-                    length: 1
-                - kind: RightParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 27
-                    length: 1
-              delimiters: []
-      external: false
-
+Ast {
+    nodes: [
+        Function(
+            FuncDecl {
+                name: Token {
+                    kind: Identifier,
+                    lexeme: Some(
+                        "main",
+                    ),
+                    span: Span {
+                        line: 1,
+                        column: 5,
+                        length: 4,
+                    },
+                },
+                params: [],
+                ty: None,
+                body: [
+                    Expr(
+                        Call(
+                            Call {
+                                left: Ident(
+                                    Ident {
+                                        name: Token {
+                                            kind: Identifier,
+                                            lexeme: Some(
+                                                "println",
+                                            ),
+                                            span: Span {
+                                                line: 2,
+                                                column: 4,
+                                                length: 7,
+                                            },
+                                        },
+                                    },
+                                ),
+                                args: [
+                                    Str(
+                                        "\"Hello, world!\"",
+                                        Token {
+                                            kind: Literal,
+                                            lexeme: Some(
+                                                "\"Hello, world!\"",
+                                            ),
+                                            span: Span {
+                                                line: 2,
+                                                column: 12,
+                                                length: 15,
+                                            },
+                                        },
+                                    ),
+                                ],
+                                parens: (
+                                    Token {
+                                        kind: LeftParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 11,
+                                            length: 1,
+                                        },
+                                    },
+                                    Token {
+                                        kind: RightParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 27,
+                                            length: 1,
+                                        },
+                                    },
+                                ),
+                                delimiters: [],
+                            },
+                        ),
+                    ),
+                ],
+                external: false,
+                id: 0,
+            },
+        ),
+    ],
+}

@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    ops::Deref,
-};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::{AsmInstr, Instr, Opcode};
 
@@ -70,8 +67,7 @@ impl<'a> Graph<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct LiveRanges(HashMap<String, Vec<bool>>);
+crate::newtype!(LiveRanges:HashMap<String, Vec<bool>>);
 
 impl LiveRanges {
     pub fn get(&self, temp: &str) -> String {
@@ -79,14 +75,6 @@ impl LiveRanges {
         live.iter().enumerate().fold(String::new(), |acc, (i, x)| {
             acc + &format!("{}: {}\n", i, x)
         })
-    }
-}
-
-impl Deref for LiveRanges {
-    type Target = HashMap<String, Vec<bool>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 

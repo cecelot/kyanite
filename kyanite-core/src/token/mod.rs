@@ -1,103 +1,25 @@
-use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, fmt, hash::Hash, io};
+use std::{
+    collections::VecDeque,
+    fmt,
+    hash::{Hash, Hasher},
+    io,
+};
 
-use crate::{ast::Type, reporting::error::PreciseError, Source};
+use crate::{reporting::error::PreciseError, Source};
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Hash)]
-pub enum TokenKind {
-    Identifier,
-    Literal,
+pub use self::kind::TokenKind;
 
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-    Semicolon,
-    Colon,
-    Comma,
-    Dot,
+mod kind;
 
-    Plus,
-    Minus,
-    Star,
-    Slash,
-
-    Equal,
-    EqualEqual,
-    Bang,
-    BangEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-
-    Let,
-    Const,
-    Fun,
-    Return,
-    Extern,
-    If,
-    Else,
-    While,
-
-    Rec,
-    Init,
-
-    Error,
-
-    Eof,
-}
-
-impl fmt::Display for TokenKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TokenKind::Bang => write!(f, "!"),
-            TokenKind::BangEqual => write!(f, "!="),
-            TokenKind::Equal => write!(f, "="),
-            TokenKind::EqualEqual => write!(f, "=="),
-            TokenKind::Greater => write!(f, ">"),
-            TokenKind::GreaterEqual => write!(f, ">="),
-            TokenKind::Less => write!(f, "<"),
-            TokenKind::LessEqual => write!(f, "<="),
-            TokenKind::LeftParen => write!(f, "("),
-            TokenKind::RightParen => write!(f, ")"),
-            TokenKind::LeftBrace => write!(f, "{{"),
-            TokenKind::RightBrace => write!(f, "}}"),
-            TokenKind::Semicolon => write!(f, ";"),
-            TokenKind::Colon => write!(f, ":"),
-            TokenKind::Comma => write!(f, ","),
-            TokenKind::Dot => write!(f, "."),
-            TokenKind::Plus => write!(f, "add"),
-            TokenKind::Minus => write!(f, "subtract"),
-            TokenKind::Star => write!(f, "multiply"),
-            TokenKind::Slash => write!(f, "divide"),
-            TokenKind::Let => write!(f, "let"),
-            TokenKind::Const => write!(f, "const"),
-            TokenKind::Fun => write!(f, "fun"),
-            TokenKind::Extern => write!(f, "extern"),
-            TokenKind::Return => write!(f, "return"),
-            TokenKind::Rec => write!(f, "rec"),
-            TokenKind::Init => write!(f, "init"),
-            TokenKind::If => write!(f, "if"),
-            TokenKind::Else => write!(f, "else"),
-            TokenKind::While => write!(f, "while"),
-            TokenKind::Identifier => write!(f, "identifier"),
-            TokenKind::Literal => write!(f, "literal"),
-            TokenKind::Error => write!(f, "error"),
-            TokenKind::Eof => write!(f, "eof"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq)]
 pub struct Token {
     pub kind: TokenKind,
-    pub lexeme: Option<String>,
+    pub lexeme: Option<&'static str>,
     pub span: Span,
 }
 
 impl Token {
-    fn new(kind: TokenKind, lexeme: Option<String>, span: Span) -> Self {
+    pub fn new(kind: TokenKind, lexeme: Option<&'static str>, span: Span) -> Self {
         Self { kind, lexeme, span }
     }
 }
@@ -108,45 +30,31 @@ impl PartialEq for Token {
     }
 }
 
+impl PartialEq<str> for Token {
+    fn eq(&self, other: &str) -> bool {
+        self.lexeme == Some(other)
+    }
+}
+
+impl PartialEq<&str> for Token {
+    fn eq(&self, other: &&str) -> bool {
+        self.lexeme == Some(other)
+    }
+}
+
 impl Hash for Token {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.lexeme.hash(state)
-    }
-}
-
-impl From<&Token> for String {
-    fn from(token: &Token) -> Self {
-        token.lexeme.clone().unwrap_or(format!("{}", token.kind))
-    }
-}
-
-impl From<&Type> for Token {
-    fn from(ty: &Type) -> Self {
-        Token::new(
-            TokenKind::Identifier,
-            Some(format!("{}", ty)),
-            Default::default(),
-        )
-    }
-}
-
-impl From<String> for Token {
-    fn from(lexeme: String) -> Self {
-        Token::new(TokenKind::Identifier, Some(lexeme), Default::default())
     }
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.lexeme.as_ref().unwrap_or(&format!("{}", self.kind))
-        )
+        write!(f, "{}", self.lexeme.unwrap_or(&format!("{}", self.kind)))
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub(super) line: usize,
     pub(super) column: usize,
@@ -188,7 +96,7 @@ impl fmt::Display for Span {
 
 #[derive(Debug)]
 pub struct TokenStream<'a> {
-    pub(super) errors: Vec<PreciseError>,
+    pub(super) errors: Vec<PreciseError<'a>>,
     pub(super) tokens: VecDeque<Token>,
     pub(super) source: &'a Source,
     span: Span,
@@ -225,8 +133,7 @@ impl<'a> TokenStream<'a> {
     fn token(&mut self) {
         self.span.length = 1;
         self.skip_whitespace();
-        let token: Option<char> = self.peek();
-        let token = match token {
+        let token = match self.peek() {
             Some(token) => {
                 self.consume();
                 match token {
@@ -303,7 +210,7 @@ impl<'a> TokenStream<'a> {
             return Token::new(TokenKind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
+        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span))
     }
 
     fn number(&mut self) -> Token {
@@ -325,7 +232,7 @@ impl<'a> TokenStream<'a> {
 
         let lexeme = self.lexeme(self.start, self.current);
         self.span.length = self.current - self.start;
-        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme), stream.span))
+        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span))
     }
 
     fn identifier(&mut self) -> Token {
@@ -344,8 +251,8 @@ impl<'a> TokenStream<'a> {
             "let" => Token::new(TokenKind::Let, None, stream.span),
             "const" => Token::new(TokenKind::Const, None, stream.span),
             "fun" => Token::new(TokenKind::Fun, None, stream.span),
-            "true" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
-            "false" => Token::new(TokenKind::Literal, Some(lexeme), stream.span),
+            "true" => Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span),
+            "false" => Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span),
             "return" => Token::new(TokenKind::Return, None, stream.span),
             "extern" => Token::new(TokenKind::Extern, None, stream.span),
             "rec" => Token::new(TokenKind::Rec, None, stream.span),
@@ -353,7 +260,7 @@ impl<'a> TokenStream<'a> {
             "if" => Token::new(TokenKind::If, None, stream.span),
             "else" => Token::new(TokenKind::Else, None, stream.span),
             "while" => Token::new(TokenKind::While, None, stream.span),
-            _ => Token::new(TokenKind::Identifier, Some(lexeme), stream.span),
+            _ => Token::new(TokenKind::Identifier, Some(lexeme.leak()), stream.span),
         })
     }
 
@@ -375,8 +282,10 @@ impl<'a> TokenStream<'a> {
     fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {
         if self.peek().unwrap() == c {
             self.consume();
-            self.span.length += 1;
-            Token::new(first, None, self.span)
+            self.span.length = 2;
+            let mut span = self.span;
+            span.column -= 1;
+            Token::new(first, None, span)
         } else {
             Token::new(second, None, self.span)
         }
@@ -427,11 +336,11 @@ macro_rules! assert_tokens {
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
                     let stream = TokenStream::from_source(&source)?;
-                    insta::with_settings!({snapshot_path => "../snapshots"}, {
+                    insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         if $valid {
-                            insta::assert_yaml_snapshot!(stream.tokens);
+                            insta::assert_debug_snapshot!(stream.tokens);
                         } else {
-                            insta::assert_yaml_snapshot!(stream.errors);
+                            insta::assert_debug_snapshot!(stream.errors);
                         }
                     });
 

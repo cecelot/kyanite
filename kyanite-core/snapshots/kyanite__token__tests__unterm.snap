@@ -1,13 +1,17 @@
 ---
-source: kyanite-core/src/token.rs
+source: kyanite-core/src/token/mod.rs
 expression: stream.errors
 ---
-- filename: test-cases/tokens/unterm.kya
-  heading: unterminated string
-  source: "    println(\"hello world);"
-  span:
-    line: 2
-    column: 13
-    length: 1
-  text: opening quote here
-
+[
+    PreciseError {
+        filename: "test-cases/tokens/unterm.kya",
+        heading: "unterminated string",
+        source: "    println(\"hello world);",
+        span: Span {
+            line: 2,
+            column: 13,
+            length: 1,
+        },
+        text: "opening quote here",
+    },
+]

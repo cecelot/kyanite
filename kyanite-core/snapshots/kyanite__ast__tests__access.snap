@@ -2,126 +2,227 @@
 source: kyanite-core/src/ast/mod.rs
 expression: ast
 ---
-nodes:
-  - Function:
-      name:
-        kind: Identifier
-        lexeme: main
-        span:
-          line: 1
-          column: 5
-          length: 4
-      params: []
-      ty: ~
-      body:
-        - Expr:
-            Call:
-              left:
-                Ident:
-                  name:
-                    kind: Identifier
-                    lexeme: println
-                    span:
-                      line: 2
-                      column: 5
-                      length: 7
-              args:
-                - Access:
-                    chain:
-                      - Ident:
-                          name:
-                            kind: Identifier
-                            lexeme: kyanite
-                            span:
-                              line: 2
-                              column: 13
-                              length: 7
-                      - Ident:
-                          name:
-                            kind: Identifier
-                            lexeme: fs
-                            span:
-                              line: 2
-                              column: 21
-                              length: 2
-                      - Call:
-                          left:
-                            Ident:
-                              name:
-                                kind: Identifier
-                                lexeme: read
-                                span:
-                                  line: 2
-                                  column: 24
-                                  length: 4
-                          args:
-                            - Str:
-                                - "\"examples/access.kya\""
-                                - kind: Literal
-                                  lexeme: "\"examples/access.kya\""
-                                  span:
-                                    line: 2
-                                    column: 29
-                                    length: 21
-                            - Access:
-                                chain:
-                                  - Ident:
-                                      name:
-                                        kind: Identifier
-                                        lexeme: kyanite
-                                        span:
-                                          line: 2
-                                          column: 52
-                                          length: 7
-                                  - Ident:
-                                      name:
-                                        kind: Identifier
-                                        lexeme: fs
-                                        span:
-                                          line: 2
-                                          column: 60
-                                          length: 2
-                                  - Ident:
-                                      name:
-                                        kind: Identifier
-                                        lexeme: O_READ
-                                        span:
-                                          line: 2
-                                          column: 63
-                                          length: 6
-                          parens:
-                            - kind: LeftParen
-                              lexeme: ~
-                              span:
-                                line: 2
-                                column: 28
-                                length: 1
-                            - kind: RightParen
-                              lexeme: ~
-                              span:
-                                line: 2
-                                column: 69
-                                length: 1
-                          delimiters:
-                            - kind: Comma
-                              lexeme: ~
-                              span:
-                                line: 2
-                                column: 50
-                                length: 1
-              parens:
-                - kind: LeftParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 12
-                    length: 1
-                - kind: RightParen
-                  lexeme: ~
-                  span:
-                    line: 2
-                    column: 70
-                    length: 1
-              delimiters: []
-      external: false
-
+Ast {
+    nodes: [
+        Function(
+            FuncDecl {
+                name: Token {
+                    kind: Identifier,
+                    lexeme: Some(
+                        "main",
+                    ),
+                    span: Span {
+                        line: 1,
+                        column: 5,
+                        length: 4,
+                    },
+                },
+                params: [],
+                ty: None,
+                body: [
+                    Expr(
+                        Call(
+                            Call {
+                                left: Ident(
+                                    Ident {
+                                        name: Token {
+                                            kind: Identifier,
+                                            lexeme: Some(
+                                                "println",
+                                            ),
+                                            span: Span {
+                                                line: 2,
+                                                column: 5,
+                                                length: 7,
+                                            },
+                                        },
+                                    },
+                                ),
+                                args: [
+                                    Access(
+                                        Access {
+                                            chain: [
+                                                Ident(
+                                                    Ident {
+                                                        name: Token {
+                                                            kind: Identifier,
+                                                            lexeme: Some(
+                                                                "kyanite",
+                                                            ),
+                                                            span: Span {
+                                                                line: 2,
+                                                                column: 13,
+                                                                length: 7,
+                                                            },
+                                                        },
+                                                    },
+                                                ),
+                                                Ident(
+                                                    Ident {
+                                                        name: Token {
+                                                            kind: Identifier,
+                                                            lexeme: Some(
+                                                                "fs",
+                                                            ),
+                                                            span: Span {
+                                                                line: 2,
+                                                                column: 21,
+                                                                length: 2,
+                                                            },
+                                                        },
+                                                    },
+                                                ),
+                                                Call(
+                                                    Call {
+                                                        left: Ident(
+                                                            Ident {
+                                                                name: Token {
+                                                                    kind: Identifier,
+                                                                    lexeme: Some(
+                                                                        "read",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 2,
+                                                                        column: 24,
+                                                                        length: 4,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                        args: [
+                                                            Str(
+                                                                "\"examples/access.kya\"",
+                                                                Token {
+                                                                    kind: Literal,
+                                                                    lexeme: Some(
+                                                                        "\"examples/access.kya\"",
+                                                                    ),
+                                                                    span: Span {
+                                                                        line: 2,
+                                                                        column: 29,
+                                                                        length: 21,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            Access(
+                                                                Access {
+                                                                    chain: [
+                                                                        Ident(
+                                                                            Ident {
+                                                                                name: Token {
+                                                                                    kind: Identifier,
+                                                                                    lexeme: Some(
+                                                                                        "kyanite",
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        line: 2,
+                                                                                        column: 52,
+                                                                                        length: 7,
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        Ident(
+                                                                            Ident {
+                                                                                name: Token {
+                                                                                    kind: Identifier,
+                                                                                    lexeme: Some(
+                                                                                        "fs",
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        line: 2,
+                                                                                        column: 60,
+                                                                                        length: 2,
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        Ident(
+                                                                            Ident {
+                                                                                name: Token {
+                                                                                    kind: Identifier,
+                                                                                    lexeme: Some(
+                                                                                        "O_READ",
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        line: 2,
+                                                                                        column: 63,
+                                                                                        length: 6,
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                    id: 0,
+                                                                },
+                                                            ),
+                                                        ],
+                                                        parens: (
+                                                            Token {
+                                                                kind: LeftParen,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 28,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                            Token {
+                                                                kind: RightParen,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 69,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                        ),
+                                                        delimiters: [
+                                                            Token {
+                                                                kind: Comma,
+                                                                lexeme: None,
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 50,
+                                                                    length: 1,
+                                                                },
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
+                                            ],
+                                            id: 0,
+                                        },
+                                    ),
+                                ],
+                                parens: (
+                                    Token {
+                                        kind: LeftParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 12,
+                                            length: 1,
+                                        },
+                                    },
+                                    Token {
+                                        kind: RightParen,
+                                        lexeme: None,
+                                        span: Span {
+                                            line: 2,
+                                            column: 70,
+                                            length: 1,
+                                        },
+                                    },
+                                ),
+                                delimiters: [],
+                            },
+                        ),
+                    ),
+                ],
+                external: false,
+                id: 0,
+            },
+        ),
+    ],
+}

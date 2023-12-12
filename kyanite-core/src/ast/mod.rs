@@ -1,18 +1,16 @@
-use inkwell::{types::BasicTypeEnum, AddressSpace};
-use serde::{Deserialize, Serialize};
-
 use crate::{
-    codegen::Ir,
     parse::Parser,
-    token::{Span, Token, TokenStream},
+    token::{Token, TokenStream},
     PipelineError, Source,
 };
-use std::fmt;
+use std::{fmt, rc::Rc};
 
+mod debug;
 pub mod init;
 pub mod node;
+pub mod underline;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ast {
     pub nodes: Vec<Decl>,
 }
@@ -38,130 +36,39 @@ impl Ast {
     }
 }
 
-pub trait NodeSpan {
-    fn span(&self) -> Span {
-        Span::new(self.line(), self.start(), self.end() - self.start())
-    }
-    fn start(&self) -> usize;
-    fn end(&self) -> usize;
-    fn line(&self) -> usize;
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Decl {
-    Record(node::RecordDecl),
-    Function(node::FuncDecl),
-    Constant(node::ConstantDecl),
+    Record(Rc<node::RecordDecl>),
+    Function(Rc<node::FuncDecl>),
+    Constant(Rc<node::ConstantDecl>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
-    Var(node::VarDecl),
-    Assign(node::Assign),
-    Return(node::Return),
+    Var(Rc<node::VarDecl>),
+    Assign(Rc<node::Assign>),
+    Return(Rc<node::Return>),
     Expr(Expr),
-    If(node::If),
-    While(node::While),
+    If(Rc<node::If>),
+    While(Rc<node::While>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Expr {
-    Call(node::Call),
-    Access(node::Access),
-    Binary(node::Binary),
-    Unary(node::Unary),
-    Ident(node::Ident),
-    Init(node::Init),
-    Str(String, Token),
+    Call(Rc<node::Call>),
+    Access(Rc<node::Access>),
+    Binary(Rc<node::Binary>),
+    Unary(Rc<node::Unary>),
+    Ident(Rc<node::Ident>),
+    Init(Rc<node::Init>),
+    Str(&'static str, Token),
     Int(i64, Token),
     Float(f64, Token),
     Bool(bool, Token),
 }
 
-impl NodeSpan for Stmt {
-    fn start(&self) -> usize {
-        match self {
-            Stmt::Var(var) => var.name.span.column,
-            Stmt::Assign(assign) => assign.target.start(),
-            Stmt::Return(ret) => ret.keyword.span.column,
-            Stmt::Expr(expr) => expr.start(),
-            Stmt::If(cond) => cond.condition.start(),
-            Stmt::While(cond) => cond.condition.start(),
-        }
-    }
-
-    fn end(&self) -> usize {
-        match self {
-            Stmt::Var(var) => var.expr.end(),
-            Stmt::Assign(assign) => assign.expr.end(),
-            Stmt::Return(ret) => ret.expr.end(),
-            Stmt::Expr(expr) => expr.end(),
-            Stmt::If(cond) => cond.condition.end(),
-            Stmt::While(cond) => cond.condition.end(),
-        }
-    }
-
-    fn line(&self) -> usize {
-        match self {
-            Stmt::Var(var) => var.name.span.line,
-            Stmt::Assign(assign) => assign.target.line(),
-            Stmt::Return(ret) => ret.expr.line(),
-            Stmt::Expr(expr) => expr.line(),
-            Stmt::If(cond) => cond.condition.line(),
-            Stmt::While(cond) => cond.condition.line(),
-        }
-    }
-}
-
-impl NodeSpan for Expr {
-    fn start(&self) -> usize {
-        match self {
-            Expr::Access(access) => access.chain.first().unwrap().start(),
-            Expr::Call(call) => call.left.start(),
-            Expr::Binary(binary) => binary.left.start(),
-            Expr::Unary(unary) => unary.op.span.column,
-            Expr::Ident(id) => id.name.span.column,
-            Expr::Str(_, token) => token.span.column,
-            Expr::Int(_, token) => token.span.column,
-            Expr::Float(_, token) => token.span.column,
-            Expr::Bool(_, token) => token.span.column,
-            Expr::Init(init) => init.name.span.column,
-        }
-    }
-
-    fn end(&self) -> usize {
-        match self {
-            Expr::Access(access) => access.chain.last().unwrap().end(),
-            Expr::Call(call) => call.parens.1.span.column + 1,
-            Expr::Binary(binary) => binary.right.end(),
-            Expr::Unary(unary) => unary.expr.end(),
-            Expr::Ident(id) => id.name.span.column + id.name.span.length,
-            Expr::Str(_, token) => token.span.column + token.span.length,
-            Expr::Int(_, token) => token.span.column + token.span.length,
-            Expr::Float(_, token) => token.span.column + token.span.length,
-            Expr::Bool(_, token) => token.span.column + token.span.length,
-            Expr::Init(init) => init.parens.1.span.column + 1,
-        }
-    }
-
-    fn line(&self) -> usize {
-        match self {
-            Expr::Access(access) => access.chain.first().unwrap().line(),
-            Expr::Call(call) => call.left.line(),
-            Expr::Binary(binary) => binary.left.line(),
-            Expr::Unary(unary) => unary.expr.line(),
-            Expr::Ident(id) => id.name.span.line,
-            Expr::Str(_, token) => token.span.line,
-            Expr::Int(_, token) => token.span.line,
-            Expr::Float(_, token) => token.span.line,
-            Expr::Bool(_, token) => token.span.line,
-            Expr::Init(init) => init.name.span.line,
-        }
-    }
-}
-
 impl Expr {
-    pub fn ident(&self) -> &node::Ident {
+    pub fn as_ident(&self) -> &node::Ident {
         match self {
             Expr::Ident(ident) => ident,
             _ => panic!("called `Expr::ident()` on a non-ident"),
@@ -194,56 +101,9 @@ pub enum Type {
     UserDefined(String),
 }
 
-impl Type {
-    pub fn as_llvm_basic_type<'a, 'ctx>(&'a self, ir: &Ir<'a, 'ctx>) -> BasicTypeEnum<'ctx> {
-        match self {
-            Type::Int => ir.context.i64_type().into(),
-            Type::Float => ir.context.f64_type().into(),
-            Type::Str => ir
-                .context
-                .i8_type()
-                .ptr_type(AddressSpace::default())
-                .into(),
-            Type::Bool => ir.context.bool_type().into(),
-            // TODO: this may be something other than a record in the future
-            Type::UserDefined(name) => ir
-                .records
-                .get(name)
-                .expect("called before all records built")
-                .0
-                .into(),
-            Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),
-        }
-    }
-}
-
-impl From<&Type> for String {
-    fn from(ty: &Type) -> Self {
-        match ty {
-            Type::Str => "str".to_string(),
-            Type::Int => "int".to_string(),
-            Type::Float => "float".to_string(),
-            Type::Bool => "bool".to_string(),
-            Type::Void => "void".to_string(),
-            Type::UserDefined(name) => name.clone(),
-        }
-    }
-}
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", String::from(self))
-    }
-}
-
 impl From<&Token> for Type {
     fn from(value: &Token) -> Self {
-        match value
-            .lexeme
-            .clone()
-            .expect("token should have lexeme")
-            .as_str()
-        {
+        match value.lexeme.expect("token should have lexeme") {
             "str" => Self::Str,
             "int" => Self::Int,
             "float" => Self::Float,
@@ -263,10 +123,36 @@ impl From<Option<&Token>> for Type {
     }
 }
 
+impl PartialEq<Type> for Option<Token> {
+    fn eq(&self, other: &Type) -> bool {
+        match self {
+            Some(token) => Type::from(token) == *other,
+            None => *other == Type::Void,
+        }
+    }
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Str => "str",
+                Self::Int => "int",
+                Self::Float => "float",
+                Self::Bool => "bool",
+                Self::Void => "void",
+                Self::UserDefined(name) => name,
+            }
+        )
+    }
+}
+
 macro_rules! association {
     {$($ty:ident),*} => {
         $(
-            #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+            #[derive(Debug, Clone, PartialEq, Eq, )]
             pub struct $ty {
                 pub name: Token,
                 pub ty: Token,
@@ -281,12 +167,7 @@ macro_rules! association {
     };
 }
 
-association! {
-    Param,
-    Field
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Initializer {
     pub name: Token,
     pub expr: Expr,
@@ -298,20 +179,25 @@ impl Initializer {
     }
 }
 
+association! {
+    Param,
+    Field
+}
+
 macro_rules! assert_ast {
     ($($path:expr => $name:ident),*) => {
         #[cfg(test)]
         mod tests {
-            use crate::{Source, ast};
+            use crate::{Source, ast::{self, debug::StripId}};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let ast = ast::Ast::from_source(&Source::new($path)?)?;
+                    let mut ast = ast::Ast::from_source(&Source::new($path)?)?;
+                    ast.nodes.iter_mut().for_each(|node| node.strip_id());
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
-                        insta::assert_yaml_snapshot!(ast);
+                        insta::assert_debug_snapshot!(ast);
                     });
-
                     Ok(())
                 }
             )*

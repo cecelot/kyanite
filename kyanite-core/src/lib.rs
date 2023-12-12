@@ -13,6 +13,7 @@ mod ast;
 mod codegen;
 mod compile;
 mod kyir;
+mod macros;
 mod parse;
 mod pass;
 mod reporting;
@@ -24,7 +25,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
     #[error("file \"{0}\" does not exist")]
-    FileNotFound(String),
+    FileNotFound(&'static str),
     #[error("file is not valid UTF-8")]
     InvalidUtf8,
     #[error("(while lexing source) {0} error(s) encountered")]
@@ -56,12 +57,15 @@ impl Program {
     }
 
     fn new(mut ast: ast::Ast, source: Source) -> Result<Self, PipelineError> {
-        fn strip_prefix(filename: &str) -> String {
-            let chars: Vec<_> = filename.chars().collect();
-            let name: Vec<_> = chars.iter().rev().take_while(|&&c| c != '/').collect();
-            name.iter().rev().copied().copied().collect()
-        }
-        let filename = strip_prefix(&source.filename);
+        let filename = {
+            let name: Vec<_> = source
+                .filename
+                .chars()
+                .rev()
+                .take_while(|&c| c != '/')
+                .collect();
+            name.iter().rev().collect()
+        };
         let symbols = SymbolTable::from(&ast.nodes);
         let mut accesses = HashMap::new();
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
@@ -75,7 +79,7 @@ impl Program {
 
 #[derive(Debug, Default, Clone)]
 pub struct Source {
-    filename: String,
+    filename: &'static str,
     chars: Vec<char>,
     raw: String,
 }
@@ -89,11 +93,10 @@ impl Source {
             .as_ref()
             .to_str()
             .ok_or(PipelineError::InvalidUtf8)?
-            .to_string();
+            .to_string()
+            .leak();
         let mut raw = String::new();
-        // acceptable clone()
-        let mut file =
-            File::open(&path).map_err(|_| PipelineError::FileNotFound(filename.clone()))?;
+        let mut file = File::open(&path).map_err(|_| PipelineError::FileNotFound(filename))?;
         file.read_to_string(&mut raw)
             .map_err(|_| PipelineError::InvalidUtf8)?;
         Ok(Self {
@@ -105,7 +108,7 @@ impl Source {
 
     pub fn in_memory(raw: String) -> Self {
         Self {
-            filename: "in-memory.kya".into(),
+            filename: "in-memory.kya",
             chars: raw.chars().collect(),
             raw,
         }

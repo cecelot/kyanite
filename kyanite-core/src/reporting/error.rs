@@ -1,19 +1,18 @@
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::{token::Span, Source};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PreciseError {
-    filename: String,
+#[derive(Debug)]
+pub struct PreciseError<'a> {
+    filename: &'a str,
     heading: String,
     source: String,
     span: Span,
     text: String,
 }
 
-impl PreciseError {
+impl<'a> PreciseError<'a> {
     pub fn new(source: &Source, span: Span, heading: String, text: String) -> Self {
         Self {
             source: source
@@ -22,7 +21,7 @@ impl PreciseError {
                 .nth(span.line - 1)
                 .expect("span to have valid line number")
                 .into(),
-            filename: source.filename.clone(),
+            filename: source.filename,
             span,
             heading,
             text,
@@ -33,7 +32,7 @@ impl PreciseError {
     where
         F: FnOnce(&mut String),
     {
-        let num: String = self.span.line.to_string();
+        let num = self.span.line.to_string();
         comment.push_str(&format!(
             "{}{}",
             " ".repeat(num.len() + 1),
@@ -44,7 +43,7 @@ impl PreciseError {
     }
 
     fn build(&self) -> String {
-        let num: String = self.span.line.to_string();
+        let num = self.span.line.to_string();
         let mut comment = format!(
             "{}{}{}",
             &"-".repeat(num.len() + 1).blue().bold(),
@@ -76,7 +75,7 @@ impl PreciseError {
     }
 }
 
-impl fmt::Display for PreciseError {
+impl fmt::Display for PreciseError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

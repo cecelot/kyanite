@@ -1,9 +1,10 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::{
     ast::{
         node::{self, Ident},
-        Decl, Expr, NodeSpan, Stmt, Type,
+        underline::Underline,
+        Decl, Expr, Stmt, Type,
     },
     reporting::error::PreciseError,
     token::{Span, Token, TokenKind},
@@ -14,7 +15,7 @@ use super::symbol::{Symbol, SymbolTable};
 
 macro_rules! symbol {
     ($self:ident, $name:expr, $ty:ident, $s:literal) => {
-        match $self.symbol(&$name) {
+        match $self.symbol(&$name.to_string()) {
             Some(Symbol::$ty(v)) => v.clone(),
             Some(_) => {
                 $self.error(
@@ -25,7 +26,7 @@ macro_rules! symbol {
                 return Err(TypeError::NotType($name.clone(), $s));
             }
             None => {
-                let name = String::from(&$name);
+                let name = $name.to_string();
                 if name != "println" && name != "max" && name == "min" {
                     $self.error($name.span, format!("`{}` is not defined", $name), "".into());
                     return Err(TypeError::Undefined);
@@ -59,14 +60,30 @@ pub enum TypeError {
     NotProperty(Token, Type),
 }
 
-pub type AccessMap = HashMap<usize, (Vec<Symbol>, Vec<usize>, Type)>;
+pub struct Access {
+    pub symbols: Vec<Symbol>,
+    pub indices: Vec<usize>,
+    pub ty: Type,
+}
+
+impl Access {
+    pub fn new(symbols: Vec<Symbol>, indices: Vec<usize>, ty: Type) -> Self {
+        Self {
+            symbols,
+            indices,
+            ty,
+        }
+    }
+}
+
+pub type AccessMap = HashMap<usize, Access>;
 
 pub struct TypeCheckPass<'a> {
     program: &'a Vec<Decl>,
-    globals: &'a SymbolTable,
+    symbols: &'a SymbolTable,
     accesses: &'a mut AccessMap,
     source: Source,
-    errors: Vec<PreciseError>,
+    errors: Vec<PreciseError<'a>>,
     scopes: Vec<SymbolTable>,
     function: Option<Token>,
 }
@@ -117,7 +134,7 @@ impl Check for Expr {
 
 impl<'a> TypeCheckPass<'a> {
     pub fn new(
-        globals: &'a SymbolTable,
+        symbols: &'a SymbolTable,
         accesses: &'a mut AccessMap,
         source: Source,
         program: &'a Vec<Decl>,
@@ -125,7 +142,7 @@ impl<'a> TypeCheckPass<'a> {
         Self {
             source,
             program,
-            globals,
+            symbols,
             accesses,
             errors: vec![],
             function: None,
@@ -150,20 +167,20 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn begin_scope(&mut self) {
-        self.scopes.push(SymbolTable::new());
+        self.scopes.push(SymbolTable::default());
     }
 
     fn end_scope(&mut self) {
         self.scopes.pop();
     }
 
-    fn symbol(&self, name: &Token) -> Option<&Symbol> {
+    fn symbol(&self, name: &String) -> Option<&Symbol> {
         for scope in self.scopes.iter().rev() {
             if let Some(definition) = scope.get(name) {
                 return Some(definition);
             }
         }
-        self.globals.get(name)
+        self.symbols.get(name)
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
@@ -262,7 +279,7 @@ impl<'a> TypeCheckPass<'a> {
                 );
             }
         }
-        Ok(Type::from(&init.name))
+        Ok((&init.name).into())
     }
 
     // TODO: make this prettier
@@ -278,7 +295,7 @@ impl<'a> TypeCheckPass<'a> {
         let mut ty = access.chain[0].check(self)?;
         let mut symbols = vec![];
         let mut indices = vec![];
-        let mut symbol = match self.symbol(&Token::from(&ty)).cloned() {
+        let mut symbol = match self.symbol(&ty.to_string()).cloned() {
             Some(symbol) => symbol,
             None => return Err(TypeError::Undefined),
         };
@@ -291,7 +308,7 @@ impl<'a> TypeCheckPass<'a> {
                 let ident = cast!(left, i, Expr::Ident(i));
                 let field = rec.fields.iter().find(|f| f.name == ident.name);
                 if let Some(field) = field {
-                    symbol = self.symbol(&field.ty).cloned().unwrap();
+                    symbol = self.symbol(&field.ty.to_string()).cloned().unwrap();
                     symbols.push(symbol.clone());
                 } else {
                     return err(self, ident, ty);
@@ -309,7 +326,7 @@ impl<'a> TypeCheckPass<'a> {
             }
         }
         self.accesses
-            .insert(access.id, (symbols, indices, ty.clone()));
+            .insert(access.id, Access::new(symbols, indices, ty.clone()));
         Ok(ty)
     }
 
@@ -326,7 +343,7 @@ impl<'a> TypeCheckPass<'a> {
         Ok(expected)
     }
 
-    fn var(&mut self, v: &node::VarDecl) -> Result<Type, TypeError> {
+    fn var(&mut self, v: &Rc<node::VarDecl>) -> Result<Type, TypeError> {
         let got = v.expr.check(self)?;
         let expected = Type::from(&v.ty);
         if got != expected {
@@ -337,14 +354,14 @@ impl<'a> TypeCheckPass<'a> {
             );
         }
         self.scope_mut()
-            .insert(v.name.clone(), Symbol::Variable(v.clone()));
+            .insert(v.name.to_string(), Symbol::Variable(Rc::clone(v)));
         Ok(expected)
     }
 
-    fn function(&mut self, fun: &node::FuncDecl) -> Result<Type, TypeError> {
-        if String::from(&fun.name) == "main" {
+    fn function(&mut self, fun: &Rc<node::FuncDecl>) -> Result<Type, TypeError> {
+        if fun.name == "main" {
             if let Some(ty) = &fun.ty {
-                if String::from(ty) != "void" {
+                if ty != "void" {
                     self.error(
                         ty.span,
                         "main function must return void".into(),
@@ -357,7 +374,7 @@ impl<'a> TypeCheckPass<'a> {
         self.function = Some(fun.name.clone());
         for param in &fun.params {
             self.scope_mut()
-                .insert(param.name.clone(), Symbol::Function(fun.clone()));
+                .insert(param.name.to_string(), Symbol::Function(Rc::clone(fun)));
         }
         for node in &fun.body {
             let _ = node.check(self);
@@ -371,7 +388,7 @@ impl<'a> TypeCheckPass<'a> {
         let got = r.expr.check(self)?;
         match &self.function {
             Some(function) => {
-                let symbol = self.symbol(function).unwrap().clone();
+                let symbol = self.symbol(&function.to_string()).unwrap().clone();
                 if got != symbol.ty() {
                     self.error(
                         r.expr.span(),
@@ -411,7 +428,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn ident(&mut self, id: &node::Ident) -> Result<Type, TypeError> {
-        Ok(match self.symbol(&id.name) {
+        Ok(match self.symbol(&id.name.to_string()) {
             Some(Symbol::Function(f)) => {
                 let param = f.params.iter().find(|p| p.name == id.name).unwrap();
                 Type::from(&param.ty)
@@ -486,7 +503,7 @@ macro_rules! assert_typecheck {
                     let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
-                        insta::assert_yaml_snapshot!(pass.errors);
+                        insta::assert_debug_snapshot!(pass.errors);
                     });
 
                     Ok(())

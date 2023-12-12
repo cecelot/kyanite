@@ -1,209 +1,340 @@
 ---
-source: kyanite-core/src/token.rs
+source: kyanite-core/src/token/mod.rs
 expression: stream.tokens
 ---
-- kind: Fun
-  lexeme: ~
-  span:
-    line: 1
-    column: 1
-    length: 3
-- kind: Identifier
-  lexeme: main
-  span:
-    line: 1
-    column: 5
-    length: 4
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 9
-    length: 1
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 10
-    length: 1
-- kind: LeftBrace
-  lexeme: ~
-  span:
-    line: 1
-    column: 12
-    length: 1
-- kind: Identifier
-  lexeme: println
-  span:
-    line: 2
-    column: 5
-    length: 7
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 12
-    length: 1
-- kind: Literal
-  lexeme: "5."
-  span:
-    line: 2
-    column: 13
-    length: 2
-- kind: Star
-  lexeme: ~
-  span:
-    line: 2
-    column: 16
-    length: 1
-- kind: Literal
-  lexeme: "100."
-  span:
-    line: 2
-    column: 18
-    length: 4
-- kind: Plus
-  lexeme: ~
-  span:
-    line: 2
-    column: 23
-    length: 1
-- kind: Literal
-  lexeme: "15."
-  span:
-    line: 2
-    column: 25
-    length: 3
-- kind: Minus
-  lexeme: ~
-  span:
-    line: 2
-    column: 29
-    length: 1
-- kind: Literal
-  lexeme: "7."
-  span:
-    line: 2
-    column: 31
-    length: 2
-- kind: Slash
-  lexeme: ~
-  span:
-    line: 2
-    column: 34
-    length: 1
-- kind: Literal
-  lexeme: "8."
-  span:
-    line: 2
-    column: 36
-    length: 2
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 38
-    length: 1
-- kind: Semicolon
-  lexeme: ~
-  span:
-    line: 2
-    column: 39
-    length: 1
-- kind: Identifier
-  lexeme: println
-  span:
-    line: 3
-    column: 5
-    length: 7
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 3
-    column: 12
-    length: 1
-- kind: Literal
-  lexeme: "5"
-  span:
-    line: 3
-    column: 13
-    length: 1
-- kind: Star
-  lexeme: ~
-  span:
-    line: 3
-    column: 15
-    length: 1
-- kind: Literal
-  lexeme: "100"
-  span:
-    line: 3
-    column: 17
-    length: 3
-- kind: Plus
-  lexeme: ~
-  span:
-    line: 3
-    column: 21
-    length: 1
-- kind: Literal
-  lexeme: "15"
-  span:
-    line: 3
-    column: 23
-    length: 2
-- kind: Minus
-  lexeme: ~
-  span:
-    line: 3
-    column: 26
-    length: 1
-- kind: Literal
-  lexeme: "7"
-  span:
-    line: 3
-    column: 28
-    length: 1
-- kind: Slash
-  lexeme: ~
-  span:
-    line: 3
-    column: 30
-    length: 1
-- kind: Literal
-  lexeme: "8"
-  span:
-    line: 3
-    column: 32
-    length: 1
-- kind: GreaterEqual
-  lexeme: ~
-  span:
-    line: 3
-    column: 35
-    length: 2
-- kind: Literal
-  lexeme: "7"
-  span:
-    line: 3
-    column: 37
-    length: 1
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 3
-    column: 38
-    length: 1
-- kind: Semicolon
-  lexeme: ~
-  span:
-    line: 3
-    column: 39
-    length: 1
-- kind: RightBrace
-  lexeme: ~
-  span:
-    line: 4
-    column: 1
-    length: 1
-
+[
+    Token {
+        kind: Fun,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 1,
+            length: 3,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "main",
+        ),
+        span: Span {
+            line: 1,
+            column: 5,
+            length: 4,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 9,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 10,
+            length: 1,
+        },
+    },
+    Token {
+        kind: LeftBrace,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "println",
+        ),
+        span: Span {
+            line: 2,
+            column: 5,
+            length: 7,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "5.",
+        ),
+        span: Span {
+            line: 2,
+            column: 13,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Star,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 16,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "100.",
+        ),
+        span: Span {
+            line: 2,
+            column: 18,
+            length: 4,
+        },
+    },
+    Token {
+        kind: Plus,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 23,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "15.",
+        ),
+        span: Span {
+            line: 2,
+            column: 25,
+            length: 3,
+        },
+    },
+    Token {
+        kind: Minus,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 29,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "7.",
+        ),
+        span: Span {
+            line: 2,
+            column: 31,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Slash,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 34,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "8.",
+        ),
+        span: Span {
+            line: 2,
+            column: 36,
+            length: 2,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 38,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Semicolon,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 39,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "println",
+        ),
+        span: Span {
+            line: 3,
+            column: 5,
+            length: 7,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "5",
+        ),
+        span: Span {
+            line: 3,
+            column: 13,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Star,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 15,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "100",
+        ),
+        span: Span {
+            line: 3,
+            column: 17,
+            length: 3,
+        },
+    },
+    Token {
+        kind: Plus,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 21,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "15",
+        ),
+        span: Span {
+            line: 3,
+            column: 23,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Minus,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 26,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "7",
+        ),
+        span: Span {
+            line: 3,
+            column: 28,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Slash,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 30,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "8",
+        ),
+        span: Span {
+            line: 3,
+            column: 32,
+            length: 1,
+        },
+    },
+    Token {
+        kind: GreaterEqual,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 34,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "7",
+        ),
+        span: Span {
+            line: 3,
+            column: 37,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 38,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Semicolon,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 39,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightBrace,
+        lexeme: None,
+        span: Span {
+            line: 4,
+            column: 1,
+            length: 1,
+        },
+    },
+]

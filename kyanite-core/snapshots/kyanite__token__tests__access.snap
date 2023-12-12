@@ -1,149 +1,240 @@
 ---
-source: kyanite-core/src/token.rs
+source: kyanite-core/src/token/mod.rs
 expression: stream.tokens
 ---
-- kind: Fun
-  lexeme: ~
-  span:
-    line: 1
-    column: 1
-    length: 3
-- kind: Identifier
-  lexeme: main
-  span:
-    line: 1
-    column: 5
-    length: 4
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 9
-    length: 1
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 1
-    column: 10
-    length: 1
-- kind: LeftBrace
-  lexeme: ~
-  span:
-    line: 1
-    column: 12
-    length: 1
-- kind: Identifier
-  lexeme: println
-  span:
-    line: 2
-    column: 5
-    length: 7
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 12
-    length: 1
-- kind: Identifier
-  lexeme: kyanite
-  span:
-    line: 2
-    column: 13
-    length: 7
-- kind: Dot
-  lexeme: ~
-  span:
-    line: 2
-    column: 20
-    length: 1
-- kind: Identifier
-  lexeme: fs
-  span:
-    line: 2
-    column: 21
-    length: 2
-- kind: Dot
-  lexeme: ~
-  span:
-    line: 2
-    column: 23
-    length: 1
-- kind: Identifier
-  lexeme: read
-  span:
-    line: 2
-    column: 24
-    length: 4
-- kind: LeftParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 28
-    length: 1
-- kind: Literal
-  lexeme: "\"examples/access.kya\""
-  span:
-    line: 2
-    column: 29
-    length: 21
-- kind: Comma
-  lexeme: ~
-  span:
-    line: 2
-    column: 50
-    length: 1
-- kind: Identifier
-  lexeme: kyanite
-  span:
-    line: 2
-    column: 52
-    length: 7
-- kind: Dot
-  lexeme: ~
-  span:
-    line: 2
-    column: 59
-    length: 1
-- kind: Identifier
-  lexeme: fs
-  span:
-    line: 2
-    column: 60
-    length: 2
-- kind: Dot
-  lexeme: ~
-  span:
-    line: 2
-    column: 62
-    length: 1
-- kind: Identifier
-  lexeme: O_READ
-  span:
-    line: 2
-    column: 63
-    length: 6
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 69
-    length: 1
-- kind: RightParen
-  lexeme: ~
-  span:
-    line: 2
-    column: 70
-    length: 1
-- kind: Semicolon
-  lexeme: ~
-  span:
-    line: 2
-    column: 71
-    length: 1
-- kind: RightBrace
-  lexeme: ~
-  span:
-    line: 3
-    column: 1
-    length: 1
-
+[
+    Token {
+        kind: Fun,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 1,
+            length: 3,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "main",
+        ),
+        span: Span {
+            line: 1,
+            column: 5,
+            length: 4,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 9,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 10,
+            length: 1,
+        },
+    },
+    Token {
+        kind: LeftBrace,
+        lexeme: None,
+        span: Span {
+            line: 1,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "println",
+        ),
+        span: Span {
+            line: 2,
+            column: 5,
+            length: 7,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 12,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "kyanite",
+        ),
+        span: Span {
+            line: 2,
+            column: 13,
+            length: 7,
+        },
+    },
+    Token {
+        kind: Dot,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 20,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "fs",
+        ),
+        span: Span {
+            line: 2,
+            column: 21,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Dot,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 23,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "read",
+        ),
+        span: Span {
+            line: 2,
+            column: 24,
+            length: 4,
+        },
+    },
+    Token {
+        kind: LeftParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 28,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Literal,
+        lexeme: Some(
+            "\"examples/access.kya\"",
+        ),
+        span: Span {
+            line: 2,
+            column: 29,
+            length: 21,
+        },
+    },
+    Token {
+        kind: Comma,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 50,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "kyanite",
+        ),
+        span: Span {
+            line: 2,
+            column: 52,
+            length: 7,
+        },
+    },
+    Token {
+        kind: Dot,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 59,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "fs",
+        ),
+        span: Span {
+            line: 2,
+            column: 60,
+            length: 2,
+        },
+    },
+    Token {
+        kind: Dot,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 62,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Identifier,
+        lexeme: Some(
+            "O_READ",
+        ),
+        span: Span {
+            line: 2,
+            column: 63,
+            length: 6,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 69,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightParen,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 70,
+            length: 1,
+        },
+    },
+    Token {
+        kind: Semicolon,
+        lexeme: None,
+        span: Span {
+            line: 2,
+            column: 71,
+            length: 1,
+        },
+    },
+    Token {
+        kind: RightBrace,
+        lexeme: None,
+        span: Span {
+            line: 3,
+            column: 1,
+            length: 1,
+        },
+    },
+]

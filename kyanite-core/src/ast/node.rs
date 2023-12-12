@@ -1,12 +1,10 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use serde::{Deserialize, Serialize};
-
 use crate::token::Token;
 
 use super::{Expr, Field, Initializer, Param, Stmt};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RecordDecl {
     pub name: Token,
     pub fields: Vec<Field>,
@@ -18,14 +16,13 @@ impl RecordDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
     pub ty: Option<Token>,
     pub body: Vec<Stmt>,
     pub external: bool,
-    #[serde(skip)]
     pub id: usize,
 }
 
@@ -50,7 +47,7 @@ impl FuncDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct If {
     pub condition: Expr,
     pub is: Vec<Stmt>,
@@ -67,7 +64,7 @@ impl If {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct While {
     pub condition: Expr,
     pub body: Vec<Stmt>,
@@ -79,7 +76,7 @@ impl While {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Assign {
     pub target: Expr,
     pub expr: Expr,
@@ -91,7 +88,7 @@ impl Assign {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct VarDecl {
     pub name: Token,
     pub ty: Token,
@@ -104,7 +101,7 @@ impl VarDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct ConstantDecl {
     pub name: Token,
     pub ty: Token,
@@ -117,7 +114,7 @@ impl ConstantDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Init {
     pub name: Token,
     pub initializers: Vec<Initializer>,
@@ -134,7 +131,7 @@ impl Init {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Call {
     pub left: Box<Expr>,
     pub args: Vec<Expr>,
@@ -158,10 +155,9 @@ impl Call {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Access {
     pub chain: Vec<Expr>,
-    #[serde(skip)]
     pub id: usize,
 }
 
@@ -173,7 +169,7 @@ impl Access {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Return {
     pub expr: Expr,
     pub keyword: Token,
@@ -185,7 +181,7 @@ impl Return {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Unary {
     pub op: Token,
     pub expr: Box<Expr>,
@@ -197,7 +193,7 @@ impl Unary {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub op: Token,
@@ -210,7 +206,7 @@ impl Binary {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ident {
     pub name: Token,
 }

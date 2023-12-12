@@ -18,7 +18,7 @@ pub enum ParseError {
 }
 
 pub struct Parser<'a> {
-    pub(super) errors: Vec<PreciseError>,
+    pub(super) errors: Vec<PreciseError<'a>>,
     source: &'a Source,
     tokens: VecDeque<Token>,
     previous: Option<Token>,
@@ -77,20 +77,16 @@ impl<'a> Parser<'a> {
         if external {
             self.consume(TokenKind::Extern)?;
         }
-
         self.consume(TokenKind::Fun)?;
         let name = self.consume(TokenKind::Identifier)?;
-
         self.consume(TokenKind::LeftParen)?;
         let params = self.params()?;
         self.consume(TokenKind::RightParen)?;
-
         let mut ty: Option<Token> = None;
         if self.peek()?.kind == TokenKind::Colon {
             self.consume(TokenKind::Colon)?;
             ty = Some(self.consume(TokenKind::Identifier)?);
         }
-
         if external {
             Ok(init::func(name, params, ty, vec![], external))
         } else {
@@ -219,7 +215,6 @@ impl<'a> Parser<'a> {
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.comparison()?;
-
         while matches!(
             self.peek()?.kind,
             TokenKind::BangEqual | TokenKind::EqualEqual
@@ -228,13 +223,11 @@ impl<'a> Parser<'a> {
             let right = self.comparison()?;
             expr = init::binary(expr, operator, right);
         }
-
         Ok(expr)
     }
 
     fn comparison(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.term()?;
-
         while matches!(
             self.peek()?.kind,
             TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::Less | TokenKind::LessEqual
@@ -243,31 +236,26 @@ impl<'a> Parser<'a> {
             let right = self.term()?;
             expr = init::binary(expr, operator, right);
         }
-
         Ok(expr)
     }
 
     fn term(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.factor()?;
-
         while matches!(self.peek()?.kind, TokenKind::Minus | TokenKind::Plus) {
             let operator = self.advance().unwrap();
             let right = self.factor()?;
             expr = init::binary(expr, operator, right);
         }
-
         Ok(expr)
     }
 
     fn factor(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.unary()?;
-
         while matches!(self.peek()?.kind, TokenKind::Slash | TokenKind::Star) {
             let operator = self.advance().unwrap();
             let right = self.unary()?;
             expr = init::binary(expr, operator, right);
         }
-
         Ok(expr)
     }
 
@@ -285,7 +273,6 @@ impl<'a> Parser<'a> {
     fn access(&mut self) -> Result<Expr, ParseError> {
         let item = self.call()?;
         let mut chain: Vec<Expr> = vec![];
-
         while self.peek()?.kind == TokenKind::Dot {
             self.consume(TokenKind::Dot)?;
             chain.push(self.call()?);
@@ -294,7 +281,6 @@ impl<'a> Parser<'a> {
                 return Ok(init::access(chain));
             }
         }
-
         Ok(item)
     }
 
@@ -327,10 +313,10 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Literal => {
                 let token = self.advance().unwrap();
-                let lexeme = token.lexeme.as_ref().unwrap();
-                match &lexeme[..] {
+                let lexeme = token.lexeme.unwrap();
+                match lexeme {
                     "true" | "false" => Expr::Bool(lexeme == "true", token),
-                    _ if lexeme.starts_with('"') => Expr::Str(lexeme.clone(), token),
+                    _ if lexeme.starts_with('"') => Expr::Str(lexeme, token),
                     _ if lexeme.contains('.') => Expr::Float(lexeme.parse().unwrap(), token),
                     _ if lexeme.chars().next().unwrap().is_ascii_digit() => {
                         Expr::Int(lexeme.parse().unwrap(), token)
@@ -384,7 +370,6 @@ impl<'a> Parser<'a> {
                 TokenKind::Eof,
             ));
         }
-
         let token = self.advance().unwrap();
         if token.kind == kind {
             Ok(token)
@@ -438,18 +423,15 @@ impl<'a> Parser<'a> {
 
     fn synchronize(&mut self, stmt: bool) {
         self.panic = false;
-
         if stmt {
             self.advance();
         }
-
         while !self.eof() {
             if self.previous.as_ref().unwrap().kind == TokenKind::Semicolon
                 || self.previous.as_ref().unwrap().span.line < self.peek().unwrap().span.line
             {
                 return;
             }
-
             if matches!(
                 self.peek().unwrap().kind,
                 TokenKind::Let | TokenKind::Fun | TokenKind::Const
@@ -484,7 +466,7 @@ macro_rules! assert_parse {
                         if $valid {
                             insta::assert_display_snapshot!(parser.errors.len());
                         } else {
-                            insta::assert_yaml_snapshot!(parser.errors);
+                            insta::assert_debug_snapshot!(parser.errors);
                         }
                     });
 

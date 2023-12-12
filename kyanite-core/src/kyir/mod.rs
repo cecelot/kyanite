@@ -7,7 +7,7 @@ use crate::{
     ast::Expr as AstExpr,
     ast::{node::RecordDecl, Decl as AstDecl, Initializer, Stmt as AstStmt, Type},
     pass::{AccessMap, SymbolTable},
-    token::{Token, TokenKind},
+    token::TokenKind,
 };
 
 use self::arch::Frame;
@@ -24,10 +24,6 @@ pub enum BinOp {
     Minus,
     Mul,
     Div,
-    // And,
-    // LShift,
-    // RShift,
-    // ARShift,
     Xor,
     Cmp(RelOp),
 }
@@ -50,7 +46,7 @@ impl From<TokenKind> for BinOp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RelOp {
     Equal,
     NotEqual,
@@ -105,42 +101,35 @@ impl Expr {
         Self::ESeq { stmt, expr, id }
     }
 
-    pub fn condition(&self) -> RelOp {
+    pub fn condition(&self) -> Option<RelOp> {
         match self {
             Expr::Binary {
                 op: BinOp::Cmp(rel),
                 ..
-            } => *rel,
-            Expr::ConstInt(_) => RelOp::Equal,
-            _ => unreachable!(),
+            } => Some(*rel),
+            Expr::ConstInt(_) => Some(RelOp::Equal),
+            _ => None,
         }
     }
 
-    pub fn temp(self) -> String {
+    pub fn temp(&self) -> Option<String> {
         match self {
-            Expr::Temp(t) => t,
-            _ => unreachable!(),
+            Expr::Temp(t) => Some(t.clone()),
+            _ => None,
         }
     }
 
-    pub fn temp_and(&self, rhs: &str) -> bool {
+    pub fn int(&self) -> Option<i64> {
         match self {
-            Expr::Temp(t) => t == rhs,
-            _ => false,
+            Expr::ConstInt(i) => Some(*i),
+            _ => None,
         }
     }
 
-    pub fn int(&self) -> i64 {
+    pub fn binary(self) -> Option<(BinOp, Box<Self>, Box<Self>)> {
         match self {
-            Expr::ConstInt(i) => *i,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn binary(self) -> (BinOp, Box<Self>, Box<Self>) {
-        match self {
-            Expr::Binary { op, left, right } => (op, left, right),
-            _ => unreachable!(),
+            Expr::Binary { op, left, right } => Some((op, left, right)),
+            _ => None,
         }
     }
 }
@@ -249,13 +238,16 @@ impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for RecordDecl {
     fn flatten(&self, symbols: &'_ SymbolTable) -> Vec<(String, Type)> {
         self.fields
             .iter()
-            .flat_map(|field| match Type::from(&field.ty) {
-                Type::UserDefined(name) => symbols
-                    .get(&Token::from(name))
-                    .unwrap()
-                    .record()
-                    .flatten(symbols),
-                _ => vec![(field.name.to_string(), Type::from(&field.ty))],
+            .flat_map(|field| {
+                let ty = Type::from(&field.ty);
+                match ty {
+                    Type::UserDefined(name) => symbols
+                        .get(&name.to_string())
+                        .unwrap()
+                        .as_record()
+                        .flatten(symbols),
+                    _ => vec![(field.name.to_string(), ty)],
+                }
             })
             .collect()
     }
@@ -320,9 +312,9 @@ impl Translate<Expr> for AstExpr {
             ),
             AstExpr::Call(call) => {
                 let name = match *call.left {
-                    AstExpr::Ident(ref ident) => String::from(&ident.name),
+                    AstExpr::Ident(ref ident) => ident.name.to_string(),
                     AstExpr::Access(_) => todo!(),
-                    _ => unreachable!(),
+                    _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
                 };
                 Expr::Call(
                     name,
@@ -349,11 +341,11 @@ impl Translate<Expr> for AstExpr {
             AstExpr::Access(access) => {
                 let temp = Temp::new();
                 let frame = translator.frame();
-                let (symbols, _, _) = translator.accesses.get(&access.id).unwrap();
-                let rec = symbols.first().unwrap().record();
+                let aux = translator.accesses.get(&access.id).unwrap();
+                let rec = aux.symbols.first().unwrap().as_record();
                 let flat = rec.flatten(translator.symbols);
-                let parent = access.chain.first().unwrap().ident().name.to_string();
-                let last = access.chain.last().unwrap().ident().name.to_string();
+                let parent = access.chain.first().unwrap().as_ident().name.to_string();
+                let last = access.chain.last().unwrap().as_ident().name.to_string();
                 let (index, _) = flat
                     .iter()
                     .enumerate()
@@ -427,7 +419,7 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Seq {
                                 left: Box::new(Stmt::CJump {
-                                    op: BinOp::Cmp(condition.condition()),
+                                    op: BinOp::Cmp(condition.condition().unwrap()),
                                     condition: Box::new(condition),
                                     t: t.clone(),
                                     f: f.clone(),
@@ -471,7 +463,7 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Label(test)),
                             right: Some(Box::new(Stmt::CJump {
-                                op: BinOp::Cmp(condition.condition()),
+                                op: BinOp::Cmp(condition.condition().unwrap()),
                                 condition: Box::new(condition),
                                 t: t.clone(),
                                 f: f.clone(),

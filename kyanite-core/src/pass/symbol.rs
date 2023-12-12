@@ -1,24 +1,17 @@
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use std::{collections::HashMap, rc::Rc};
 
-use crate::{
-    ast::{node, Decl, Type},
-    token::Token,
-};
+use crate::ast::{node, Decl, Type};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Symbol {
-    Record(node::RecordDecl),
-    Function(node::FuncDecl),
-    Constant(node::ConstantDecl),
-    Variable(node::VarDecl),
+    Record(Rc<node::RecordDecl>),
+    Function(Rc<node::FuncDecl>),
+    Constant(Rc<node::ConstantDecl>),
+    Variable(Rc<node::VarDecl>),
 }
 
 impl Symbol {
-    pub fn record(&self) -> &node::RecordDecl {
+    pub fn as_record(&self) -> &node::RecordDecl {
         match self {
             Symbol::Record(rec) => rec,
             _ => panic!("called `Symbol::record()` on a non-record symbol"),
@@ -28,45 +21,18 @@ impl Symbol {
     pub fn ty(&self) -> Type {
         match self {
             Self::Record(rec) => Type::from(&rec.name),
-            Self::Function(fun) => Type::from(fun.ty.as_ref()),
+            Self::Function(fun) => fun.ty.as_ref().into(),
             Self::Constant(c) => Type::from(&c.ty),
             Self::Variable(v) => Type::from(&v.ty),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SymbolTable(HashMap<Token, Symbol>);
-
-impl SymbolTable {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-}
-
-impl Deref for SymbolTable {
-    type Target = HashMap<Token, Symbol>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for SymbolTable {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Default for SymbolTable {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+crate::newtype!(SymbolTable:HashMap<String, Symbol>);
 
 impl From<&Vec<Decl>> for SymbolTable {
     fn from(nodes: &Vec<Decl>) -> Self {
-        let mut table = Self::new();
+        let mut table = Self(HashMap::new());
         for node in nodes {
             self::SymbolTableVisitor::visit(node, &mut table);
         }
@@ -88,14 +54,14 @@ impl SymbolTableVisitor for Decl {
     }
 }
 
-fn func(fun: &node::FuncDecl, table: &mut SymbolTable) {
-    table.insert(fun.name.clone(), Symbol::Function(fun.clone()));
+fn func(fun: &Rc<node::FuncDecl>, table: &mut SymbolTable) {
+    table.insert(fun.name.to_string(), Symbol::Function(Rc::clone(fun)));
 }
 
-fn constant(c: &node::ConstantDecl, table: &mut SymbolTable) {
-    table.insert(c.name.clone(), Symbol::Constant(c.clone()));
+fn constant(c: &Rc<node::ConstantDecl>, table: &mut SymbolTable) {
+    table.insert(c.name.to_string(), Symbol::Constant(Rc::clone(c)));
 }
 
-fn record(rec: &node::RecordDecl, table: &mut SymbolTable) {
-    table.insert(rec.name.clone(), Symbol::Record(rec.clone()));
+fn record(rec: &Rc<node::RecordDecl>, table: &mut SymbolTable) {
+    table.insert(rec.name.to_string(), Symbol::Record(Rc::clone(rec)));
 }

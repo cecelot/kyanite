@@ -5,7 +5,6 @@ use crate::{
     codegen::{Instr, Opcode},
     kyir::{BinOp, Expr, Stmt},
     pass::{Symbol, SymbolTable},
-    token::Token,
 };
 
 use super::{Frame, RegisterMap, ReturnRegisters};
@@ -99,9 +98,9 @@ impl Frame for Amd64 {
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Box<Expr> {
         let rec = self.offset;
         self.offset -= i64::try_from(match ty {
-            Some(Type::UserDefined(ty)) => match symbols.get(&Token::from(ty.clone())).unwrap() {
+            Some(Type::UserDefined(ty)) => match symbols.get(ty).unwrap() {
                 Symbol::Record(rec) => rec.fields.len() * Self::word_size(),
-                _ => unreachable!(),
+                _ => panic!("Expected item to be a `Symbol::Record`"),
             },
             _ => 8,
         })
