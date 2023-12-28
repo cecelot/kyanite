@@ -1,8 +1,5 @@
-use clap::{Parser, Subcommand};
-use colored::Colorize;
-use std::{io::Write, path::PathBuf};
-
-use kyanite::{Compile, PipelineError, Program};
+use clap::{Parser, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -13,6 +10,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+    pub backend: Option<Backend>,
+}
+
+#[derive(Clone, PartialEq, Eq, ValueEnum)]
+pub enum Backend {
+    LLVM,
+    Kyir,
 }
 
 #[derive(Subcommand)]
@@ -34,44 +38,4 @@ pub enum Commands {
 /// Parses the command-line args and configures the logging level.
 pub fn init() -> Cli {
     Cli::parse()
-}
-
-pub fn run(
-    res: Result<Program, PipelineError>,
-    mut writer: impl Write,
-) -> Result<(), PipelineError> {
-    let program = match res {
-        Ok(program) => program,
-        Err(e) => {
-            println!("{}: {}", "error".bold().red(), e);
-            return Ok(());
-        }
-    };
-    let entrypoint = program.compile(&mut writer)?;
-    writeln!(writer, "{} `./{}`", "Running".bold().green(), entrypoint).unwrap();
-    write!(
-        writer,
-        "{}",
-        kyanite::subprocess::exec(&format!("./{entrypoint}"), &[]).output
-    )
-    .unwrap();
-
-    Ok(())
-}
-
-pub fn build(
-    res: Result<Program, PipelineError>,
-    mut writer: impl Write,
-) -> Result<(), PipelineError> {
-    let program = match res {
-        Ok(program) => program,
-        Err(e) => {
-            println!("{}: {}", "error".bold().red(), e);
-            return Ok(());
-        }
-    };
-    let entrypoint = program.compile(&mut writer)?;
-    writeln!(writer, "{} `./{}`", "Built".bold().green(), entrypoint).unwrap();
-
-    Ok(())
 }

@@ -1,9 +1,18 @@
-use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 
 use codegen::IrError;
 
 use crate::{
-    codegen::Ir,
+    codegen::{
+        liveness::{Graph, LiveRanges},
+        Codegen, Ir,
+    },
+    kyir::{arch::amd64::Amd64, canon::Canon, Translator},
     pass::{SymbolTable, TypeCheckPass},
 };
 
@@ -40,25 +49,56 @@ pub enum PipelineError {
     CompileError(String),
 }
 
-#[derive(Debug)]
-pub struct Program {
-    filename: String,
-    ir: String,
+pub struct Program<'a> {
+    source: Source,
+    writer: Option<&'a mut dyn Write>,
+    llvm: bool,
 }
 
-impl Program {
-    pub fn from_file<P>(path: P) -> Result<Self, PipelineError>
-    where
-        P: AsRef<Path>,
-    {
+impl TryFrom<PathBuf> for Program<'_> {
+    type Error = PipelineError;
+
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
         let source = Source::new(path)?;
-        let ast = ast::Ast::from_source(&source)?;
-        Self::new(ast, source)
+        Ok(Self::new(source))
+    }
+}
+
+impl TryFrom<&str> for Program<'_> {
+    type Error = PipelineError;
+
+    fn try_from(path: &str) -> Result<Self, Self::Error> {
+        let source = Source::new(path)?;
+        Ok(Self::new(source))
+    }
+}
+
+impl<'a> Program<'a> {
+    pub fn new(source: Source) -> Self {
+        Self {
+            source,
+            writer: None,
+            llvm: false,
+        }
     }
 
-    fn new(mut ast: ast::Ast, source: Source) -> Result<Self, PipelineError> {
-        let filename = {
-            let name: Vec<_> = source
+    pub fn llvm(mut self, llvm: bool) -> Self {
+        self.llvm = llvm;
+        self
+    }
+
+    pub fn write_to(mut self, writer: &'a mut dyn Write) -> Self {
+        self.writer = Some(writer);
+        self
+    }
+
+    pub fn build(self) -> Result<String, PipelineError> {
+        let mut stdout = std::io::stdout();
+        let writer = self.writer.unwrap_or(&mut stdout);
+        let mut ast = ast::Ast::from_source(&self.source)?;
+        let filename: String = {
+            let name: Vec<_> = self
+                .source
                 .filename
                 .chars()
                 .rev()
@@ -68,12 +108,24 @@ impl Program {
         };
         let symbols = SymbolTable::from(&ast.nodes);
         let mut accesses = HashMap::new();
-        let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+        let mut pass = TypeCheckPass::new(&symbols, &mut accesses, self.source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
-        Ok(Self {
-            ir: Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
-            filename,
-        })
+        if self.llvm {
+            let ir =
+                Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?;
+            ir.compile(&filename, writer)
+        } else {
+            let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
+            let ir = translator.translate(&ast.nodes);
+            let canon = Canon::new(ir);
+            let ir = canon.canonicalize();
+            let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
+            let graph = Graph::from(&codegen.asm);
+            let ranges = LiveRanges::from(graph);
+            println!("{}", ranges.get("T0"));
+            println!("{}", ranges.get("T1"));
+            codegen.asm.compile(&filename, writer)
+        }
     }
 }
 

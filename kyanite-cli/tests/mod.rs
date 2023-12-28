@@ -1,4 +1,6 @@
+use colored::Colorize;
 use kyanite::Program;
+use std::io::Write;
 
 macro_rules! assert_output {
     ($($path:expr => $name:ident),*) => {
@@ -6,10 +8,12 @@ macro_rules! assert_output {
             #[test]
             fn $name() -> Result<(), Box<dyn std::error::Error>> {
                 let mut output = vec![];
-                kyanite_cli::run(Program::from_file($path), &mut output)?;
-                let output = String::from_utf8(output)?;
+                let program = Program::try_from($path).unwrap();
+                let exe = program.llvm(true).write_to(&mut output).build().unwrap();
+                writeln!(&mut output, "{} `./{exe}`", "Running".bold().green()).unwrap();
+                let output = kyanite::subprocess::exec(&format!("./{exe}"), &[]).output;
                 insta::with_settings!({snapshot_path => "../snapshots"}, {
-                    let lines: Vec<&str> = output.lines().skip(3).collect();
+                    let lines: Vec<&str> = output.lines().collect();
                     insta::assert_yaml_snapshot!(lines);
                 });
                 Ok(())

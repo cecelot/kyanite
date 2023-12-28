@@ -1,21 +1,21 @@
 use std::{fs::File, io::Write, path::Path};
 
-use crate::{subprocess, PipelineError, Program};
+use crate::{codegen::AsmInstr, subprocess, PipelineError};
 
 pub trait Compile {
-    fn compile(&self, writer: impl Write) -> Result<String, PipelineError>;
+    fn compile(&self, filename: &str, writer: impl Write) -> Result<String, PipelineError>;
 }
 
-impl Compile for Program {
-    fn compile(&self, mut writer: impl Write) -> Result<String, PipelineError> {
+impl Compile for String {
+    fn compile(&self, filename: &str, mut writer: impl Write) -> Result<String, PipelineError> {
         if !Path::new("kya-dist").exists() {
             let _ = std::fs::create_dir("kya-dist");
         }
-        let ir = &format!("kya-dist/{}.ll", self.filename);
-        let obj = &format!("kya-dist/{}.o", self.filename);
-        let exe = &format!("kya-dist/{}", self.filename);
+        let ir = &format!("kya-dist/{}.ll", filename);
+        let obj = &format!("kya-dist/{}.o", filename);
+        let exe = &format!("kya-dist/{}", filename);
         let mut file = File::create(ir).expect("well-formed file structure");
-        write!(file, "{}", self.ir).unwrap();
+        write!(file, "{}", self).unwrap();
 
         let build = if cfg!(debug_assertions) {
             "target/debug"
@@ -40,5 +40,19 @@ impl Compile for Program {
             &mut writer,
         )?;
         Ok(exe.into())
+    }
+}
+
+impl Compile for Vec<AsmInstr> {
+    fn compile(&self, filename: &str, _: impl Write) -> Result<String, PipelineError> {
+        if !Path::new("kya-dist").exists() {
+            let _ = std::fs::create_dir("kya-dist");
+        }
+        let mut file =
+            File::create(&format!("kya-dist/{}.s", filename)).expect("well-formed file structure");
+        for instr in self {
+            writeln!(file, "{}", instr).unwrap();
+        }
+        Ok(String::new())
     }
 }

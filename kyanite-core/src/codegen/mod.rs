@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-mod liveness;
+pub mod liveness;
 pub mod llvm;
 
 use std::collections::HashMap;
@@ -170,8 +170,8 @@ impl From<BinOp> for Opcode {
 }
 
 #[derive(Debug)]
-struct Codegen<F: Frame> {
-    asm: Vec<AsmInstr>,
+pub struct Codegen<F: Frame> {
+    pub(crate) asm: Vec<AsmInstr>,
     functions: HashMap<usize, F>,
     idents: HashMap<String, usize>,
 }
