@@ -274,7 +274,6 @@ pub struct Translator<'a, F: Frame> {
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
-    #[allow(dead_code)]
     pub fn new(accesses: &'a AccessMap, symbols: &'a SymbolTable) -> Self {
         Self {
             functions: HashMap::new(),

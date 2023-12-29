@@ -77,12 +77,10 @@ pub struct Canon {
 }
 
 impl Canon {
-    #[allow(dead_code)]
     pub fn new(ir: Vec<Stmt>) -> Self {
         Self { ir }
     }
 
-    #[allow(dead_code)]
     pub fn canonicalize(mut self) -> Vec<Stmt> {
         self.ir = self
             .ir
