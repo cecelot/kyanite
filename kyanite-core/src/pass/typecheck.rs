@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref, rc::Rc};
 use crate::{
     ast::{
         node::{self, Ident},
-        underline::Underline,
+        span::CombinedSpan,
         Decl, Expr, Stmt, Type,
     },
     reporting::error::PreciseError,

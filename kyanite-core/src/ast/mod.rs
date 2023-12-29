@@ -8,7 +8,7 @@ use std::{fmt, rc::Rc};
 mod debug;
 pub mod init;
 pub mod node;
-pub mod underline;
+pub mod span;
 
 #[derive(Debug)]
 pub struct Ast {

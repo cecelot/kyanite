@@ -3,7 +3,7 @@ use crate::{
     token::Span,
 };
 
-pub trait Underline {
+pub trait CombinedSpan {
     fn span(&self) -> Span {
         Span::new(self.line(), self.start(), self.end() - self.start())
     }
@@ -12,7 +12,7 @@ pub trait Underline {
     fn line(&self) -> usize;
 }
 
-impl Underline for Stmt {
+impl CombinedSpan for Stmt {
     fn start(&self) -> usize {
         match self {
             Stmt::Var(var) => var.name.span.column,
@@ -47,7 +47,7 @@ impl Underline for Stmt {
     }
 }
 
-impl Underline for Expr {
+impl CombinedSpan for Expr {
     fn start(&self) -> usize {
         match self {
             Expr::Access(access) => access.chain.first().unwrap().start(),
