@@ -51,6 +51,7 @@ impl<'a> Graph<'a> {
     pub fn liveness(&self, temp: &String) -> Vec<bool> {
         let mut live = vec![false; self.adj.len()];
         for site in self.uses(temp) {
+            live[site] = true;
             let mut worklist = VecDeque::new();
             worklist.push_back(site);
             while !worklist.is_empty() {
@@ -69,12 +70,41 @@ impl<'a> Graph<'a> {
 
 crate::newtype!(LiveRanges:HashMap<String, Vec<bool>>);
 
+pub type InterferenceGraph = HashMap<String, HashSet<String>>;
+
 impl LiveRanges {
-    pub fn get(&self, temp: &str) -> String {
+    pub fn get(&self, temp: &str) -> &Vec<bool> {
         let live = self.0.get(temp).unwrap();
         live.iter().enumerate().fold(String::new(), |acc, (i, x)| {
             acc + &format!("{}: {}\n", i, x)
-        })
+        });
+        live
+    }
+
+    pub fn interference_graphs(&self, len: usize) -> Vec<InterferenceGraph> {
+        (0..len - 1)
+            .map(|line| {
+                let mut interferences: HashMap<String, HashSet<String>> = HashMap::new();
+                let pairs = self
+                    .0
+                    .iter()
+                    .flat_map(|this| self.0.iter().map(move |other| (this, other)))
+                    .filter(|((temp, range), (other, other_range))| {
+                        temp != other && range[line] && other_range[line]
+                    });
+                for ((temp, _), (other, _)) in pairs {
+                    interferences
+                        .entry(temp.to_owned())
+                        .or_default()
+                        .insert(other.to_owned());
+                    interferences
+                        .entry(other.to_owned())
+                        .or_default()
+                        .insert(temp.to_owned());
+                }
+                interferences
+            })
+            .collect()
     }
 }
 
@@ -97,14 +127,20 @@ trait FlowGraphMeta {
 
 impl FlowGraphMeta for AsmInstr {
     fn defines(&self) -> Vec<String> {
-        match &self.instr {
+        match &self.inner {
             Instr::Oper { dst, .. } => vec![dst.clone()],
             _ => vec![],
         }
     }
 
     fn uses(&self) -> Vec<String> {
-        match &self.instr {
+        match &self.inner {
+            Instr::Oper {
+                opcode: Opcode::Move,
+                src,
+                dst,
+                ..
+            } => vec![src.clone(), dst.clone()],
             Instr::Oper { src, .. } => vec![src.clone()],
             _ => vec![],
         }
@@ -114,7 +150,7 @@ impl FlowGraphMeta for AsmInstr {
         matches!(
             self,
             AsmInstr {
-                instr: Instr::Oper {
+                inner: Instr::Oper {
                     opcode: Opcode::Move,
                     ..
                 },
@@ -132,10 +168,10 @@ impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
         while !worklist.is_empty() {
             let stmt = worklist.pop_front().unwrap();
             let instr = &instrs[stmt];
-            let successors = if let Some(label) = instr.instr.to() {
+            let successors = if let Some(label) = instr.inner.to() {
                 let idx = instrs
                     .iter()
-                    .position(|x| x.instr.label().map_or(false, |name| label == *name))
+                    .position(|x| x.inner.label().map_or(false, |name| label == *name))
                     .unwrap();
                 vec![idx, stmt + 1]
             } else {
@@ -156,11 +192,11 @@ impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
 
 fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
     for (&from, to) in graph.adj.iter_mut() {
-        if instrs[from].instr.jump() {
-            let next = &instrs[from + 1].instr;
+        if instrs[from].inner.jump() {
+            let next = &instrs[from + 1].inner;
             to.retain(|&x| x != from + 1);
             next.label()
-                .is_some_and(|x| x == instrs[from].instr.to().unwrap())
+                .is_some_and(|x| x == instrs[from].inner.to().unwrap())
                 .then(|| {
                     to.push(from + 1);
                 });

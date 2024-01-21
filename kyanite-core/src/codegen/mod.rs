@@ -1,11 +1,12 @@
-#![allow(dead_code)]
 pub mod liveness;
 pub mod llvm;
+pub mod registers;
 
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::{
+    collections::HashMap,
+    fmt::{Display, Write},
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 pub use llvm::Ir;
 pub use llvm::IrError;
@@ -15,7 +16,7 @@ use crate::{
     kyir::{arch::Frame, BinOp, Expr, RelOp, Stmt, Temp},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Instr {
     Oper {
         opcode: Opcode,
@@ -26,6 +27,7 @@ pub enum Instr {
     Call {
         name: String,
     },
+    #[allow(dead_code)]
     FrameValue {
         offset: i64,
     },
@@ -62,7 +64,7 @@ impl Instr {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct AsmInstr {
-    instr: Instr,
+    inner: Instr,
     id: usize,
 }
 
@@ -70,7 +72,7 @@ impl AsmInstr {
     pub fn new(instr: Instr) -> Self {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
-        Self { instr, id }
+        Self { inner: instr, id }
     }
 }
 
@@ -105,7 +107,7 @@ impl Display for Opcode {
 
 impl Display for AsmInstr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.instr {
+        match &self.inner {
             Instr::Oper {
                 opcode,
                 dst,
@@ -131,7 +133,7 @@ impl Display for AsmInstr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Opcode {
     Label(String),
     Move,
@@ -210,6 +212,50 @@ impl<F: Frame> Codegen<F> {
             self.stmt(stmt);
         }
         self.epilogues();
+    }
+
+    fn register_for(&self, registers: &HashMap<String, String>, temp: &String) -> String {
+        if temp.starts_with('T') {
+            registers.get(temp).cloned().unwrap_or_else(|| {
+                panic!("no register for `{}`", temp);
+            })
+        } else {
+            temp.clone()
+        }
+    }
+
+    pub fn format(&self, registers: HashMap<String, String>) -> String {
+        let mut asm = String::new();
+        for instr in &self.asm {
+            let inner = match &instr.inner {
+                Instr::Oper {
+                    opcode,
+                    dst,
+                    src,
+                    jump,
+                } if !(dst.is_empty() || src.is_empty()) => Instr::Oper {
+                    opcode: opcode.clone(),
+                    dst: self.register_for(&registers, dst),
+                    src: self.register_for(&registers, src),
+                    jump: jump.clone(),
+                },
+                Instr::Call { name } => Instr::Call {
+                    name: name.to_string(),
+                },
+                Instr::FrameValue { offset } => Instr::FrameValue { offset: *offset },
+                inner => inner.clone(),
+            };
+            writeln!(
+                asm,
+                "{}",
+                AsmInstr {
+                    inner,
+                    id: instr.id,
+                }
+            )
+            .unwrap();
+        }
+        asm
     }
 
     fn epilogues(&mut self) {
@@ -412,7 +458,10 @@ mod tests {
 
     use crate::{
         ast,
-        codegen::liveness::{Graph, LiveRanges},
+        codegen::{
+            liveness::{Graph, LiveRanges},
+            registers::Color,
+        },
         kyir::{arch::amd64::Amd64, canon::Canon, Translator},
         pass::{SymbolTable, TypeCheckPass},
         PipelineError, Source,
@@ -435,8 +484,11 @@ mod tests {
         let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
         let graph = Graph::from(&codegen.asm);
         let ranges = LiveRanges::from(graph);
-        println!("{}", ranges.get("T0"));
-        println!("{}", ranges.get("T1"));
+        let ig = ranges.interference_graphs(codegen.asm.len());
+        let color: Color<Amd64> = Color::new(ig);
+        let registers = color.color(ranges);
+        let result = codegen.format(registers);
+        println!("{}", result);
         Ok(())
     }
 }

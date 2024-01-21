@@ -122,7 +122,7 @@ impl BasicBlocks {
     }
 
     fn peek(function: &[Stmt]) -> Option<Stmt> {
-        function.get(0).cloned()
+        function.first().cloned()
     }
 
     fn consume(function: &mut Vec<Stmt>) -> Stmt {

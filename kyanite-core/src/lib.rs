@@ -5,7 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use codegen::IrError;
+use codegen::{registers::Color, IrError};
+use compile::{Kyir, LlvmIr};
 
 use crate::{
     codegen::{
@@ -111,8 +112,9 @@ impl<'a> Program<'a> {
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, self.source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         if self.llvm {
-            let ir =
-                Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?;
+            let ir = LlvmIr::from(
+                Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
+            );
             ir.compile(&filename, writer)
         } else {
             let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
@@ -122,9 +124,11 @@ impl<'a> Program<'a> {
             let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
             let graph = Graph::from(&codegen.asm);
             let ranges = LiveRanges::from(graph);
-            println!("{}", ranges.get("T0"));
-            println!("{}", ranges.get("T1"));
-            codegen.asm.compile(&filename, writer)
+            let ig = ranges.interference_graphs(codegen.asm.len());
+            let color: Color<Amd64> = Color::new(ig);
+            let colors = color.color(ranges);
+            let asm = Kyir::from(codegen.format(colors));
+            asm.compile(&filename, writer)
         }
     }
 }
