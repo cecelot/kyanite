@@ -34,6 +34,7 @@
           mdbook
         ];
 
+        RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
         LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
       };
     });
