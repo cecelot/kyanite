@@ -36,6 +36,7 @@ pub enum Commands {
 }
 
 /// Parses the command-line args and configures the logging level.
+#[must_use]
 pub fn init() -> Cli {
     Cli::parse()
 }

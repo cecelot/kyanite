@@ -22,13 +22,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 writeln!(&mut stdout, "{}: {}", "error".bold().red(), e).unwrap();
                 std::process::exit(1);
             });
-            if !exe.is_empty() {
+            if exe.is_empty() {
+                writeln!(
+                    &mut stdout,
+                    "{}: executable not found",
+                    "warning".bold().yellow()
+                )
+                .unwrap();
+                Ok(())
+            } else {
                 writeln!(&mut stdout, "{} `./{exe}`", "Running".bold().green()).unwrap();
                 let output = kyanite::subprocess::exec(&format!("./{exe}"), &[]).output;
                 Ok(write!(stdout, "{output}")?)
-            } else {
-                println!("{}: executable not found", "warning".bold().yellow());
-                Ok(())
             }
         }
         Commands::Build { path: _ } => todo!(),
@@ -44,15 +49,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn installed(s: &str) -> bool {
-    match which::which(s) {
-        Ok(_) => true,
-        Err(_) => {
-            println!(
-                "{}: {} not found in PATH; try installing LLVM",
-                "error".bold().red(),
-                s
-            );
-            false
-        }
+    if which::which(s).is_err() {
+        println!(
+            "{}: {} not found in PATH; try installing LLVM",
+            "error".bold().red(),
+            s
+        );
+        false
+    } else {
+        true
     }
 }

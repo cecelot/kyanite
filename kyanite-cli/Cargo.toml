@@ -12,3 +12,6 @@ kyanite = { path = "../kyanite-core" }
 insta = { version = "1.32.0", features = ["yaml"] }
 serde = { version = "1.0.188", features = ["derive"] }
 which = "4.4.2"
+
+[lints.clippy]
+pedantic = "deny"

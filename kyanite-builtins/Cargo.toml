@@ -10,3 +10,6 @@ edition = "2021"
 [lib]
 name = "kyanite_builtins"
 crate-type = ["cdylib"]
+
+[lints.clippy]
+pedantic = "deny"
