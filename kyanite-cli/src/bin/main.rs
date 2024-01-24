@@ -32,7 +32,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             } else {
                 writeln!(&mut stdout, "{} `./{exe}`", "Running".bold().green()).unwrap();
-                let output = kyanite::subprocess::exec(&format!("./{exe}"), &[]).output;
+                let output = kyanite::subprocess::exec(
+                    "orb",
+                    &[
+                        &format!("LD_LIBRARY_PATH={}", kyanite::compile::include_dir()),
+                        &format!("./{exe}"),
+                    ],
+                )
+                .output;
                 Ok(write!(stdout, "{output}")?)
             }
         }

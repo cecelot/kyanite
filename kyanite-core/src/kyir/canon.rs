@@ -24,10 +24,7 @@ impl Extract for Stmt {
                     expr: expr.clone(),
                 });
             }
-            Stmt::Label(_) => ir.push(self),
-            Stmt::Noop => ir.push(self),
-            Stmt::Jump(_) => ir.push(self),
-            Stmt::Expr(_) => ir.push(self),
+            Stmt::Label(_) | Stmt::Noop | Stmt::Jump(_) | Stmt::Expr(_) => ir.push(self),
             Stmt::CJump {
                 condition,
                 op,
@@ -90,14 +87,14 @@ impl Canon {
         self.ir.retain(|item| !matches!(item, Stmt::Noop));
         let mut ir = vec![];
         let mut replacements = vec![];
-        for item in self.ir.into_iter() {
+        for item in self.ir {
             let name = item.label();
             let mut body = vec![];
             item.extract(&mut body, &mut replacements);
             ir.push((name, body));
         }
         for (search, temp) in replacements {
-            for (_, item) in ir.iter_mut() {
+            for (_, item) in &mut ir {
                 for stmt in item.iter_mut() {
                     stmt.replace(search, &temp);
                 }

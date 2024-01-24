@@ -9,6 +9,7 @@ pub struct ProcessResult {
     pub output: String,
 }
 
+#[must_use]
 pub fn exec(cmd: &str, args: &[&str]) -> ProcessResult {
     let output = std::process::Command::new(cmd).args(args).output().unwrap();
     let code = output.status.code().unwrap_or(0);
@@ -22,21 +23,18 @@ pub fn exec(cmd: &str, args: &[&str]) -> ProcessResult {
 }
 
 pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<(), PipelineError> {
-    match res.code {
-        0 => {
-            writeln!(writer, "{} `{}`", verb.green().bold(), res.command).unwrap();
-            Ok(())
-        }
-        _ => {
-            writeln!(
-                writer,
-                "{} `{}`\n\t{}",
-                "Failed".red().bold(),
-                res.command,
-                res.output
-            )
-            .unwrap();
-            Err(PipelineError::CompileError(res.output))
-        }
+    if res.code == 0 {
+        writeln!(writer, "{} `{}`", verb.green().bold(), res.command).unwrap();
+        Ok(())
+    } else {
+        writeln!(
+            writer,
+            "{} `{}`\n\t{}",
+            "Failed".red().bold(),
+            res.command,
+            res.output
+        )
+        .unwrap();
+        Err(PipelineError::CompileError(res.output))
     }
 }

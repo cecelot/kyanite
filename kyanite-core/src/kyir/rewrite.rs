@@ -43,7 +43,9 @@ impl Rewrite<Expr> for Expr {
         match self {
             Expr::Call(name, args) => {
                 let args = args.rewrite(false, false);
-                if !immediate {
+                if immediate {
+                    Expr::Call(name, args)
+                } else {
                     let temp = Temp::new();
                     Expr::eseq(
                         Box::new(Stmt::Seq {
@@ -55,8 +57,6 @@ impl Rewrite<Expr> for Expr {
                         }),
                         Box::new(Expr::Temp(temp)),
                     )
-                } else {
-                    Expr::Call(name, args)
                 }
             }
             Expr::Binary { left, right, op } => {
@@ -90,16 +90,8 @@ impl Rewrite<Expr> for Expr {
 
 impl Substitute for Expr {
     fn substitute(&mut self, substitutions: &[(String, String)]) {
-        match self {
-            Expr::Temp(_) => {}
-            Expr::ConstInt(_) => {}
-            Expr::ConstFloat(_) => {}
-            Expr::Mem(_) => {}
-            Expr::Call(..) => {}
-            Expr::Binary { .. } => {}
-            Expr::ESeq { stmt, .. } => {
-                stmt.substitute(substitutions);
-            }
+        if let Expr::ESeq { stmt, .. } = self {
+            stmt.substitute(substitutions);
         }
     }
 }
@@ -144,10 +136,8 @@ impl Substitute for Stmt {
             Stmt::Move { target, .. } => {
                 target.substitute(substitutions);
             }
-            Stmt::CJump { .. } => {}
+            Stmt::CJump { .. } | Stmt::Label(_) | Stmt::Noop => {}
             Stmt::Expr(expr) => expr.substitute(substitutions),
-            Stmt::Label(_) => {}
-            Stmt::Noop => {}
             Stmt::Jump(j) => {
                 for (from, to) in substitutions {
                     if j == from {

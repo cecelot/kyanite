@@ -43,12 +43,12 @@ impl StripId for Expr {
         match self {
             Self::Access(a) => {
                 let access = Rc::get_mut(a).unwrap();
-                access.chain.iter_mut().for_each(|el| el.strip_id());
+                access.chain.iter_mut().for_each(StripId::strip_id);
                 access.id = 0;
             }
             Self::Call(c) => {
                 let call = Rc::get_mut(c).unwrap();
-                call.args.iter_mut().for_each(|arg| arg.strip_id());
+                call.args.iter_mut().for_each(StripId::strip_id);
             }
             Self::Binary(b) => {
                 let binary = Rc::get_mut(b).unwrap();

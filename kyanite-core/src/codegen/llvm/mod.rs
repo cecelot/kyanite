@@ -17,7 +17,7 @@ use crate::{
         Decl, Expr, Stmt, Type,
     },
     pass::{AccessMap, Symbol, SymbolTable},
-    token::{Span, Token, TokenKind},
+    token::{Kind, Span, Token},
 };
 use builtins::Builtins;
 
@@ -27,7 +27,7 @@ macro_rules! num_instrs  {
     {$self:ident, $bin:ident, $($kind:ident => $int_instr:ident $float_instr:ident),*} => {
         match $bin.op.kind {
             $(
-                TokenKind::$kind => {
+                Kind::$kind => {
                     let left = $self.expr(&$bin.left)?;
                     let right = $self.expr(&$bin.right)?;
                     match (left, right) {
@@ -53,7 +53,7 @@ macro_rules! bool_instrs {
         if $bin.left.ty() == Type::$ty {
             match $bin.op.kind {
                 $(
-                    TokenKind::$kind => {
+                    Kind::$kind => {
                         let left = $self.expr(&$bin.left)?.$conversion();
                         let right = $self.expr(&$bin.right)?.$conversion();
                         return Ok($self.builder.$build_fn($predicate::$member, left, right, "tmp").into())
@@ -138,15 +138,15 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn decl(&mut self, decl: &mut Decl) -> Result<AnyValueEnum<'ctx>, IrError> {
         match decl {
-            Decl::Function(fun) => self.function(fun).map(|v| v.into()),
+            Decl::Function(fun) => self.function(fun).map(Into::into),
             Decl::Constant(_) => todo!(),
-            Decl::Record(rec) => self.record(rec).map(|v| v.into()),
+            Decl::Record(rec) => Ok(self.record(rec).into()),
         }
     }
 
     fn stmt(&mut self, stmt: &Stmt) -> Result<AnyValueEnum<'ctx>, IrError> {
         match stmt {
-            Stmt::Assign(assign) => self.assign(assign).map(|v| v.into()),
+            Stmt::Assign(assign) => self.assign(assign).map(Into::into),
             Stmt::Expr(expr) => self.expr(expr),
             Stmt::Return(r) => self.ret(r),
             Stmt::Var(var) => self.var(var),
@@ -157,16 +157,20 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn expr(&mut self, expr: &Expr) -> Result<AnyValueEnum<'ctx>, IrError> {
         match expr {
-            Expr::Str(s, _) => self.str(s),
-            Expr::Access(a) => self.access(a).map(|v| v.into()),
-            Expr::Bool(b, _) => Ok(self.context.bool_type().const_int(*b as u64, false).into()),
+            Expr::Str(s, _) => Ok(self.str(s)),
+            Expr::Access(a) => Ok(self.access(a).into()),
+            &Expr::Bool(b, _) => Ok(self
+                .context
+                .bool_type()
+                .const_int(u64::from(b), false)
+                .into()),
             Expr::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
-            Expr::Call(call) => self.call(call).map(|v| v.into()),
-            Expr::Ident(ident) => self.ident(ident).map(|v| v.into()),
-            Expr::Int(n, _) => self.int(n).map(|v| v.into()),
-            Expr::Binary(binary) => self.binary(binary).map(|v| v.into()),
-            Expr::Unary(unary) => self.unary(unary).map(|v| v.into()),
-            Expr::Init(init) => self.init(init).map(|v| v.into()),
+            Expr::Call(call) => self.call(call).map(Into::into),
+            Expr::Ident(ident) => self.ident(ident).map(Into::into),
+            &Expr::Int(n, _) => Ok(self.int(n).into()),
+            Expr::Binary(binary) => self.binary(binary).map(Into::into),
+            Expr::Unary(unary) => self.unary(unary).map(Into::into),
+            Expr::Init(init) => self.init(init).map(Into::into),
         }
     }
 
@@ -191,11 +195,11 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         )
     }
 
-    fn record(&mut self, record: &Rc<node::RecordDecl>) -> Result<BasicValueEnum<'ctx>, IrError> {
+    fn record(&mut self, record: &Rc<node::RecordDecl>) -> BasicValueEnum<'ctx> {
         let rec = self.build_struct(record);
         self.records
             .insert(record.name.to_string(), (rec, Rc::clone(record)));
-        Ok(self.context.i64_type().const_int(0, false).into())
+        self.context.i64_type().const_int(0, false).into()
     }
 
     fn init(&mut self, init: &node::Init) -> Result<BasicValueEnum<'ctx>, IrError> {
@@ -205,7 +209,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             values.push(
                 self.expr(&init.expr)?
                     .try_into()
-                    .map_err(|_| IrError::Malformed("init expression"))?,
+                    .map_err(|()| IrError::Malformed("init expression"))?,
             );
         }
         Ok(rec.const_named_struct(values.as_slice()).into())
@@ -248,13 +252,13 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         (gep, last.to_basic_type_enum(self))
     }
 
-    fn access(&mut self, access: &node::Access) -> Result<BasicValueEnum<'ctx>, IrError> {
+    fn access(&mut self, access: &node::Access) -> BasicValueEnum<'ctx> {
         let (gep, field_ty) = self.gep(access);
-        Ok(self.builder.build_load(field_ty, gep, "tmp"))
+        self.builder.build_load(field_ty, gep, "tmp")
     }
 
     /// Compiles a function prototype into a `FunctionValue`
-    fn prototype(&mut self, func: &node::FuncDecl) -> Result<FunctionValue<'ctx>, IrError> {
+    fn prototype(&mut self, func: &node::FuncDecl) -> FunctionValue<'ctx> {
         // Collect the function argument types and convert them to LLVM types
         let args: Vec<BasicMetadataTypeEnum> = func
             .params
@@ -287,7 +291,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             };
         }
 
-        Ok(val)
+        val
     }
 
     /// Wraps the main function
@@ -327,7 +331,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             return self.main(func);
         }
         // Compile our function prototype and set as current function
-        let proto = self.prototype(func)?;
+        let proto = self.prototype(func);
         if func.external {
             return Ok(proto);
         }
@@ -367,9 +371,9 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 self.fpm.run_on(&function);
 
                 return Ok(function);
-            } else {
-                unsafe { function.delete() };
             }
+
+            unsafe { function.delete() };
         }
 
         // Failed to produce a valid function
@@ -388,7 +392,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     /// Injects a string literal
-    fn str(&mut self, s: &str) -> Result<AnyValueEnum<'ctx>, IrError> {
+    fn str(&mut self, s: &str) -> AnyValueEnum<'ctx> {
         // Figure out the actual bytes of the string excluding the opening and closing quotes
         let bytes = s[1..s.len() - 1].as_bytes().to_vec();
         // Create a global string pointer with the appropriate length of zeroed out bytes
@@ -398,22 +402,21 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         // Set the initializer of the global string pointer to the actual string
         // (this is kinda hacky, but otherwise character escapes are incorrect)
         global.set_initializer(&self.context.const_string(&bytes, true));
-        Ok(global.as_pointer_value().into())
+        global.as_pointer_value().into()
     }
 
-    fn int(&self, n: &i64) -> Result<BasicValueEnum<'ctx>, IrError> {
-        Ok(self
-            .context
+    fn int(&self, n: i64) -> BasicValueEnum<'ctx> {
+        self.context
             .i64_type()
-            .const_int((*n).try_into().unwrap(), false)
-            .into())
+            .const_int(n.try_into().unwrap(), false)
+            .into()
     }
 
     fn ret(&mut self, r: &node::Return) -> Result<AnyValueEnum<'ctx>, IrError> {
         let any = self.expr(&r.expr)?;
         let val: BasicValueEnum<'_> = any
             .try_into()
-            .map_err(|_| IrError::Malformed("expression in return statement"))?;
+            .map_err(|()| IrError::Malformed("expression in return statement"))?;
         self.builder.build_return(Some(&val));
         Ok(any)
     }
@@ -424,7 +427,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let value = self
             .expr(&var.expr)?
             .try_into()
-            .map_err(|_| IrError::Malformed("variable declaration"))?;
+            .map_err(|()| IrError::Malformed("variable declaration"))?;
         let alloca = self.alloca(&name, &value);
         self.builder.build_store(alloca, value);
         self.variables.insert(name, (alloca, ty));
@@ -448,7 +451,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         let value: BasicValueEnum<'_> = self
             .expr(&assign.expr)?
             .try_into()
-            .map_err(|_| IrError::Malformed("right-hand side of assignment"))?;
+            .map_err(|()| IrError::Malformed("right-hand side of assignment"))?;
         // Store the updated value in the variable
         self.builder.build_store(ptr, value);
         Ok(self.context.i64_type().const_zero().into())
@@ -487,12 +490,12 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     fn unary(&mut self, unary: &node::Unary) -> Result<BasicValueEnum<'ctx>, IrError> {
         let expr = self.expr(&unary.expr)?;
         Ok(match unary.op.kind {
-            TokenKind::Minus => match expr {
+            Kind::Minus => match expr {
                 AnyValueEnum::IntValue(i) => i.const_neg().into(),
                 AnyValueEnum::FloatValue(f) => f.const_neg().into(),
                 _ => unimplemented!("cannot perform `-` on {expr:?}"),
             },
-            TokenKind::Bang => match expr {
+            Kind::Bang => match expr {
                 AnyValueEnum::IntValue(i) => i.const_not().into(),
                 _ => unimplemented!("cannot perform `!` on {expr:?}"),
             },
@@ -507,7 +510,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             args.push(
                 self.expr(arg)?
                     .try_into()
-                    .map_err(|_| IrError::Malformed("expression to call expr"))?,
+                    .map_err(|()| IrError::Malformed("expression to call expr"))?,
             );
         }
         // Retreive the name of the function
@@ -647,19 +650,19 @@ impl ToBasicTypeEnum for Option<Token> {
 fn main() -> node::Call {
     node::Call::new(
         Box::new(init::ident(Token {
-            kind: TokenKind::Identifier,
+            kind: Kind::Identifier,
             lexeme: Some("_main"),
             span: Span::new(0, 0, 0),
         })),
         vec![],
         (
             Token {
-                kind: TokenKind::LeftParen,
+                kind: Kind::LeftParen,
                 lexeme: None,
                 span: Span::new(0, 0, 0),
             },
             Token {
-                kind: TokenKind::RightParen,
+                kind: Kind::RightParen,
                 lexeme: None,
                 span: Span::new(0, 0, 0),
             },

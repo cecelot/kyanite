@@ -7,7 +7,7 @@ use crate::{
     ast::Expr as AstExpr,
     ast::{node::RecordDecl, Decl as AstDecl, Initializer, Stmt as AstStmt, Type},
     pass::{AccessMap, SymbolTable},
-    token::TokenKind,
+    token::Kind,
 };
 
 use self::arch::Frame;
@@ -28,19 +28,19 @@ pub enum BinOp {
     Cmp(RelOp),
 }
 
-impl From<TokenKind> for BinOp {
-    fn from(kind: TokenKind) -> Self {
+impl From<Kind> for BinOp {
+    fn from(kind: Kind) -> Self {
         match kind {
-            TokenKind::Plus => BinOp::Plus,
-            TokenKind::Minus => BinOp::Minus,
-            TokenKind::Star => BinOp::Mul,
-            TokenKind::Slash => BinOp::Div,
-            TokenKind::BangEqual => BinOp::Cmp(RelOp::NotEqual),
-            TokenKind::EqualEqual => BinOp::Cmp(RelOp::Equal),
-            TokenKind::Greater => BinOp::Cmp(RelOp::Greater),
-            TokenKind::GreaterEqual => BinOp::Cmp(RelOp::GreaterEqual),
-            TokenKind::Less => BinOp::Cmp(RelOp::Less),
-            TokenKind::LessEqual => BinOp::Cmp(RelOp::LessEqual),
+            Kind::Plus => BinOp::Plus,
+            Kind::Minus => BinOp::Minus,
+            Kind::Star => BinOp::Mul,
+            Kind::Slash => BinOp::Div,
+            Kind::BangEqual => BinOp::Cmp(RelOp::NotEqual),
+            Kind::EqualEqual => BinOp::Cmp(RelOp::Equal),
+            Kind::Greater => BinOp::Cmp(RelOp::Greater),
+            Kind::GreaterEqual => BinOp::Cmp(RelOp::GreaterEqual),
+            Kind::Less => BinOp::Cmp(RelOp::Less),
+            Kind::LessEqual => BinOp::Cmp(RelOp::LessEqual),
             _ => unreachable!("not a valid binary operator"),
         }
     }
@@ -300,7 +300,7 @@ trait Translate<R> {
 impl Translate<Expr> for AstExpr {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         match self {
-            AstExpr::Bool(b, _) => Expr::ConstInt(if *b { 1 } else { 0 }),
+            AstExpr::Bool(b, _) => Expr::ConstInt((*b).into()),
             AstExpr::Float(f, _) => Expr::ConstFloat(*f),
             AstExpr::Int(i, _) => Expr::ConstInt(*i),
             AstExpr::Str(..) => todo!(),
@@ -323,14 +323,14 @@ impl Translate<Expr> for AstExpr {
                         .collect(),
                 )
             }
-            AstExpr::Ident(ident) => *translator.frame().get(&ident.name.to_string(), None, None),
+            AstExpr::Ident(ident) => translator.frame().get(&ident.name.to_string(), None, None),
             AstExpr::Unary(unary) => match unary.op.kind {
-                TokenKind::Minus => Expr::Binary {
+                Kind::Minus => Expr::Binary {
                     op: BinOp::Minus,
                     left: Box::new(Expr::ConstInt(0)),
                     right: Box::new(unary.expr.translate(translator)),
                 },
-                TokenKind::Bang => Expr::Binary {
+                Kind::Bang => Expr::Binary {
                     op: BinOp::Xor,
                     left: Box::new(unary.expr.translate(translator)),
                     right: Box::new(Expr::ConstInt(1)),
@@ -350,7 +350,7 @@ impl Translate<Expr> for AstExpr {
                     .enumerate()
                     .find(|(_, (name, _))| name == &last)
                     .unwrap();
-                *frame.get(&parent, Some(temp), Some(index))
+                frame.get(&parent, Some(temp), Some(index))
             }
             AstExpr::Init(init) => {
                 let registers = F::registers();
@@ -390,6 +390,7 @@ impl Translate<Expr> for AstExpr {
 }
 
 impl Translate<Stmt> for AstStmt {
+    #[allow(clippy::too_many_lines)]
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let registers = F::registers();
         match self {
@@ -492,7 +493,7 @@ impl Translate<Stmt> for AstStmt {
                 // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
                 let target = frame.allocate(translator.symbols, &name, None);
                 let expr = var.expr.translate(translator);
-                Stmt::checked_move(target, expr)
+                Stmt::checked_move(Box::new(target), expr)
             }
         }
     }

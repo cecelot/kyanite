@@ -45,7 +45,7 @@ impl Frame for Amd64 {
         self.variables.get(ident).copied().unwrap()
     }
 
-    fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Box<Expr> {
+    fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Expr {
         let offset = self.get_offset(ident);
         let registers = Self::registers();
         if self.formals.iter().any(|(_, name)| ident == name) {
@@ -54,7 +54,7 @@ impl Frame for Amd64 {
                 // current frame (passed to the function using `lea`). So: first move the record
                 // ptr into %temp, then dereference it, accessing the (index*8)th word.
                 // Finally, return %temp.
-                return Box::new(Expr::eseq(
+                return Expr::eseq(
                     Box::new(Stmt::Seq {
                         // movq offset(%rbp), %temp
                         left: Box::new(Stmt::Move {
@@ -78,7 +78,7 @@ impl Frame for Amd64 {
                         })),
                     }),
                     Box::new(Expr::Temp(temp)),
-                ));
+                );
             }
         }
         let offset = if let Some(index) = index {
@@ -88,14 +88,14 @@ impl Frame for Amd64 {
         } else {
             offset
         };
-        Box::new(Expr::Mem(Box::new(Expr::Binary {
+        Expr::Mem(Box::new(Expr::Binary {
             op: BinOp::Plus,
             left: Box::new(Expr::Temp(registers.frame.to_string())),
             right: Box::new(Expr::ConstInt(offset)),
-        })))
+        }))
     }
 
-    fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Box<Expr> {
+    fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr {
         let rec = self.offset;
         self.offset -= i64::try_from(match ty {
             Some(Type::UserDefined(ty)) => match symbols.get(ty).unwrap() {
@@ -134,7 +134,7 @@ impl Frame for Amd64 {
         for (i, (formal, _)) in self.formals.iter().enumerate() {
             prologue.push(Instr::Oper {
                 opcode: Opcode::Move,
-                src: formal.to_string(),
+                src: (*formal).to_string(),
                 dst: format!(
                     "{}(%{})",
                     -i64::try_from((i + 1) * Self::word_size()).unwrap(),
@@ -162,6 +162,10 @@ impl Frame for Amd64 {
                 jump: None,
             },
         ]
+    }
+
+    fn header() -> String {
+        String::from(".text\n.global main\n")
     }
 
     fn registers() -> RegisterMap {

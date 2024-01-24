@@ -37,12 +37,12 @@ impl FuncDecl {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
         Self {
-            id,
             name,
             params,
             ty,
             body,
             external,
+            id,
         }
     }
 }

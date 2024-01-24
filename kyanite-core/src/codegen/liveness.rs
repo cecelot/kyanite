@@ -74,11 +74,7 @@ pub type InterferenceGraph = HashMap<String, HashSet<String>>;
 
 impl LiveRanges {
     pub fn get(&self, temp: &str) -> &Vec<bool> {
-        let live = self.0.get(temp).unwrap();
-        live.iter().enumerate().fold(String::new(), |acc, (i, x)| {
-            acc + &format!("{}: {}\n", i, x)
-        });
-        live
+        self.0.get(temp).unwrap()
     }
 
     pub fn interference_graphs(&self, len: usize) -> Vec<InterferenceGraph> {
@@ -168,10 +164,10 @@ impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
         while !worklist.is_empty() {
             let stmt = worklist.pop_front().unwrap();
             let instr = &instrs[stmt];
-            let successors = if let Some(label) = instr.inner.to() {
+            let successors = if let Some(label) = instr.to() {
                 let idx = instrs
                     .iter()
-                    .position(|x| x.inner.label().map_or(false, |name| label == *name))
+                    .position(|x| x.label().map_or(false, |name| label == *name))
                     .unwrap();
                 vec![idx, stmt + 1]
             } else {
@@ -191,12 +187,12 @@ impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
 }
 
 fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
-    for (&from, to) in graph.adj.iter_mut() {
-        if instrs[from].inner.jump() {
-            let next = &instrs[from + 1].inner;
+    for (&from, to) in &mut graph.adj {
+        if instrs[from].jump() {
+            let next = &instrs[from + 1];
             to.retain(|&x| x != from + 1);
             next.label()
-                .is_some_and(|x| x == instrs[from].inner.to().unwrap())
+                .is_some_and(|x| x == instrs[from].to().unwrap())
                 .then(|| {
                     to.push(from + 1);
                 });

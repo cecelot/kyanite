@@ -1,13 +1,13 @@
-use std::{collections::HashMap, ops::Deref, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     ast::{
         node::{self, Ident},
-        span::CombinedSpan,
+        span::Combined,
         Decl, Expr, Stmt, Type,
     },
     reporting::error::PreciseError,
-    token::{Span, Token, TokenKind},
+    token::{Kind, Span, Token},
     Source,
 };
 
@@ -95,7 +95,7 @@ trait Check {
 impl Check for Decl {
     fn check(&self, pass: &mut TypeCheckPass) -> Result<Type, TypeError> {
         match self {
-            Decl::Function(fun) => pass.function(fun),
+            Decl::Function(fun) => Ok(pass.function(fun)),
             Decl::Constant(c) => pass.constant(c),
             Decl::Record(_) => Ok(Type::Void),
         }
@@ -185,30 +185,30 @@ impl<'a> TypeCheckPass<'a> {
 
     fn error(&mut self, at: Span, heading: String, text: String) {
         let error = PreciseError::new(&self.source, at, heading, text);
-        println!("{}", error);
+        println!("{error}");
         self.errors.push(error);
     }
 
     fn unary(&mut self, unary: &node::Unary) -> Result<Type, TypeError> {
         let got = unary.expr.check(self)?;
         match unary.op.kind {
-            TokenKind::Minus => {
+            Kind::Minus => {
                 if !matches!(got, Type::Int | Type::Float) {
                     self.error(
                         unary.expr.span(),
-                        format!("cannot negate {}", got),
-                        format!("expression of type {}", got),
+                        format!("cannot negate {got}"),
+                        format!("expression of type {got}"),
                     );
                     return Err(TypeError::UnaryMismatch("negate", got));
                 }
                 Ok(got)
             }
-            TokenKind::Bang => {
+            Kind::Bang => {
                 if got != Type::Bool {
                     self.error(
                         unary.expr.span(),
-                        format!("cannot invert {}", got),
-                        format!("expression of type {}", got),
+                        format!("cannot invert {got}"),
+                        format!("expression of type {got}"),
                     );
                     return Err(TypeError::UnaryMismatch("invert", got));
                 }
@@ -224,8 +224,8 @@ impl<'a> TypeCheckPass<'a> {
         if got != expected {
             self.error(
                 a.expr.span(),
-                format!("expected expression of type {}", expected),
-                format!("expression of type {}", got),
+                format!("expected expression of type {expected}"),
+                format!("expression of type {got}"),
             );
         }
         Ok(Type::Void)
@@ -237,7 +237,7 @@ impl<'a> TypeCheckPass<'a> {
             self.error(
                 condition.span(),
                 format!("expected condition of type {}", Type::Bool),
-                format!("expression of type {}", got),
+                format!("expression of type {got}"),
             );
         }
         for block in blocks {
@@ -260,22 +260,22 @@ impl<'a> TypeCheckPass<'a> {
         let rec = symbol!(self, init.name, Record, "record");
         for initializer in &init.initializers {
             let got = initializer.expr.check(self)?;
-            let expected = match rec.fields.iter().find(|f| f.name == initializer.name) {
-                Some(field) => Type::from(&field.ty),
-                None => {
+            let expected =
+                if let Some(field) = rec.fields.iter().find(|f| f.name == initializer.name) {
+                    Type::from(&field.ty)
+                } else {
                     self.error(
                         initializer.name.span,
                         format!("no field `{}` on type `{}`", initializer.name, init.name),
-                        "".into(),
+                        String::new(),
                     );
                     continue;
-                }
-            };
+                };
             if got != expected {
                 self.error(
                     initializer.expr.span(),
-                    format!("expected initializer to be of type {}", expected),
-                    format!("expression of type {}", got),
+                    format!("expected initializer to be of type {expected}"),
+                    format!("expression of type {got}"),
                 );
             }
         }
@@ -288,16 +288,15 @@ impl<'a> TypeCheckPass<'a> {
             pass.error(
                 ident.name.span,
                 format!("no field `{}` on type `{}`", ident.name, ty),
-                "".into(),
+                String::new(),
             );
             Err(TypeError::NotProperty(ident.name.clone(), ty))
         }
         let mut ty = access.chain[0].check(self)?;
         let mut symbols = vec![];
         let mut indices = vec![];
-        let mut symbol = match self.symbol(&ty.to_string()).cloned() {
-            Some(symbol) => symbol,
-            None => return Err(TypeError::Undefined),
+        let Some(mut symbol) = self.symbol(&ty.to_string()).cloned() else {
+            return Err(TypeError::Undefined);
         };
         symbols.push(symbol.clone());
         for (i, pair) in access.chain.windows(2).enumerate() {
@@ -336,8 +335,8 @@ impl<'a> TypeCheckPass<'a> {
         if got != expected {
             self.error(
                 c.expr.span(),
-                format!("expected initializer to be of type {}", expected),
-                format!("expression of type {}", got),
+                format!("expected initializer to be of type {expected}"),
+                format!("expression of type {got}"),
             );
         }
         Ok(expected)
@@ -349,8 +348,8 @@ impl<'a> TypeCheckPass<'a> {
         if got != expected {
             self.error(
                 v.expr.span(),
-                format!("expected initializer to be of type {}", expected),
-                format!("expression of type {}", got),
+                format!("expected initializer to be of type {expected}"),
+                format!("expression of type {got}"),
             );
         }
         self.scope_mut()
@@ -358,7 +357,7 @@ impl<'a> TypeCheckPass<'a> {
         Ok(expected)
     }
 
-    fn function(&mut self, fun: &Rc<node::FuncDecl>) -> Result<Type, TypeError> {
+    fn function(&mut self, fun: &Rc<node::FuncDecl>) -> Type {
         if fun.name == "main" {
             if let Some(ty) = &fun.ty {
                 if ty != "void" {
@@ -381,7 +380,7 @@ impl<'a> TypeCheckPass<'a> {
         }
         self.end_scope();
         self.function = None;
-        Ok(Type::Void)
+        Type::Void
     }
 
     fn ret(&mut self, r: &node::Return) -> Result<Type, TypeError> {
@@ -393,7 +392,7 @@ impl<'a> TypeCheckPass<'a> {
                     self.error(
                         r.expr.span(),
                         format!("expected return type to be {}", symbol.ty()),
-                        format!("expression is of type {}", got),
+                        format!("expression is of type {got}"),
                     );
                     return Err(TypeError::Mismatch(symbol.ty(), got));
                 }
@@ -408,18 +407,18 @@ impl<'a> TypeCheckPass<'a> {
         let rhs = b.right.check(self)?;
         if lhs != rhs {
             let heading = match b.op.kind {
-                TokenKind::Plus => format!("cannot add {} to {}", lhs, rhs),
-                TokenKind::Minus => format!("cannot subtract {} from {}", rhs, lhs),
-                TokenKind::Star => format!("cannot multiply {} by {}", lhs, rhs),
-                TokenKind::Slash => format!("cannot divide {} by {}", lhs, rhs),
-                _ => format!("cannot compare {} and {}", lhs, rhs),
+                Kind::Plus => format!("cannot add {lhs} to {rhs}"),
+                Kind::Minus => format!("cannot subtract {rhs} from {lhs}"),
+                Kind::Star => format!("cannot multiply {lhs} by {rhs}"),
+                Kind::Slash => format!("cannot divide {lhs} by {rhs}"),
+                _ => format!("cannot compare {lhs} and {rhs}"),
             };
-            self.error(b.op.span, heading, "".into());
+            self.error(b.op.span, heading, String::new());
             return Err(TypeError::Mismatch(lhs, rhs));
         }
         if matches!(
             b.op.kind,
-            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash
+            Kind::Plus | Kind::Minus | Kind::Star | Kind::Slash
         ) {
             Ok(lhs)
         } else {
@@ -439,7 +438,7 @@ impl<'a> TypeCheckPass<'a> {
                 self.error(
                     id.name.span,
                     format!("`{}` is not defined", &id.name),
-                    "".into(),
+                    String::new(),
                 );
                 return Err(TypeError::Undefined);
             }
@@ -447,7 +446,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn call(&mut self, call: &node::Call) -> Result<Type, TypeError> {
-        let name = cast!(call.left.deref(), ident.name.clone(), Expr::Ident(ident));
+        let name = cast!(&*call.left, ident.name.clone(), Expr::Ident(ident));
         let function = symbol!(self, name, Function, "function");
         let (arity, params, ty) = (
             function.params.len(),
@@ -462,7 +461,7 @@ impl<'a> TypeCheckPass<'a> {
                     arity,
                     call.args.len()
                 ),
-                format!("while calling {} here", name),
+                format!("while calling {name} here"),
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
@@ -472,8 +471,8 @@ impl<'a> TypeCheckPass<'a> {
                 if got != expected {
                     self.error(
                         arg.span(),
-                        format!("expected argument of type {}, but found {}", expected, got),
-                        format!("expression of type {}", got),
+                        format!("expected argument of type {expected}, but found {got}"),
+                        format!("expression of type {got}"),
                     );
                 }
             }

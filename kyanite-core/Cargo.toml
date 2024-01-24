@@ -16,3 +16,9 @@ thiserror = "1.0.48"
 [lib]
 name = "kyanite"
 path = "src/lib.rs"
+
+[lints.clippy]
+pedantic = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"

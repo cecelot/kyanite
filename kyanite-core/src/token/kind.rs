@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub enum TokenKind {
+pub enum Kind {
     Identifier,
     Literal,
 
@@ -45,43 +45,43 @@ pub enum TokenKind {
     Eof,
 }
 
-impl fmt::Display for TokenKind {
+impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TokenKind::Bang => write!(f, "!"),
-            TokenKind::BangEqual => write!(f, "!="),
-            TokenKind::Equal => write!(f, "="),
-            TokenKind::EqualEqual => write!(f, "=="),
-            TokenKind::Greater => write!(f, ">"),
-            TokenKind::GreaterEqual => write!(f, ">="),
-            TokenKind::Less => write!(f, "<"),
-            TokenKind::LessEqual => write!(f, "<="),
-            TokenKind::LeftParen => write!(f, "("),
-            TokenKind::RightParen => write!(f, ")"),
-            TokenKind::LeftBrace => write!(f, "{{"),
-            TokenKind::RightBrace => write!(f, "}}"),
-            TokenKind::Semicolon => write!(f, ";"),
-            TokenKind::Colon => write!(f, ":"),
-            TokenKind::Comma => write!(f, ","),
-            TokenKind::Dot => write!(f, "."),
-            TokenKind::Plus => write!(f, "add"),
-            TokenKind::Minus => write!(f, "subtract"),
-            TokenKind::Star => write!(f, "multiply"),
-            TokenKind::Slash => write!(f, "divide"),
-            TokenKind::Let => write!(f, "let"),
-            TokenKind::Const => write!(f, "const"),
-            TokenKind::Fun => write!(f, "fun"),
-            TokenKind::Extern => write!(f, "extern"),
-            TokenKind::Return => write!(f, "return"),
-            TokenKind::Rec => write!(f, "rec"),
-            TokenKind::Init => write!(f, "init"),
-            TokenKind::If => write!(f, "if"),
-            TokenKind::Else => write!(f, "else"),
-            TokenKind::While => write!(f, "while"),
-            TokenKind::Identifier => write!(f, "identifier"),
-            TokenKind::Literal => write!(f, "literal"),
-            TokenKind::Error => write!(f, "error"),
-            TokenKind::Eof => write!(f, "eof"),
+            Kind::Bang => write!(f, "!"),
+            Kind::BangEqual => write!(f, "!="),
+            Kind::Equal => write!(f, "="),
+            Kind::EqualEqual => write!(f, "=="),
+            Kind::Greater => write!(f, ">"),
+            Kind::GreaterEqual => write!(f, ">="),
+            Kind::Less => write!(f, "<"),
+            Kind::LessEqual => write!(f, "<="),
+            Kind::LeftParen => write!(f, "("),
+            Kind::RightParen => write!(f, ")"),
+            Kind::LeftBrace => write!(f, "{{"),
+            Kind::RightBrace => write!(f, "}}"),
+            Kind::Semicolon => write!(f, ";"),
+            Kind::Colon => write!(f, ":"),
+            Kind::Comma => write!(f, ","),
+            Kind::Dot => write!(f, "."),
+            Kind::Plus => write!(f, "add"),
+            Kind::Minus => write!(f, "subtract"),
+            Kind::Star => write!(f, "multiply"),
+            Kind::Slash => write!(f, "divide"),
+            Kind::Let => write!(f, "let"),
+            Kind::Const => write!(f, "const"),
+            Kind::Fun => write!(f, "fun"),
+            Kind::Extern => write!(f, "extern"),
+            Kind::Return => write!(f, "return"),
+            Kind::Rec => write!(f, "rec"),
+            Kind::Init => write!(f, "init"),
+            Kind::If => write!(f, "if"),
+            Kind::Else => write!(f, "else"),
+            Kind::While => write!(f, "while"),
+            Kind::Identifier => write!(f, "identifier"),
+            Kind::Literal => write!(f, "literal"),
+            Kind::Error => write!(f, "error"),
+            Kind::Eof => write!(f, "eof"),
         }
     }
 }

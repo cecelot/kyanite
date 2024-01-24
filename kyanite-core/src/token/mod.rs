@@ -2,24 +2,23 @@ use std::{
     collections::VecDeque,
     fmt,
     hash::{Hash, Hasher},
-    io,
 };
 
 use crate::{reporting::error::PreciseError, Source};
 
-pub use self::kind::TokenKind;
+pub use self::kind::Kind;
 
 mod kind;
 
 #[derive(Debug, Clone, Eq)]
 pub struct Token {
-    pub kind: TokenKind,
+    pub kind: Kind,
     pub lexeme: Option<&'static str>,
     pub span: Span,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, lexeme: Option<&'static str>, span: Span) -> Self {
+    pub fn new(kind: Kind, lexeme: Option<&'static str>, span: Span) -> Self {
         Self { kind, lexeme, span }
     }
 }
@@ -44,7 +43,7 @@ impl PartialEq<&str> for Token {
 
 impl Hash for Token {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.lexeme.hash(state)
+        self.lexeme.hash(state);
     }
 }
 
@@ -110,7 +109,7 @@ impl<'a> From<&'a Source> for TokenStream<'a> {
             source,
             errors: vec![],
             tokens: VecDeque::new(),
-            span: Default::default(),
+            span: Span::default(),
             start: 0,
             current: 0,
         }
@@ -118,10 +117,10 @@ impl<'a> From<&'a Source> for TokenStream<'a> {
 }
 
 impl<'a> TokenStream<'a> {
-    pub fn from_source(source: &'a Source) -> Result<Self, io::Error> {
+    pub fn from_source(source: &'a Source) -> Self {
         let mut stream = Self::from(source);
         stream.process();
-        Ok(stream)
+        stream
     }
 
     fn process(&mut self) {
@@ -139,27 +138,27 @@ impl<'a> TokenStream<'a> {
                 match token {
                     'a'..='z' | 'A'..='Z' | '_' => self.identifier(),
                     // Punctuation
-                    '(' => Token::new(TokenKind::LeftParen, None, self.span),
-                    ')' => Token::new(TokenKind::RightParen, None, self.span),
-                    ';' => Token::new(TokenKind::Semicolon, None, self.span),
-                    ',' => Token::new(TokenKind::Comma, None, self.span),
-                    ':' => Token::new(TokenKind::Colon, None, self.span),
-                    '.' => Token::new(TokenKind::Dot, None, self.span),
-                    '{' => Token::new(TokenKind::LeftBrace, None, self.span),
-                    '}' => Token::new(TokenKind::RightBrace, None, self.span),
+                    '(' => Token::new(Kind::LeftParen, None, self.span),
+                    ')' => Token::new(Kind::RightParen, None, self.span),
+                    ';' => Token::new(Kind::Semicolon, None, self.span),
+                    ',' => Token::new(Kind::Comma, None, self.span),
+                    ':' => Token::new(Kind::Colon, None, self.span),
+                    '.' => Token::new(Kind::Dot, None, self.span),
+                    '{' => Token::new(Kind::LeftBrace, None, self.span),
+                    '}' => Token::new(Kind::RightBrace, None, self.span),
                     // Types
                     '"' => self.string(),
                     '0'..='9' => self.number(),
                     // Math
-                    '+' => Token::new(TokenKind::Plus, None, self.span),
-                    '-' => Token::new(TokenKind::Minus, None, self.span),
-                    '*' => Token::new(TokenKind::Star, None, self.span),
-                    '/' => Token::new(TokenKind::Slash, None, self.span),
+                    '+' => Token::new(Kind::Plus, None, self.span),
+                    '-' => Token::new(Kind::Minus, None, self.span),
+                    '*' => Token::new(Kind::Star, None, self.span),
+                    '/' => Token::new(Kind::Slash, None, self.span),
                     // Logic
-                    '=' => self.match_next('=', TokenKind::EqualEqual, TokenKind::Equal),
-                    '!' => self.match_next('=', TokenKind::BangEqual, TokenKind::Bang),
-                    '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
-                    '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
+                    '=' => self.match_next('=', Kind::EqualEqual, Kind::Equal),
+                    '!' => self.match_next('=', Kind::BangEqual, Kind::Bang),
+                    '<' => self.match_next('=', Kind::LessEqual, Kind::Less),
+                    '>' => self.match_next('=', Kind::GreaterEqual, Kind::Greater),
                     '%' => {
                         while !self.eof() && self.peek().unwrap() != '\n' {
                             self.consume();
@@ -173,13 +172,13 @@ impl<'a> TokenStream<'a> {
                             format!("unexpected character `{c}`"),
                             "not a token".into(),
                         );
-                        println!("{}", error);
+                        println!("{error}");
                         self.errors.push(error);
-                        Token::new(TokenKind::Error, None, self.span)
+                        Token::new(Kind::Error, None, self.span)
                     }
                 }
             }
-            None => Token::new(TokenKind::Eof, None, self.span),
+            None => Token::new(Kind::Eof, None, self.span),
         };
         self.tokens.push_back(token);
     }
@@ -205,18 +204,18 @@ impl<'a> TokenStream<'a> {
                 "unterminated string".into(),
                 "opening quote here".into(),
             );
-            println!("{}", error);
+            println!("{error}");
             self.errors.push(error);
-            return Token::new(TokenKind::Error, None, self.span);
+            return Token::new(Kind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span))
+        self.adjusted(|stream| Token::new(Kind::Literal, Some(lexeme.leak()), stream.span))
     }
 
     fn number(&mut self) -> Token {
         self.start = self.current - 1;
         let mut peeked = self.peek();
-        while !self.eof() && self.num(peeked.unwrap()) {
+        while !self.eof() && Self::num(peeked.unwrap()) {
             self.consume();
             peeked = self.peek();
         }
@@ -224,7 +223,7 @@ impl<'a> TokenStream<'a> {
         if !self.eof() && self.peek().unwrap() == '.' {
             self.consume();
             peeked = self.peek();
-            while !self.eof() && self.num(peeked.unwrap()) {
+            while !self.eof() && Self::num(peeked.unwrap()) {
                 self.consume();
                 peeked = self.peek();
             }
@@ -232,13 +231,13 @@ impl<'a> TokenStream<'a> {
 
         let lexeme = self.lexeme(self.start, self.current);
         self.span.length = self.current - self.start;
-        self.adjusted(|stream| Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span))
+        self.adjusted(|stream| Token::new(Kind::Literal, Some(lexeme.leak()), stream.span))
     }
 
     fn identifier(&mut self) -> Token {
         self.start = self.current - 1;
         let mut peeked = self.peek();
-        while !self.eof() && self.ident(peeked.unwrap()) {
+        while !self.eof() && Self::ident(peeked.unwrap()) {
             self.consume();
             peeked = self.peek();
         }
@@ -248,19 +247,18 @@ impl<'a> TokenStream<'a> {
     fn keyword(&mut self, lexeme: String) -> Token {
         self.span.length = self.current - self.start;
         self.adjusted(|stream| match lexeme.as_str() {
-            "let" => Token::new(TokenKind::Let, None, stream.span),
-            "const" => Token::new(TokenKind::Const, None, stream.span),
-            "fun" => Token::new(TokenKind::Fun, None, stream.span),
-            "true" => Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span),
-            "false" => Token::new(TokenKind::Literal, Some(lexeme.leak()), stream.span),
-            "return" => Token::new(TokenKind::Return, None, stream.span),
-            "extern" => Token::new(TokenKind::Extern, None, stream.span),
-            "rec" => Token::new(TokenKind::Rec, None, stream.span),
-            "init" => Token::new(TokenKind::Init, None, stream.span),
-            "if" => Token::new(TokenKind::If, None, stream.span),
-            "else" => Token::new(TokenKind::Else, None, stream.span),
-            "while" => Token::new(TokenKind::While, None, stream.span),
-            _ => Token::new(TokenKind::Identifier, Some(lexeme.leak()), stream.span),
+            "let" => Token::new(Kind::Let, None, stream.span),
+            "const" => Token::new(Kind::Const, None, stream.span),
+            "fun" => Token::new(Kind::Fun, None, stream.span),
+            "true" | "false" => Token::new(Kind::Literal, Some(lexeme.leak()), stream.span),
+            "return" => Token::new(Kind::Return, None, stream.span),
+            "extern" => Token::new(Kind::Extern, None, stream.span),
+            "rec" => Token::new(Kind::Rec, None, stream.span),
+            "init" => Token::new(Kind::Init, None, stream.span),
+            "if" => Token::new(Kind::If, None, stream.span),
+            "else" => Token::new(Kind::Else, None, stream.span),
+            "while" => Token::new(Kind::While, None, stream.span),
+            _ => Token::new(Kind::Identifier, Some(lexeme.leak()), stream.span),
         })
     }
 
@@ -279,7 +277,7 @@ impl<'a> TokenStream<'a> {
         self.source.chars[start..end].iter().collect()
     }
 
-    fn match_next(&mut self, c: char, first: TokenKind, second: TokenKind) -> Token {
+    fn match_next(&mut self, c: char, first: Kind, second: Kind) -> Token {
         if self.peek().unwrap() == c {
             self.consume();
             self.span.length = 2;
@@ -291,21 +289,21 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    fn ident(&self, c: char) -> bool {
+    fn ident(c: char) -> bool {
         matches!(c, 'a'..='z' | 'A'..='Z' | '_')
     }
 
-    fn num(&self, c: char) -> bool {
+    fn num(c: char) -> bool {
         c.is_ascii_digit()
     }
 
-    fn whitespace(&self, c: char) -> bool {
+    fn whitespace(c: char) -> bool {
         matches!(c, '\t' | '\n' | ' ')
     }
 
     fn skip_whitespace(&mut self) {
         let mut peeked = self.peek();
-        while !self.eof() && self.whitespace(peeked.unwrap()) {
+        while !self.eof() && Self::whitespace(peeked.unwrap()) {
             self.consume();
             if peeked.unwrap() == '\n' {
                 self.span.line += 1;
@@ -335,7 +333,7 @@ macro_rules! assert_tokens {
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
-                    let stream = TokenStream::from_source(&source)?;
+                    let stream = TokenStream::from_source(&source);
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         if $valid {
                             insta::assert_debug_snapshot!(stream.tokens);

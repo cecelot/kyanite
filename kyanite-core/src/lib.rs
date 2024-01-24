@@ -21,7 +21,7 @@ pub use compile::Compile;
 
 mod ast;
 mod codegen;
-mod compile;
+pub mod compile;
 mod kyir;
 mod macros;
 mod parse;
@@ -75,6 +75,7 @@ impl TryFrom<&str> for Program<'_> {
 }
 
 impl<'a> Program<'a> {
+    #[must_use]
     pub fn new(source: Source) -> Self {
         Self {
             source,
@@ -83,11 +84,13 @@ impl<'a> Program<'a> {
         }
     }
 
+    #[must_use]
     pub fn llvm(mut self, llvm: bool) -> Self {
         self.llvm = llvm;
         self
     }
 
+    #[must_use]
     pub fn write_to(mut self, writer: &'a mut dyn Write) -> Self {
         self.writer = Some(writer);
         self
@@ -115,7 +118,7 @@ impl<'a> Program<'a> {
             let ir = LlvmIr::from(
                 Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
             );
-            ir.compile(&filename, writer)
+            ir.compile::<Amd64>(&filename, writer)
         } else {
             let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
             let ir = translator.translate(&ast.nodes);
@@ -126,9 +129,9 @@ impl<'a> Program<'a> {
             let ranges = LiveRanges::from(graph);
             let ig = ranges.interference_graphs(codegen.asm.len());
             let color: Color<Amd64> = Color::new(ig);
-            let colors = color.color(ranges);
-            let asm = Kyir::from(codegen.format(colors));
-            asm.compile(&filename, writer)
+            let colors = color.color(&ranges);
+            let kyir = Kyir::from(codegen.format(&colors));
+            kyir.compile::<Amd64>(&filename, writer)
         }
     }
 }
@@ -162,6 +165,7 @@ impl Source {
         })
     }
 
+    #[must_use]
     pub fn in_memory(raw: String) -> Self {
         Self {
             filename: "in-memory.kya",

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::{HashMap, HashSet};
 
 use crate::kyir::arch::Frame;
@@ -18,7 +17,7 @@ impl<F: Frame> Color<F> {
         }
     }
 
-    pub fn color(&self, ranges: LiveRanges) -> HashMap<String, String> {
+    pub fn color(&self, ranges: &LiveRanges) -> HashMap<String, String> {
         let mut colors = HashMap::new();
         let temporaries: Vec<_> = ranges.keys().collect();
         let registers = F::registers();
@@ -32,9 +31,9 @@ impl<F: Frame> Color<F> {
             let mut live: Vec<&String> = temporaries
                 .iter()
                 .filter(|&t| ranges.get(t)[line])
-                .cloned()
+                .copied()
                 .collect();
-            live.sort_by_key(|&t| graph.get(t).map_or(0, |v| v.len()));
+            live.sort_by_key(|&t| graph.get(t).map_or(0, HashSet::len));
             while let Some(temp) = live.pop() {
                 if !colors.contains_key(temp) {
                     let empty = HashSet::new();

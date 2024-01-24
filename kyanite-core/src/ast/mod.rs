@@ -17,7 +17,7 @@ pub struct Ast {
 
 impl Ast {
     pub fn from_source(source: &Source) -> Result<Self, PipelineError> {
-        let stream = TokenStream::from_source(source).map_err(|_| PipelineError::InvalidUtf8)?;
+        let stream = TokenStream::from_source(source);
         Self::new(stream)
     }
 

@@ -11,8 +11,8 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
-    pub fn new(label: String, body: Vec<Stmt>) -> Self {
-        Self { label, body }
+    pub fn new(body: Vec<Stmt>, label: String) -> Self {
+        Self { body, label }
     }
 
     pub fn successors<'a>(&self, blocks: &'a VecDeque<BasicBlock>) -> Vec<&'a BasicBlock> {
@@ -56,7 +56,7 @@ impl BasicBlocks {
     }
 
     fn build(&mut self, substitutions: &mut Vec<(String, String)>) {
-        for (_, function) in self.functions.iter_mut() {
+        for (_, function) in &mut self.functions {
             let name = Self::consume(function);
             assert!(matches!(name, Stmt::Label(_)));
             let mut blocks = Self::block(name.label(), function, substitutions, &name);
@@ -117,7 +117,7 @@ impl BasicBlocks {
             // epilogue (i.e. L2.epilogue instead of main.epilogue)
             body.push(Stmt::Jump(format!("{}.epilogue", func.label()))); // Jump to function epilogue
         }
-        blocks.push(BasicBlock::new(label, body));
+        blocks.push(BasicBlock::new(body, label));
         blocks
     }
 
@@ -180,7 +180,7 @@ impl TraceSchedule {
                             let label = Label::new();
                             *f = label.clone();
                             insertions
-                                .push(((i, j), BasicBlock::new(label, vec![Stmt::Jump(prev)])));
+                                .push(((i, j), BasicBlock::new(vec![Stmt::Jump(prev)], label)));
                         }
                     }
                 }
@@ -243,7 +243,7 @@ impl TraceSchedule {
     fn blocks(traces: Vec<Vec<BasicBlock>>) -> Vec<BasicBlock> {
         traces
             .into_iter()
-            .flat_map(|trace| trace.into_iter())
+            .flat_map(IntoIterator::into_iter)
             .collect()
     }
 

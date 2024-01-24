@@ -12,8 +12,7 @@ impl<'a> ESeqs<'a> for Expr {
                 left.replace(search, temp);
                 right.replace(search, temp);
             }
-            Expr::ConstInt(_) => {}
-            Expr::ConstFloat(_) => {}
+            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) => {}
             Expr::ESeq { id, .. } => {
                 if search == *id {
                     *self = temp.clone();
@@ -22,7 +21,6 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::Mem(expr) => {
                 expr.replace(search, temp);
             }
-            Expr::Temp(_) => {}
             Expr::Call(_, args) => {
                 for arg in args {
                     arg.replace(search, temp);
@@ -33,8 +31,6 @@ impl<'a> ESeqs<'a> for Expr {
 
     fn eseqs(&'a self, list: &mut Vec<&'a Expr>) {
         match self {
-            Expr::ConstInt(_) => {}
-            Expr::ConstFloat(_) => {}
             Expr::Binary { left, right, .. } => {
                 left.eseqs(list);
                 right.eseqs(list);
@@ -47,12 +43,12 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::Mem(expr) => {
                 expr.eseqs(list);
             }
-            Expr::Temp(_) => {}
             Expr::Call(_, args) => {
                 for arg in args {
                     arg.eseqs(list);
                 }
             }
+            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) => {}
         }
     }
 }
@@ -69,16 +65,14 @@ impl<'a> ESeqs<'a> for Stmt {
                     right.replace(search, temp);
                 }
             }
-            Stmt::Jump(_) => {}
+            Stmt::Jump(_) | Stmt::Label(_) | Stmt::Noop => {}
             Stmt::CJump { condition, .. } => {
                 condition.replace(search, temp);
             }
-            Stmt::Label(_) => {}
             Stmt::Move { target, expr } => {
                 expr.replace(search, temp);
                 target.replace(search, temp);
             }
-            Stmt::Noop => {}
         }
     }
 
@@ -93,16 +87,14 @@ impl<'a> ESeqs<'a> for Stmt {
                     right.eseqs(list);
                 }
             }
-            Stmt::Jump(_) => {}
+            Stmt::Jump(_) | Stmt::Label(_) | Stmt::Noop => {}
             Stmt::CJump { condition, .. } => {
                 condition.eseqs(list);
             }
-            Stmt::Label(_) => {}
             Stmt::Move { target, expr } => {
                 expr.eseqs(list);
                 target.eseqs(list);
             }
-            Stmt::Noop => {}
         }
     }
 }

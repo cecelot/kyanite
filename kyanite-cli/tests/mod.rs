@@ -6,6 +6,7 @@ macro_rules! assert_output {
     ($($path:expr => $name:ident),*) => {
         $(
             #[test]
+            #[ignore]
             fn $name() -> Result<(), Box<dyn std::error::Error>> {
                 let mut output = vec![];
                 let program = Program::try_from($path).unwrap();

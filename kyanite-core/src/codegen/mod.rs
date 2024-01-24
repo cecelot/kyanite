@@ -33,35 +33,6 @@ pub enum Instr {
     },
 }
 
-impl Instr {
-    pub fn to(&self) -> Option<String> {
-        match self {
-            Instr::Oper { jump, .. } => jump.as_ref().cloned(),
-            _ => None,
-        }
-    }
-
-    pub fn jump(&self) -> bool {
-        matches!(
-            self,
-            Instr::Oper {
-                opcode: Opcode::Jump,
-                ..
-            }
-        )
-    }
-
-    pub fn label(&self) -> Option<String> {
-        match self {
-            Instr::Oper {
-                opcode: Opcode::Label(label),
-                ..
-            } => Some(label.clone()),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct AsmInstr {
     inner: Instr,
@@ -74,13 +45,51 @@ impl AsmInstr {
         let id = ID.fetch_add(1, Ordering::SeqCst);
         Self { inner: instr, id }
     }
+
+    pub fn operands(&self) -> usize {
+        match &self.inner {
+            Instr::Oper { opcode, .. } => match opcode {
+                Opcode::Jump | Opcode::CJump(_) | Opcode::Push | Opcode::Ret | Opcode::Pop => 1,
+                Opcode::Label(_) => 0,
+                _ => 2,
+            },
+            Instr::Call { .. } | Instr::FrameValue { .. } => 0,
+        }
+    }
+
+    pub fn to(&self) -> Option<String> {
+        match &self.inner {
+            Instr::Oper { jump, .. } => jump.as_ref().cloned(),
+            _ => None,
+        }
+    }
+
+    pub fn jump(&self) -> bool {
+        matches!(
+            self.inner,
+            Instr::Oper {
+                opcode: Opcode::Jump,
+                ..
+            }
+        )
+    }
+
+    pub fn label(&self) -> Option<String> {
+        match &self.inner {
+            Instr::Oper {
+                opcode: Opcode::Label(label),
+                ..
+            } => Some(label.clone()),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Opcode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Opcode::Cmp(_) => write!(f, "cmp"),
-            Opcode::Label(label) => write!(f, ".{}:", label),
+            Opcode::Cmp(_) => write!(f, "cmpq"),
+            Opcode::Label(label) => write!(f, "{label}:"),
             Opcode::Move => write!(f, "movq"),
             Opcode::Jump => write!(f, "jmp"),
             Opcode::CJump(rel) => {
@@ -115,9 +124,13 @@ impl Display for AsmInstr {
                 jump,
             } => {
                 match opcode {
-                    Opcode::Jump => write!(f, "{} {}", opcode, jump.as_ref().unwrap())?,
-                    Opcode::CJump(_) => write!(f, "{} {}", opcode, jump.as_ref().unwrap())?,
-                    _ => write!(f, "{} {} {}", opcode, src, dst)?,
+                    Opcode::Jump => write!(f, "{opcode} {}", jump.as_ref().unwrap())?,
+                    Opcode::CJump(_) => write!(f, "{opcode} {}", jump.as_ref().unwrap())?,
+                    _ => write!(
+                        f,
+                        "{opcode} {src}{} {dst}",
+                        if self.operands() == 2 { "," } else { "" }
+                    )?,
                 }
                 Ok(())
             }
@@ -126,7 +139,7 @@ impl Display for AsmInstr {
                 Ok(())
             }
             Instr::FrameValue { offset } => {
-                write!(f, "{}(%rbp)", offset)?;
+                write!(f, "{offset}(%rbp)")?;
                 Ok(())
             }
         }
@@ -153,7 +166,7 @@ impl From<BinOp> for RelOp {
     fn from(value: BinOp) -> Self {
         match value {
             BinOp::Cmp(rel) => rel,
-            _ => panic!("Cannot convert {:?} to RelOp", value),
+            _ => panic!("Cannot convert {value:?} to RelOp"),
         }
     }
 }
@@ -181,7 +194,7 @@ pub struct Codegen<F: Frame> {
 impl<F: Frame> Display for Codegen<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for instr in &self.asm {
-            writeln!(f, "{}", instr)?;
+            writeln!(f, "{instr}")?;
         }
         Ok(())
     }
@@ -214,17 +227,21 @@ impl<F: Frame> Codegen<F> {
         self.epilogues();
     }
 
-    fn register_for(&self, registers: &HashMap<String, String>, temp: &String) -> String {
-        if temp.starts_with('T') {
-            registers.get(temp).cloned().unwrap_or_else(|| {
-                panic!("no register for `{}`", temp);
-            })
-        } else {
-            temp.clone()
+    fn register_for(registers: &HashMap<String, String>, temp: &String) -> String {
+        match temp {
+            _ if temp.starts_with('T') => {
+                let register = registers.get(temp).cloned().unwrap_or_else(|| {
+                    panic!("no register for `{temp}`");
+                });
+                format!("%{register}")
+            }
+            _ if F::registers().all().contains(&temp.as_str()) => format!("%{temp}"),
+            _ if temp.is_empty() => String::new(),
+            temp => temp.to_string(),
         }
     }
 
-    pub fn format(&self, registers: HashMap<String, String>) -> String {
+    pub fn format(&self, registers: &HashMap<String, String>) -> String {
         let mut asm = String::new();
         for instr in &self.asm {
             let inner = match &instr.inner {
@@ -233,17 +250,16 @@ impl<F: Frame> Codegen<F> {
                     dst,
                     src,
                     jump,
-                } if !(dst.is_empty() || src.is_empty()) => Instr::Oper {
+                } => Instr::Oper {
                     opcode: opcode.clone(),
-                    dst: self.register_for(&registers, dst),
-                    src: self.register_for(&registers, src),
+                    dst: Self::register_for(registers, dst),
+                    src: Self::register_for(registers, src),
                     jump: jump.clone(),
                 },
                 Instr::Call { name } => Instr::Call {
                     name: name.to_string(),
                 },
                 Instr::FrameValue { offset } => Instr::FrameValue { offset: *offset },
-                inner => inner.clone(),
             };
             writeln!(
                 asm,
@@ -263,7 +279,7 @@ impl<F: Frame> Codegen<F> {
         for (name, id) in &self.idents {
             let function = self.functions.get(id).unwrap();
             instrs.push(AsmInstr::new(Instr::Oper {
-                opcode: Opcode::Label(format!("{}.epilogue", name)),
+                opcode: Opcode::Label(format!("{name}.epilogue")),
                 src: String::new(),
                 dst: String::new(),
                 jump: None,
@@ -486,9 +502,9 @@ mod tests {
         let ranges = LiveRanges::from(graph);
         let ig = ranges.interference_graphs(codegen.asm.len());
         let color: Color<Amd64> = Color::new(ig);
-        let registers = color.color(ranges);
-        let result = codegen.format(registers);
-        println!("{}", result);
+        let registers = color.color(&ranges);
+        let result = codegen.format(&registers);
+        println!("{result}");
         Ok(())
     }
 }
