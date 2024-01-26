@@ -99,7 +99,7 @@ impl<'a> Program<'a> {
     pub fn build(self) -> Result<String, PipelineError> {
         let mut stdout = std::io::stdout();
         let writer = self.writer.unwrap_or(&mut stdout);
-        let mut ast = ast::Ast::from_source(&self.source)?;
+        let mut ast = ast::Ast::try_from(&self.source)?;
         let filename: String = {
             let name: Vec<_> = self
                 .source

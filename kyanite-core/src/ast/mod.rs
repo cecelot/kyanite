@@ -1,6 +1,6 @@
 use crate::{
     parse::Parser,
-    token::{Token, TokenStream},
+    token::{Lexer, Token},
     PipelineError, Source,
 };
 use std::{fmt, rc::Rc};
@@ -15,13 +15,17 @@ pub struct Ast {
     pub nodes: Vec<Decl>,
 }
 
-impl Ast {
-    pub fn from_source(source: &Source) -> Result<Self, PipelineError> {
-        let stream = TokenStream::from_source(source);
+impl TryFrom<&Source> for Ast {
+    type Error = PipelineError;
+
+    fn try_from(value: &Source) -> Result<Self, Self::Error> {
+        let stream = Lexer::from(value);
         Self::new(stream)
     }
+}
 
-    fn new(stream: TokenStream) -> Result<Self, PipelineError> {
+impl Ast {
+    fn new(stream: Lexer) -> Result<Self, PipelineError> {
         let errors = stream.errors.len();
         if errors > 0 {
             return Err(PipelineError::LexError(errors));
@@ -193,7 +197,7 @@ macro_rules! assert_ast {
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                    let mut ast = ast::Ast::from_source(&Source::new($path)?)?;
+                    let mut ast = ast::Ast::try_from(&Source::new($path)?)?;
                     ast.nodes.iter_mut().for_each(|node| node.strip_id());
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_debug_snapshot!(ast);

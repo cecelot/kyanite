@@ -125,7 +125,7 @@ impl FlowGraphMeta for AsmInstr {
     fn defines(&self) -> Vec<String> {
         match &self.inner {
             Instr::Oper { dst, .. } => vec![dst.clone()],
-            _ => vec![],
+            Instr::Call { .. } => vec![],
         }
     }
 
@@ -138,7 +138,7 @@ impl FlowGraphMeta for AsmInstr {
                 ..
             } => vec![src.clone(), dst.clone()],
             Instr::Oper { src, .. } => vec![src.clone()],
-            _ => vec![],
+            Instr::Call { .. } => vec![],
         }
     }
 

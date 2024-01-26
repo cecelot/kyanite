@@ -27,10 +27,17 @@ pub enum Instr {
     Call {
         name: String,
     },
-    #[allow(dead_code)]
-    FrameValue {
-        offset: i64,
-    },
+}
+
+impl Instr {
+    fn oper(opcode: Opcode, dst: String, src: String, jump: Option<String>) -> Self {
+        Self::Oper {
+            opcode,
+            dst,
+            src,
+            jump,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -53,14 +60,14 @@ impl AsmInstr {
                 Opcode::Label(_) => 0,
                 _ => 2,
             },
-            Instr::Call { .. } | Instr::FrameValue { .. } => 0,
+            Instr::Call { .. } => 0,
         }
     }
 
     pub fn to(&self) -> Option<String> {
         match &self.inner {
             Instr::Oper { jump, .. } => jump.as_ref().cloned(),
-            _ => None,
+            Instr::Call { .. } => None,
         }
     }
 
@@ -136,10 +143,6 @@ impl Display for AsmInstr {
             }
             Instr::Call { name } => {
                 write!(f, "callq {name}")?;
-                Ok(())
-            }
-            Instr::FrameValue { offset } => {
-                write!(f, "{offset}(%rbp)")?;
                 Ok(())
             }
         }
@@ -259,7 +262,6 @@ impl<F: Frame> Codegen<F> {
                 Instr::Call { name } => Instr::Call {
                     name: name.to_string(),
                 },
-                Instr::FrameValue { offset } => Instr::FrameValue { offset: *offset },
             };
             writeln!(
                 asm,
@@ -295,6 +297,7 @@ impl<F: Frame> Codegen<F> {
         self.asm.push(AsmInstr::new(instr));
     }
 
+    #[allow(clippy::too_many_lines)]
     fn stmt(&mut self, stmt: Stmt) {
         match stmt {
             Stmt::Expr(e) => {
@@ -374,13 +377,26 @@ impl<F: Frame> Codegen<F> {
             Stmt::CJump {
                 t, op, condition, ..
             } => {
-                self.expr(*condition, false);
-                self.emit(Instr::Oper {
-                    opcode: Opcode::CJump(op.into()),
-                    dst: String::new(),
-                    src: String::new(),
-                    jump: Some(t),
-                });
+                let tmp = self.expr(*condition.clone(), false);
+                if let Expr::ConstInt(_) = *condition {
+                    let one = Temp::new();
+                    self.emit(Instr::oper(Opcode::Move, one.clone(), "$1".into(), None));
+                    self.emit(Instr::oper(Opcode::Cmp(RelOp::Equal), tmp, one, None));
+                    self.emit(Instr::oper(
+                        Opcode::CJump(op.into()),
+                        String::new(),
+                        String::new(),
+                        Some(t),
+                    ));
+                } else {
+                    self.expr(*condition, false);
+                    self.emit(Instr::Oper {
+                        opcode: Opcode::CJump(op.into()),
+                        dst: String::new(),
+                        src: String::new(),
+                        jump: Some(t),
+                    });
+                }
             }
         }
     }
@@ -422,15 +438,15 @@ impl<F: Frame> Codegen<F> {
                     jump: None,
                 };
                 if lhs {
-                    match oper {
-                        Instr::Oper {
-                            ref mut dst,
-                            ref mut src,
-                            ..
-                        } => {
-                            std::mem::swap(dst, src);
-                        }
-                        _ => panic!("Expected `Instr::Oper`"),
+                    if let Instr::Oper {
+                        ref mut dst,
+                        ref mut src,
+                        ..
+                    } = oper
+                    {
+                        std::mem::swap(dst, src);
+                    } else {
+                        panic!("Expected `Instr::Oper`");
                     }
                 }
                 self.emit(oper);
@@ -488,7 +504,7 @@ mod tests {
     #[test]
     fn compile() -> Result<(), Box<dyn std::error::Error>> {
         let source = Source::in_memory(include_str!("test.kya").to_string());
-        let ast = ast::Ast::from_source(&source)?;
+        let ast = ast::Ast::try_from(&source)?;
         let symbols = SymbolTable::from(&ast.nodes);
         let mut accesses = HashMap::new();
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);

@@ -94,7 +94,7 @@ impl fmt::Display for Span {
 }
 
 #[derive(Debug)]
-pub struct TokenStream<'a> {
+pub struct Lexer<'a> {
     pub(super) errors: Vec<PreciseError<'a>>,
     pub(super) tokens: VecDeque<Token>,
     pub(super) source: &'a Source,
@@ -103,33 +103,25 @@ pub struct TokenStream<'a> {
     current: usize,
 }
 
-impl<'a> From<&'a Source> for TokenStream<'a> {
+impl<'a> From<&'a Source> for Lexer<'a> {
     fn from(source: &'a Source) -> Self {
-        Self {
+        let mut stream = Self {
             source,
             errors: vec![],
             tokens: VecDeque::new(),
             span: Span::default(),
             start: 0,
             current: 0,
+        };
+        while !stream.eof() {
+            stream.advance();
         }
+        stream
     }
 }
 
-impl<'a> TokenStream<'a> {
-    pub fn from_source(source: &'a Source) -> Self {
-        let mut stream = Self::from(source);
-        stream.process();
-        stream
-    }
-
-    fn process(&mut self) {
-        while !self.eof() {
-            self.token();
-        }
-    }
-
-    fn token(&mut self) {
+impl<'a> Lexer<'a> {
+    fn advance(&mut self) {
         self.span.length = 1;
         self.skip_whitespace();
         let token = match self.peek() {
@@ -327,13 +319,13 @@ macro_rules! assert_tokens {
     ($($path:expr => $name:ident / $valid:expr),*) => {
         #[cfg(test)]
         mod tests {
-            use crate::token::{TokenStream, Source};
+            use crate::token::{Lexer, Source};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
-                    let stream = TokenStream::from_source(&source);
+                    let stream = Lexer::from(&source);
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         if $valid {
                             insta::assert_debug_snapshot!(stream.tokens);

@@ -5,18 +5,18 @@ fun qux(x: int, y: int): int {
 fun main() {
     let foo: int = qux(2, 3);
     if foo >= 10 {
-        6 + 6;
+        println_int(6 + 6); % 12
         if foo >= 10 {
-            8 + 8;
+            println_int(8 + 8); % 16
         } else {
-            9 + 9;
+            println_int(9 + 9); % 18
         }
     } else {
         if true {
-            7 + 7;
+            println_int(7 + 7); % 14
         } else {
-            15 + 15;
+            println_int(15 + 15); % 30
         }
     }
-    12 + 12;
+    println_int(12 + 12); % 24
 }

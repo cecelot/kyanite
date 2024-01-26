@@ -496,7 +496,7 @@ macro_rules! assert_typecheck {
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = crate::Source::new($path)?;
-                    let ast = crate::ast::Ast::from_source(&source)?;
+                    let ast = crate::ast::Ast::try_from(&source)?;
                     let symbols = SymbolTable::from(&ast.nodes);
                     let mut accesses = HashMap::new();
                     let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);

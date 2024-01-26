@@ -41,7 +41,7 @@ pub enum Kind {
     Init,
 
     Error,
-
+    Comment,
     Eof,
 }
 
@@ -80,6 +80,7 @@ impl fmt::Display for Kind {
             Kind::While => write!(f, "while"),
             Kind::Identifier => write!(f, "identifier"),
             Kind::Literal => write!(f, "literal"),
+            Kind::Comment => write!(f, "comment"),
             Kind::Error => write!(f, "error"),
             Kind::Eof => write!(f, "eof"),
         }

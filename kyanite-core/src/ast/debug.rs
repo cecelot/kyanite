@@ -1,9 +1,11 @@
-// Yes, this is very much a hack.
 use std::rc::Rc;
 
 use super::{Decl, Expr, Stmt};
 
+/// This trait is used to strip the id field from AST nodes for testing purposes, since
+/// the id field is not deterministic.
 pub trait StripId {
+    /// Strip the id field from the AST node and its children.
     fn strip_id(&mut self);
 }
 

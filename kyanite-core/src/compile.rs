@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, path::Path};
+use std::{fs::File, io::Write};
 
 use crate::{kyir::arch::Frame, subprocess, PipelineError};
 
@@ -13,6 +13,15 @@ pub fn include_dir() -> String {
     let dir = &dir[0..dir.len() - 12];
     let include = &format!("{dir}{build}");
     include.into()
+}
+
+#[must_use]
+pub fn release_flag() -> &'static str {
+    if cfg!(debug_assertions) {
+        "--"
+    } else {
+        "--release"
+    }
 }
 
 pub struct LlvmIr(String);
@@ -45,9 +54,7 @@ impl Compile for LlvmIr {
         filename: &str,
         mut writer: impl Write,
     ) -> Result<String, PipelineError> {
-        if !Path::new("kya-dist").exists() {
-            let _ = std::fs::create_dir("kya-dist");
-        }
+        let _ = std::fs::create_dir("kya-dist");
         let ir = &format!("kya-dist/{filename}.ll");
         let obj = &format!("kya-dist/{filename}.o");
         let exe = &format!("kya-dist/{filename}");
@@ -76,9 +83,7 @@ impl Compile for Kyir {
         filename: &str,
         mut writer: impl Write,
     ) -> Result<String, PipelineError> {
-        if !Path::new("kya-dist").exists() {
-            let _ = std::fs::create_dir("kya-dist");
-        }
+        let _ = std::fs::create_dir("kya-dist");
         let ir = &format!("kya-dist/{filename}.s");
         let exe = &format!("kya-dist/{filename}");
         let mut file = File::create(ir).expect("well-formed file structure");
@@ -88,7 +93,17 @@ impl Compile for Kyir {
         }
         subprocess::handle(
             "Finished",
-            subprocess::exec("orb", &["cargo", "build", "--package", "kyanite_builtins"]),
+            subprocess::exec(
+                "orb",
+                &[
+                    "cargo",
+                    "build",
+                    "--package",
+                    "kyanite_builtins",
+                    release_flag(), // This must be last because with debug enabled, this will be treated as "--",
+                                    // which escapes any following arguments
+                ],
+            ),
             &mut writer,
         )?;
         subprocess::handle(

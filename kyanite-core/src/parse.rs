@@ -446,13 +446,13 @@ macro_rules! assert_parse {
     ($($path:expr => $name:ident / $valid:expr),*) => {
         #[cfg(test)]
         mod tests {
-            use crate::{parse::Parser, token::{TokenStream}, Source};
+            use crate::{parse::Parser, token::{Lexer}, Source};
 
             $(
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
-                    let stream = TokenStream::from_source(&source);
+                    let stream = Lexer::from(&source);
                     let mut parser = Parser::new(stream.source, stream.tokens);
                     parser.parse();
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
