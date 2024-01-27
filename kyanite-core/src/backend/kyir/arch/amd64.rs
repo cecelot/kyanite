@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{node::FuncDecl, Type},
-    codegen::{Instr, Opcode},
-    kyir::{BinOp, Expr, Stmt},
+    backend::kyir::{BinOp, Expr, Instr, Opcode, Stmt},
     pass::{Symbol, SymbolTable},
 };
 

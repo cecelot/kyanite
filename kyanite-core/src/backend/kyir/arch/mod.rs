@@ -1,6 +1,6 @@
 use crate::{
     ast::{node::FuncDecl, Type},
-    codegen::Instr,
+    backend::kyir::Instr,
     pass::SymbolTable,
 };
 

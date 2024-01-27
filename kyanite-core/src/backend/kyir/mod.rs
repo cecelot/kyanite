@@ -1,6 +1,11 @@
+pub mod arch;
+mod blocks;
+pub mod canon;
+pub mod color;
+mod eseq;
 pub mod liveness;
-pub mod llvm;
-pub mod registers;
+mod rewrite;
+pub mod translate;
 
 use std::{
     collections::HashMap,
@@ -8,12 +13,12 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub use llvm::Ir;
-pub use llvm::IrError;
-
 use crate::{
     ast::Decl,
-    kyir::{arch::Frame, BinOp, Expr, RelOp, Stmt, Temp},
+    backend::kyir::{
+        arch::Frame,
+        translate::{BinOp, Expr, RelOp, Stmt, Temp},
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -490,11 +495,13 @@ mod tests {
 
     use crate::{
         ast,
-        codegen::{
+        backend::kyir::{
+            arch::amd64::Amd64,
+            canon::Canon,
+            color::Color,
             liveness::{Graph, LiveRanges},
-            registers::Color,
+            translate::Translator,
         },
-        kyir::{arch::amd64::Amd64, canon::Canon, Translator},
         pass::{SymbolTable, TypeCheckPass},
         PipelineError, Source,
     };

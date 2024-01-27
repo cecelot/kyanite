@@ -1,4 +1,4 @@
-use crate::{ast::Ast, codegen::Ir, Source};
+use crate::{ast::Ast, backend::llvm::Ir, Source};
 
 use super::IrError;
 

@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use crate::{kyir::arch::Frame, subprocess, PipelineError};
+use crate::{backend::kyir::arch::Frame, subprocess, PipelineError};
 
 #[must_use]
 pub fn include_dir() -> String {

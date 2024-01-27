@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::kyir::{blocks::TraceSchedule, Expr};
+use crate::backend::kyir::{blocks::TraceSchedule, Expr};
 
 use super::{blocks::BasicBlocks, eseq::ESeqs, rewrite::Rewrite, Stmt};
 

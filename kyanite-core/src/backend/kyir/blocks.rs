@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
-use crate::kyir::Label;
+use crate::backend::kyir::translate::Label;
 
 use super::{rewrite::Substitute, Stmt};
 

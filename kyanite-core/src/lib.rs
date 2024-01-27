@@ -5,24 +5,28 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use codegen::{registers::Color, IrError};
+use backend::{
+    kyir::color::Color,
+    llvm::{Ir, IrError},
+};
 use compile::{Kyir, LlvmIr};
 
 use crate::{
-    codegen::{
+    backend::kyir::{
+        arch::amd64::Amd64,
+        canon::Canon,
         liveness::{Graph, LiveRanges},
-        Codegen, Ir,
+        translate::Translator,
+        Codegen,
     },
-    kyir::{arch::amd64::Amd64, canon::Canon, Translator},
     pass::{SymbolTable, TypeCheckPass},
 };
 
 pub use compile::Compile;
 
 mod ast;
-mod codegen;
+mod backend;
 pub mod compile;
-mod kyir;
 mod macros;
 mod parse;
 mod pass;

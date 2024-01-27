@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::kyir::arch::Frame;
+use crate::backend::kyir::arch::Frame;
 
 use super::liveness::{InterferenceGraph, LiveRanges};
 

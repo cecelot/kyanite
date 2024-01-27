@@ -6,17 +6,10 @@ use std::{
 use crate::{
     ast::Expr as AstExpr,
     ast::{node::RecordDecl, Decl as AstDecl, Initializer, Stmt as AstStmt, Type},
+    backend::kyir::arch::Frame,
     pass::{AccessMap, SymbolTable},
     token::Kind,
 };
-
-use self::arch::Frame;
-
-pub mod arch;
-mod blocks;
-pub mod canon;
-mod eseq;
-mod rewrite;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinOp {
@@ -57,7 +50,7 @@ pub enum RelOp {
 }
 
 pub struct Temp;
-struct Label;
+pub struct Label;
 
 impl Temp {
     #[allow(clippy::new_ret_no_self)]
@@ -69,7 +62,7 @@ impl Temp {
 
 impl Label {
     #[allow(clippy::new_ret_no_self)]
-    fn new() -> String {
+    pub fn new() -> String {
         static ID: AtomicUsize = AtomicUsize::new(0);
         format!("L{}", ID.fetch_add(1, Ordering::SeqCst))
     }
@@ -95,7 +88,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    fn eseq(stmt: Box<Stmt>, expr: Box<Expr>) -> Self {
+    pub fn eseq(stmt: Box<Stmt>, expr: Box<Expr>) -> Self {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
         Self::ESeq { stmt, expr, id }
@@ -210,7 +203,7 @@ impl Stmt {
         }
     }
 
-    fn label(&self) -> String {
+    pub fn label(&self) -> String {
         match self {
             Stmt::Seq { left, .. } => left.label(),
             Stmt::Label(label) => label.clone(),
