@@ -9,18 +9,8 @@ pub mod subprocess; // FIXME: leaky
 mod token;
 
 use crate::{
-    backend::{
-        kyir::{
-            arch::amd64::Amd64,
-            canon::Canon,
-            color::Color,
-            liveness::{Graph, LiveRanges},
-            translate::Translator,
-            Codegen,
-        },
-        llvm::{Ir, IrError},
-    },
-    compile::{Compile, Kyir, LlvmIr},
+    backend::{kyir, kyir::arch::amd64::Amd64, llvm},
+    compile::{Kyir, LlvmIr},
     pass::{SymbolTable, TypeCheckPass},
 };
 use std::{
@@ -45,7 +35,7 @@ pub enum PipelineError {
     #[error("(while type checking) {0} error(s) encountered")]
     TypeError(usize),
     #[error("(while building ir) {0}")]
-    IrError(IrError),
+    IrError(llvm::IrError),
     #[error("failed to compile (see output)")]
     CompileError(String),
 }
@@ -97,23 +87,15 @@ impl<'a> Program<'a> {
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, self.source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         if self.llvm {
-            let ir = Ir::new(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?;
-            let ir = LlvmIr(ir.to_string());
-            ir.compile::<Amd64>(&filename, writer)
+            let ir = LlvmIr(
+                llvm::Ir::new(&mut ast.nodes, symbols, accesses)
+                    .map_err(PipelineError::IrError)?
+                    .to_string(),
+            );
+            ir.compile(&filename, writer)
         } else {
-            // FIXME: leaky, this should all be internal to `crate::backend::kyir`
-            let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
-            let ir = translator.translate(&ast.nodes);
-            let canon = Canon::new(ir);
-            let ir = canon.canonicalize();
-            let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, &ast.nodes);
-            let graph = Graph::from(&codegen.asm);
-            let ranges = LiveRanges::from(graph);
-            let ig = ranges.interference_graphs(codegen.asm.len());
-            let color: Color<Amd64> = Color::new(ig);
-            let colors = color.color(&ranges);
-            let kyir = Kyir(codegen.format(&colors));
-            kyir.compile::<Amd64>(&filename, writer)
+            let ir = Kyir(kyir::Ir::new(&ast.nodes, &symbols, &accesses));
+            ir.compile::<Amd64>(&filename, writer)
         }
     }
 }

@@ -1,14 +1,14 @@
 use crate::{
     backend::kyir::arch::Frame,
-    compile::{include_dir, release_flag, Compile},
+    compile::{include_dir, release_flag},
     subprocess, PipelineError,
 };
 use std::{fs::File, io::Write};
 
 pub struct Kyir(pub String);
 
-impl Compile for Kyir {
-    fn compile<F: Frame>(
+impl Kyir {
+    pub fn compile<F: Frame>(
         &self,
         filename: &str,
         mut writer: impl Write,

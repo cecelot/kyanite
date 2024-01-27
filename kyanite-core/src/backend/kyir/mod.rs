@@ -1,25 +1,47 @@
 pub mod arch;
 mod blocks;
-pub mod canon;
-pub mod color;
+mod canon;
+mod color;
 mod eseq;
-pub mod liveness;
+mod liveness;
 mod rewrite;
-pub mod translate;
+mod translate;
 
+use crate::{
+    ast::Decl,
+    backend::kyir::{
+        arch::{amd64::Amd64, Frame},
+        canon::Canon,
+        color::Color,
+        liveness::{Graph, LiveRanges},
+        translate::{BinOp, Expr, RelOp, Stmt, Temp, Translator},
+    },
+    pass::{AccessMap, SymbolTable},
+};
 use std::{
     collections::HashMap,
     fmt::{Display, Write},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use crate::{
-    ast::Decl,
-    backend::kyir::{
-        arch::Frame,
-        translate::{BinOp, Expr, RelOp, Stmt, Temp},
-    },
-};
+pub struct Ir;
+
+impl Ir {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) -> String {
+        let mut translator: Translator<Amd64> = Translator::new(accesses, symbols);
+        let ir = translator.translate(ast);
+        let canon = Canon::new(ir);
+        let ir = canon.canonicalize();
+        let codegen: Codegen<Amd64> = Codegen::new(ir, translator.functions, ast);
+        let graph = Graph::from(&codegen.asm);
+        let ranges = LiveRanges::from(graph);
+        let ig = ranges.interference_graphs(codegen.asm.len());
+        let color: Color<Amd64> = Color::new(ig);
+        let colors = color.color(&ranges);
+        codegen.format(&colors)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Instr {
@@ -249,7 +271,7 @@ impl<F: Frame> Codegen<F> {
         }
     }
 
-    pub fn format(&self, registers: &HashMap<String, String>) -> String {
+    pub fn format(&self, colors: &HashMap<String, String>) -> String {
         let mut asm = String::new();
         for instr in &self.asm {
             let inner = match &instr.inner {
@@ -260,8 +282,8 @@ impl<F: Frame> Codegen<F> {
                     jump,
                 } => Instr::Oper {
                     opcode: opcode.clone(),
-                    dst: Self::register_for(registers, dst),
-                    src: Self::register_for(registers, src),
+                    dst: Self::register_for(colors, dst),
+                    src: Self::register_for(colors, src),
                     jump: jump.clone(),
                 },
                 Instr::Call { name } => Instr::Call {

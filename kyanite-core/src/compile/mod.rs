@@ -4,17 +4,6 @@ mod llvm;
 pub use kyir::Kyir;
 pub use llvm::LlvmIr;
 
-use crate::{backend::kyir::arch::Frame, PipelineError};
-use std::io::Write;
-
-pub trait Compile {
-    fn compile<F: Frame>(
-        &self,
-        filename: &str,
-        writer: impl Write,
-    ) -> Result<String, PipelineError>;
-}
-
 #[must_use]
 pub fn include_dir() -> String {
     let build = if cfg!(debug_assertions) {
