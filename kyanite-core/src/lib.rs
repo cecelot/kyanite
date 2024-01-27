@@ -1,38 +1,34 @@
+mod ast;
+mod backend;
+pub mod compile; // FIXME: leaky
+mod macros;
+mod parse;
+mod pass;
+mod reporting;
+pub mod subprocess; // FIXME: leaky
+mod token;
+
+use crate::{
+    backend::{
+        kyir::{
+            arch::amd64::Amd64,
+            canon::Canon,
+            color::Color,
+            liveness::{Graph, LiveRanges},
+            translate::Translator,
+            Codegen,
+        },
+        llvm::{Ir, IrError},
+    },
+    compile::{Compile, Kyir, LlvmIr},
+    pass::{SymbolTable, TypeCheckPass},
+};
 use std::{
     collections::HashMap,
     fs::File,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
-
-use backend::{
-    kyir::color::Color,
-    llvm::{Ir, IrError},
-};
-use compile::{Kyir, LlvmIr};
-
-use crate::{
-    backend::kyir::{
-        arch::amd64::Amd64,
-        canon::Canon,
-        liveness::{Graph, LiveRanges},
-        translate::Translator,
-        Codegen,
-    },
-    pass::{SymbolTable, TypeCheckPass},
-};
-
-pub use compile::Compile;
-
-mod ast;
-mod backend;
-pub mod compile;
-mod macros;
-mod parse;
-mod pass;
-mod reporting;
-pub mod subprocess;
-mod token;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -58,24 +54,6 @@ pub struct Program<'a> {
     source: Source,
     writer: Option<&'a mut dyn Write>,
     llvm: bool,
-}
-
-impl TryFrom<PathBuf> for Program<'_> {
-    type Error = PipelineError;
-
-    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let source = Source::new(path)?;
-        Ok(Self::new(source))
-    }
-}
-
-impl TryFrom<&str> for Program<'_> {
-    type Error = PipelineError;
-
-    fn try_from(path: &str) -> Result<Self, Self::Error> {
-        let source = Source::new(path)?;
-        Ok(Self::new(source))
-    }
 }
 
 impl<'a> Program<'a> {
@@ -119,11 +97,11 @@ impl<'a> Program<'a> {
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, self.source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         if self.llvm {
-            let ir = LlvmIr::from(
-                Ir::from_ast(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
-            );
+            let ir = Ir::new(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?;
+            let ir = LlvmIr(ir.to_string());
             ir.compile::<Amd64>(&filename, writer)
         } else {
+            // FIXME: leaky, this should all be internal to `crate::backend::kyir`
             let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
             let ir = translator.translate(&ast.nodes);
             let canon = Canon::new(ir);
@@ -134,9 +112,27 @@ impl<'a> Program<'a> {
             let ig = ranges.interference_graphs(codegen.asm.len());
             let color: Color<Amd64> = Color::new(ig);
             let colors = color.color(&ranges);
-            let kyir = Kyir::from(codegen.format(&colors));
+            let kyir = Kyir(codegen.format(&colors));
             kyir.compile::<Amd64>(&filename, writer)
         }
+    }
+}
+
+impl TryFrom<PathBuf> for Program<'_> {
+    type Error = PipelineError;
+
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        let source = Source::new(path)?;
+        Ok(Self::new(source))
+    }
+}
+
+impl TryFrom<&str> for Program<'_> {
+    type Error = PipelineError;
+
+    fn try_from(path: &str) -> Result<Self, Self::Error> {
+        let source = Source::new(path)?;
+        Ok(Self::new(source))
     }
 }
 

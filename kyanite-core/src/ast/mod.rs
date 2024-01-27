@@ -1,3 +1,9 @@
+pub mod init;
+pub mod node;
+pub mod span;
+#[cfg(test)]
+mod strip;
+
 use crate::{
     parse::Parser,
     token::{Lexer, Token},
@@ -5,38 +11,31 @@ use crate::{
 };
 use std::{fmt, rc::Rc};
 
-mod debug;
-pub mod init;
-pub mod node;
-pub mod span;
-
 #[derive(Debug)]
 pub struct Ast {
     pub nodes: Vec<Decl>,
+}
+
+impl Ast {
+    fn new(lexer: Lexer) -> Result<Self, PipelineError> {
+        let errors = lexer.errors.len();
+        if errors > 0 {
+            return Err(PipelineError::LexError(errors));
+        }
+        let mut parser = Parser::new(lexer.source, lexer.tokens);
+        match parser.parse() {
+            Ok(nodes) => Ok(Self { nodes }),
+            Err(errors) => Err(PipelineError::ParseError(errors.len())),
+        }
+    }
 }
 
 impl TryFrom<&Source> for Ast {
     type Error = PipelineError;
 
     fn try_from(value: &Source) -> Result<Self, Self::Error> {
-        let stream = Lexer::from(value);
-        Self::new(stream)
-    }
-}
-
-impl Ast {
-    fn new(stream: Lexer) -> Result<Self, PipelineError> {
-        let errors = stream.errors.len();
-        if errors > 0 {
-            return Err(PipelineError::LexError(errors));
-        }
-        let mut parser = Parser::new(stream.source, stream.tokens);
-        let nodes = parser.parse();
-        let errors = parser.errors.len();
-        if errors > 0 {
-            return Err(PipelineError::ParseError(errors));
-        }
-        Ok(Self { nodes })
+        let lexer = Lexer::from(value);
+        Self::new(lexer)
     }
 }
 
@@ -72,25 +71,11 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn as_ident(&self) -> &node::Ident {
-        match self {
-            Expr::Ident(ident) => ident,
-            _ => panic!("called `Expr::ident()` on a non-ident"),
-        }
-    }
-
-    pub fn ty(&self) -> Type {
-        match self {
-            Expr::Str(..) => Type::Str,
-            Expr::Int(..) => Type::Int,
-            Expr::Float(..) => Type::Float,
-            Expr::Bool(..) => Type::Bool,
-            Expr::Binary(binary) => binary.left.ty(),
-            Expr::Unary(unary) => unary.expr.ty(),
-            Expr::Call(call) => call.left.ty(),
-            Expr::Ident(_) => unimplemented!(),
-            Expr::Init(..) => unimplemented!(),
-            Expr::Access(..) => unimplemented!(),
+    pub fn ident(&self) -> &node::Ident {
+        if let Expr::Ident(ident) = self {
+            ident
+        } else {
+            panic!("called `Expr::ident()` on a non-ident")
         }
     }
 }
@@ -153,22 +138,21 @@ impl fmt::Display for Type {
     }
 }
 
-macro_rules! association {
-    {$($ty:ident),*} => {
-        $(
-            #[derive(Debug, Clone, PartialEq, Eq, )]
-            pub struct $ty {
-                pub name: Token,
-                pub ty: Token,
-            }
-
-            impl $ty {
-                pub fn new(name: Token, ty: Token) -> Self {
-                    Self { name, ty }
-                }
-            }
-        )*
-    };
+impl Expr {
+    pub fn ty(&self) -> Type {
+        match self {
+            Expr::Str(..) => Type::Str,
+            Expr::Int(..) => Type::Int,
+            Expr::Float(..) => Type::Float,
+            Expr::Bool(..) => Type::Bool,
+            Expr::Binary(binary) => binary.left.ty(),
+            Expr::Unary(unary) => unary.expr.ty(),
+            Expr::Call(call) => call.left.ty(),
+            Expr::Ident(_) => unimplemented!(),
+            Expr::Init(..) => unimplemented!(),
+            Expr::Access(..) => unimplemented!(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -183,16 +167,35 @@ impl Initializer {
     }
 }
 
-association! {
-    Param,
-    Field
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Param {
+    pub name: Token,
+    pub ty: Token,
+}
+
+impl Param {
+    pub fn new(name: Token, ty: Token) -> Self {
+        Self { name, ty }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Field {
+    pub name: Token,
+    pub ty: Token,
+}
+
+impl Field {
+    pub fn new(name: Token, ty: Token) -> Self {
+        Self { name, ty }
+    }
 }
 
 macro_rules! assert_ast {
     ($($path:expr => $name:ident),*) => {
         #[cfg(test)]
         mod tests {
-            use crate::{Source, ast::{self, debug::StripId}};
+            use crate::{Source, ast::{self, strip::StripId}};
 
             $(
                 #[test]

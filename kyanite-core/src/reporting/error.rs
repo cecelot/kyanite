@@ -1,7 +1,6 @@
+use crate::{token::Span, Source};
 use colored::Colorize;
 use std::fmt;
-
-use crate::{token::Span, Source};
 
 #[derive(Debug)]
 pub struct PreciseError<'a> {
@@ -19,7 +18,7 @@ impl<'a> PreciseError<'a> {
                 .raw
                 .lines()
                 .nth(span.line - 1)
-                .expect("span to have valid line number")
+                .expect("span should have valid line number")
                 .into(),
             filename: source.filename,
             span,

@@ -1,6 +1,5 @@
-use std::{collections::HashMap, rc::Rc};
-
 use crate::ast::{node, Decl, Type};
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub enum Symbol {
@@ -11,7 +10,7 @@ pub enum Symbol {
 }
 
 impl Symbol {
-    pub fn as_record(&self) -> &node::RecordDecl {
+    pub fn record(&self) -> &node::RecordDecl {
         match self {
             Symbol::Record(rec) => rec,
             _ => panic!("called `Symbol::record()` on a non-record symbol"),

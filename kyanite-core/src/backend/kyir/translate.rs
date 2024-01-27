@@ -237,7 +237,7 @@ impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for RecordDecl {
                     Type::UserDefined(name) => symbols
                         .get(&name.to_string())
                         .unwrap()
-                        .as_record()
+                        .record()
                         .flatten(symbols),
                     _ => vec![(field.name.to_string(), ty)],
                 }
@@ -334,10 +334,10 @@ impl Translate<Expr> for AstExpr {
                 let temp = Temp::new();
                 let frame = translator.frame();
                 let aux = translator.accesses.get(&access.id).unwrap();
-                let rec = aux.symbols.first().unwrap().as_record();
+                let rec = aux.symbols.first().unwrap().record();
                 let flat = rec.flatten(translator.symbols);
-                let parent = access.chain.first().unwrap().as_ident().name.to_string();
-                let last = access.chain.last().unwrap().as_ident().name.to_string();
+                let parent = access.chain.first().unwrap().ident().name.to_string();
+                let last = access.chain.last().unwrap().ident().name.to_string();
                 let (index, _) = flat
                     .iter()
                     .enumerate()

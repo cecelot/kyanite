@@ -1,8 +1,10 @@
-use crate::{ast::Ast, backend::llvm::Ir, Source};
+use crate::{
+    ast::Ast,
+    backend::llvm::{Ir, IrError},
+    Source,
+};
 
-use super::IrError;
-
-pub struct Builtins {}
+pub struct Builtins;
 
 impl Builtins {
     pub fn inject(ir: &mut Ir<'_, '_>) -> Result<(), IrError> {

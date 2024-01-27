@@ -1,8 +1,8 @@
+use crate::{
+    ast::{Expr, Field, Initializer, Param, Stmt},
+    token::Token,
+};
 use std::sync::atomic::{AtomicUsize, Ordering};
-
-use crate::token::Token;
-
-use super::{Expr, Field, Initializer, Param, Stmt};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RecordDecl {

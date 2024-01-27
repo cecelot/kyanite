@@ -1,7 +1,6 @@
+use crate::PipelineError;
 use colored::Colorize;
 use std::io::Write;
-
-use crate::PipelineError;
 
 pub struct ProcessResult {
     pub command: String,

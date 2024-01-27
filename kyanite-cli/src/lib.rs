@@ -15,7 +15,7 @@ pub struct Cli {
 
 #[derive(Clone, PartialEq, Eq, ValueEnum)]
 pub enum Backend {
-    LLVM,
+    Llvm,
     Kyir,
 }
 

@@ -1,14 +1,13 @@
+mod kind;
+
+pub use kind::Kind;
+
+use crate::{reporting::error::PreciseError, Source};
 use std::{
     collections::VecDeque,
     fmt,
     hash::{Hash, Hasher},
 };
-
-use crate::{reporting::error::PreciseError, Source};
-
-pub use self::kind::Kind;
-
-mod kind;
 
 #[derive(Debug, Clone, Eq)]
 pub struct Token {
@@ -105,7 +104,7 @@ pub struct Lexer<'a> {
 
 impl<'a> From<&'a Source> for Lexer<'a> {
     fn from(source: &'a Source) -> Self {
-        let mut stream = Self {
+        let mut lexer = Self {
             source,
             errors: vec![],
             tokens: VecDeque::new(),
@@ -113,10 +112,10 @@ impl<'a> From<&'a Source> for Lexer<'a> {
             start: 0,
             current: 0,
         };
-        while !stream.eof() {
-            stream.advance();
+        while !lexer.eof() {
+            lexer.advance();
         }
-        stream
+        lexer
     }
 }
 
@@ -201,7 +200,7 @@ impl<'a> Lexer<'a> {
             return Token::new(Kind::Error, None, self.span);
         }
         let lexeme = self.lexeme(self.start - 1, self.current);
-        self.adjusted(|stream| Token::new(Kind::Literal, Some(lexeme.leak()), stream.span))
+        self.adjusted(|lexer| Token::new(Kind::Literal, Some(lexeme.leak()), lexer.span))
     }
 
     fn number(&mut self) -> Token {
@@ -223,7 +222,7 @@ impl<'a> Lexer<'a> {
 
         let lexeme = self.lexeme(self.start, self.current);
         self.span.length = self.current - self.start;
-        self.adjusted(|stream| Token::new(Kind::Literal, Some(lexeme.leak()), stream.span))
+        self.adjusted(|lexer| Token::new(Kind::Literal, Some(lexeme.leak()), lexer.span))
     }
 
     fn identifier(&mut self) -> Token {
@@ -238,19 +237,19 @@ impl<'a> Lexer<'a> {
 
     fn keyword(&mut self, lexeme: String) -> Token {
         self.span.length = self.current - self.start;
-        self.adjusted(|stream| match lexeme.as_str() {
-            "let" => Token::new(Kind::Let, None, stream.span),
-            "const" => Token::new(Kind::Const, None, stream.span),
-            "fun" => Token::new(Kind::Fun, None, stream.span),
-            "true" | "false" => Token::new(Kind::Literal, Some(lexeme.leak()), stream.span),
-            "return" => Token::new(Kind::Return, None, stream.span),
-            "extern" => Token::new(Kind::Extern, None, stream.span),
-            "rec" => Token::new(Kind::Rec, None, stream.span),
-            "init" => Token::new(Kind::Init, None, stream.span),
-            "if" => Token::new(Kind::If, None, stream.span),
-            "else" => Token::new(Kind::Else, None, stream.span),
-            "while" => Token::new(Kind::While, None, stream.span),
-            _ => Token::new(Kind::Identifier, Some(lexeme.leak()), stream.span),
+        self.adjusted(|lexer| match lexeme.as_str() {
+            "let" => Token::new(Kind::Let, None, lexer.span),
+            "const" => Token::new(Kind::Const, None, lexer.span),
+            "fun" => Token::new(Kind::Fun, None, lexer.span),
+            "true" | "false" => Token::new(Kind::Literal, Some(lexeme.leak()), lexer.span),
+            "return" => Token::new(Kind::Return, None, lexer.span),
+            "extern" => Token::new(Kind::Extern, None, lexer.span),
+            "rec" => Token::new(Kind::Rec, None, lexer.span),
+            "init" => Token::new(Kind::Init, None, lexer.span),
+            "if" => Token::new(Kind::If, None, lexer.span),
+            "else" => Token::new(Kind::Else, None, lexer.span),
+            "while" => Token::new(Kind::While, None, lexer.span),
+            _ => Token::new(Kind::Identifier, Some(lexeme.leak()), lexer.span),
         })
     }
 
@@ -325,12 +324,12 @@ macro_rules! assert_tokens {
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
-                    let stream = Lexer::from(&source);
+                    let lexer = Lexer::from(&source);
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         if $valid {
-                            insta::assert_debug_snapshot!(stream.tokens);
+                            insta::assert_debug_snapshot!(lexer.tokens);
                         } else {
-                            insta::assert_debug_snapshot!(stream.errors);
+                            insta::assert_debug_snapshot!(lexer.errors);
                         }
                     });
 

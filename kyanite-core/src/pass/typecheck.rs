@@ -1,17 +1,15 @@
-use std::{collections::HashMap, rc::Rc};
-
 use crate::{
     ast::{
         node::{self, Ident},
         span::Combined,
         Decl, Expr, Stmt, Type,
     },
+    pass::{Symbol, SymbolTable},
     reporting::error::PreciseError,
     token::{Kind, Span, Token},
     Source,
 };
-
-use super::symbol::{Symbol, SymbolTable};
+use std::{collections::HashMap, rc::Rc};
 
 macro_rules! symbol {
     ($self:ident, $name:expr, $ty:ident, $s:literal) => {

@@ -1,6 +1,5 @@
+use crate::ast::{Decl, Expr, Stmt};
 use std::rc::Rc;
-
-use super::{Decl, Expr, Stmt};
 
 /// This trait is used to strip the id field from AST nodes for testing purposes, since
 /// the id field is not deterministic.

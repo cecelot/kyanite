@@ -1,11 +1,10 @@
-use std::collections::VecDeque;
-
 use crate::{
     ast::{init, Decl, Expr, Field, Initializer, Param, Stmt},
     reporting::error::PreciseError,
     token::{Kind, Span, Token},
     Source,
 };
+use std::collections::VecDeque;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParseError {
@@ -18,9 +17,9 @@ pub enum ParseError {
 }
 
 pub struct Parser<'a> {
-    pub(super) errors: Vec<PreciseError<'a>>,
     source: &'a Source,
     tokens: VecDeque<Token>,
+    errors: Vec<PreciseError<'a>>,
     previous: Option<Token>,
     panic: bool,
 }
@@ -36,7 +35,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Vec<Decl> {
+    pub fn parse(&'a mut self) -> Result<Vec<Decl>, &'a Vec<PreciseError<'a>>> {
         let mut nodes: Vec<Decl> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
@@ -61,7 +60,11 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        nodes
+        if self.errors.is_empty() {
+            Ok(nodes)
+        } else {
+            Err(&self.errors)
+        }
     }
 
     fn record(&mut self) -> Result<Decl, ParseError> {
@@ -452,14 +455,14 @@ macro_rules! assert_parse {
                 #[test]
                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
                     let source = Source::new($path)?;
-                    let stream = Lexer::from(&source);
-                    let mut parser = Parser::new(stream.source, stream.tokens);
-                    parser.parse();
+                    let lexer = Lexer::from(&source);
+                    let mut parser = Parser::new(lexer.source, lexer.tokens);
+                    let res = parser.parse();
                     insta::with_settings!({snapshot_path => "../snapshots"}, {
                         if $valid {
-                            insta::assert_display_snapshot!(parser.errors.len());
+                            assert!(res.is_ok());
                         } else {
-                            insta::assert_debug_snapshot!(parser.errors);
+                            insta::assert_debug_snapshot!(res.unwrap_err());
                         }
                     });
 
@@ -471,7 +474,6 @@ macro_rules! assert_parse {
 }
 
 assert_parse! {
-    // Ensure valid programs have zero parse errors
     "test-cases/hello.kya" => hello_world / true,
     "test-cases/expr.kya" => expr / true,
     "test-cases/calls.kya" => calls / true,

@@ -1,5 +1,15 @@
-use std::{collections::HashMap, rc::Rc};
+mod builtins;
 
+use crate::{
+    ast::{
+        init,
+        node::{self, RecordDecl},
+        Decl, Expr, Stmt, Type,
+    },
+    backend::llvm::builtins::Builtins,
+    pass::{AccessMap, Symbol, SymbolTable},
+    token::{Kind, Span, Token},
+};
 use inkwell::{
     builder::Builder,
     context::Context,
@@ -9,19 +19,7 @@ use inkwell::{
     values::{AnyValueEnum, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue},
     AddressSpace, FloatPredicate, IntPredicate,
 };
-
-use crate::{
-    ast::{
-        init,
-        node::{self, RecordDecl},
-        Decl, Expr, Stmt, Type,
-    },
-    pass::{AccessMap, Symbol, SymbolTable},
-    token::{Kind, Span, Token},
-};
-use builtins::Builtins;
-
-mod builtins;
+use std::{collections::HashMap, rc::Rc};
 
 macro_rules! num_instrs  {
     {$self:ident, $bin:ident, $($kind:ident => $int_instr:ident $float_instr:ident),*} => {
@@ -79,22 +77,22 @@ pub enum IrError {
     Malformed(&'static str),
 }
 
+// TODO: look at having this be less of a mess
 pub struct Ir<'a, 'ctx> {
-    pub context: &'ctx Context,
-    pub module: &'a Module<'ctx>,
+    context: &'ctx Context,
+    module: &'a Module<'ctx>,
     builder: &'a Builder<'ctx>,
     fpm: &'a PassManager<FunctionValue<'ctx>>,
-
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
-    pub records: HashMap<String, (StructType<'ctx>, Rc<RecordDecl>)>,
+    records: HashMap<String, (StructType<'ctx>, Rc<RecordDecl>)>,
     function: Option<FunctionValue<'ctx>>,
     symbols: SymbolTable,
-
     accesses: AccessMap,
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    pub fn from_ast(
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(
         program: &mut Vec<Decl>,
         symbols: SymbolTable,
         accesses: AccessMap,

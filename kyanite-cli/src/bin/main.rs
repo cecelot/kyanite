@@ -5,8 +5,8 @@ use std::io::Write;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = kyanite_cli::init();
-    let backend = cli.backend.unwrap_or(Backend::LLVM);
-    let llvm = backend == Backend::LLVM;
+    let backend = cli.backend.unwrap_or(Backend::Llvm);
+    let llvm = backend == Backend::Llvm;
     if llvm && !(installed("llc") && installed("clang")) {
         return Ok(());
     }

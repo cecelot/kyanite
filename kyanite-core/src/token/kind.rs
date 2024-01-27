@@ -4,7 +4,6 @@ use std::fmt;
 pub enum Kind {
     Identifier,
     Literal,
-
     LeftParen,
     RightParen,
     LeftBrace,
@@ -13,12 +12,10 @@ pub enum Kind {
     Colon,
     Comma,
     Dot,
-
     Plus,
     Minus,
     Star,
     Slash,
-
     Equal,
     EqualEqual,
     Bang,
@@ -27,7 +24,6 @@ pub enum Kind {
     GreaterEqual,
     Less,
     LessEqual,
-
     Let,
     Const,
     Fun,
@@ -36,12 +32,9 @@ pub enum Kind {
     If,
     Else,
     While,
-
     Rec,
     Init,
-
     Error,
-    Comment,
     Eof,
 }
 
@@ -80,7 +73,6 @@ impl fmt::Display for Kind {
             Kind::While => write!(f, "while"),
             Kind::Identifier => write!(f, "identifier"),
             Kind::Literal => write!(f, "literal"),
-            Kind::Comment => write!(f, "comment"),
             Kind::Error => write!(f, "error"),
             Kind::Eof => write!(f, "eof"),
         }

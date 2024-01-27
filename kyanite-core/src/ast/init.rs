@@ -1,8 +1,8 @@
+use crate::{
+    ast::{node, Decl, Expr, Field, Initializer, Param, Stmt},
+    token::Token,
+};
 use std::rc::Rc;
-
-use crate::token::Token;
-
-use super::{node, Decl, Expr, Field, Initializer, Param, Stmt};
 
 pub fn record(name: Token, fields: Vec<Field>) -> Decl {
     Decl::Record(Rc::new(node::RecordDecl::new(name, fields)))
@@ -12,8 +12,8 @@ pub fn init(name: Token, initializers: Vec<Initializer>, parens: (Token, Token))
     Expr::Init(Rc::new(node::Init::new(name, initializers, parens)))
 }
 
-pub fn access(accesses: Vec<Expr>) -> Expr {
-    Expr::Access(Rc::new(node::Access::new(accesses)))
+pub fn access(chain: Vec<Expr>) -> Expr {
+    Expr::Access(Rc::new(node::Access::new(chain)))
 }
 
 pub fn conditional(condition: Expr, is: Vec<Stmt>, otherwise: Vec<Stmt>) -> Stmt {
