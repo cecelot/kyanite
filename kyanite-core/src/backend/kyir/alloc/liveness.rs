@@ -1,6 +1,5 @@
+use crate::backend::kyir::{AsmInstr, Instr, Opcode};
 use std::collections::{HashMap, HashSet, VecDeque};
-
-use super::{AsmInstr, Instr, Opcode};
 
 #[derive(Debug, Default)]
 pub struct Graph<'a> {
@@ -90,13 +89,13 @@ impl LiveRanges {
                     });
                 for ((temp, _), (other, _)) in pairs {
                     interferences
-                        .entry(temp.to_owned())
+                        .entry(temp.to_string())
                         .or_default()
-                        .insert(other.to_owned());
+                        .insert(other.to_string());
                     interferences
-                        .entry(other.to_owned())
+                        .entry(other.to_string())
                         .or_default()
-                        .insert(temp.to_owned());
+                        .insert(temp.to_string());
                 }
                 interferences
             })
@@ -109,50 +108,9 @@ impl From<Graph<'_>> for LiveRanges {
         let ranges = graph
             .temporaries()
             .iter()
-            .map(|temp| (temp.to_owned(), graph.liveness(temp)))
+            .map(|temp| (temp.to_string(), graph.liveness(temp)))
             .collect();
         Self(ranges)
-    }
-}
-
-trait FlowGraphMeta {
-    fn defines(&self) -> Vec<String>;
-    fn uses(&self) -> Vec<String>;
-    fn mov(&self) -> bool;
-}
-
-impl FlowGraphMeta for AsmInstr {
-    fn defines(&self) -> Vec<String> {
-        match &self.inner {
-            Instr::Oper { dst, .. } => vec![dst.clone()],
-            Instr::Call { .. } => vec![],
-        }
-    }
-
-    fn uses(&self) -> Vec<String> {
-        match &self.inner {
-            Instr::Oper {
-                opcode: Opcode::Move,
-                src,
-                dst,
-                ..
-            } => vec![src.clone(), dst.clone()],
-            Instr::Oper { src, .. } => vec![src.clone()],
-            Instr::Call { .. } => vec![],
-        }
-    }
-
-    fn mov(&self) -> bool {
-        matches!(
-            self,
-            AsmInstr {
-                inner: Instr::Oper {
-                    opcode: Opcode::Move,
-                    ..
-                },
-                ..
-            }
-        )
     }
 }
 
@@ -197,5 +155,46 @@ fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
                     to.push(from + 1);
                 });
         }
+    }
+}
+
+trait FlowGraphMeta {
+    fn defines(&self) -> Vec<String>;
+    fn uses(&self) -> Vec<String>;
+    fn mov(&self) -> bool;
+}
+
+impl FlowGraphMeta for AsmInstr {
+    fn defines(&self) -> Vec<String> {
+        match &self.inner {
+            Instr::Oper { dst, .. } => vec![dst.clone()],
+            Instr::Call { .. } => vec![],
+        }
+    }
+
+    fn uses(&self) -> Vec<String> {
+        match &self.inner {
+            Instr::Oper {
+                opcode: Opcode::Move,
+                src,
+                dst,
+                ..
+            } => vec![src.clone(), dst.clone()],
+            Instr::Oper { src, .. } => vec![src.clone()],
+            Instr::Call { .. } => vec![],
+        }
+    }
+
+    fn mov(&self) -> bool {
+        matches!(
+            self,
+            AsmInstr {
+                inner: Instr::Oper {
+                    opcode: Opcode::Move,
+                    ..
+                },
+                ..
+            }
+        )
     }
 }

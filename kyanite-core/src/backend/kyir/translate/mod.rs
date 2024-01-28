@@ -1,7 +1,6 @@
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+mod canon;
+
+pub use canon::canonicalize;
 
 use crate::{
     ast::Expr as AstExpr,
@@ -10,63 +9,10 @@ use crate::{
     pass::{AccessMap, SymbolTable},
     token::Kind,
 };
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BinOp {
-    Plus,
-    Minus,
-    Mul,
-    Div,
-    Xor,
-    Cmp(RelOp),
-}
-
-impl From<Kind> for BinOp {
-    fn from(kind: Kind) -> Self {
-        match kind {
-            Kind::Plus => BinOp::Plus,
-            Kind::Minus => BinOp::Minus,
-            Kind::Star => BinOp::Mul,
-            Kind::Slash => BinOp::Div,
-            Kind::BangEqual => BinOp::Cmp(RelOp::NotEqual),
-            Kind::EqualEqual => BinOp::Cmp(RelOp::Equal),
-            Kind::Greater => BinOp::Cmp(RelOp::Greater),
-            Kind::GreaterEqual => BinOp::Cmp(RelOp::GreaterEqual),
-            Kind::Less => BinOp::Cmp(RelOp::Less),
-            Kind::LessEqual => BinOp::Cmp(RelOp::LessEqual),
-            _ => unreachable!("not a valid binary operator"),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum RelOp {
-    Equal,
-    NotEqual,
-    Less,
-    Greater,
-    LessEqual,
-    GreaterEqual,
-}
-
-pub struct Temp;
-pub struct Label;
-
-impl Temp {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> String {
-        static ID: AtomicUsize = AtomicUsize::new(0);
-        format!("T{}", ID.fetch_add(1, Ordering::SeqCst))
-    }
-}
-
-impl Label {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> String {
-        static ID: AtomicUsize = AtomicUsize::new(0);
-        format!("L{}", ID.fetch_add(1, Ordering::SeqCst))
-    }
-}
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -260,7 +206,7 @@ impl From<&[Stmt]> for Stmt {
 }
 
 pub struct Translator<'a, F: Frame> {
-    pub functions: HashMap<usize, F>,
+    functions: HashMap<usize, F>,
     function: Option<usize>,
     accesses: &'a AccessMap,
     symbols: &'a SymbolTable,
@@ -283,6 +229,10 @@ impl<'a, F: Frame> Translator<'a, F> {
     fn frame(&self) -> &F {
         let id: usize = self.function.unwrap();
         self.functions.get(&id).unwrap()
+    }
+
+    pub fn functions(self) -> HashMap<usize, F> {
+        self.functions
     }
 }
 
@@ -496,11 +446,9 @@ impl Translate<Stmt> for AstDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         match self {
             AstDecl::Function(function) => {
-                // Allocate a new frame for the function
                 let frame = F::new(function);
                 translator.functions.insert(function.id, frame);
                 translator.function = Some(function.id);
-                // Translate the body of the function
                 let stmts: Vec<Stmt> = vec![Stmt::Label(function.name.to_string())]
                     .into_iter()
                     .chain(function.body.iter().map(|stmt| stmt.translate(translator)))
@@ -513,45 +461,68 @@ impl Translate<Stmt> for AstDecl {
     }
 }
 
-// FIXME: omit because serialized labels and temporaries may differ between runs
-// macro_rules! assert_ir {
-//     ($($path:expr => $name:ident),*) => {
-//         #[cfg(test)]
-//         mod tests {
-//             use std::collections::HashMap;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BinOp {
+    Plus,
+    Minus,
+    Mul,
+    Div,
+    Xor,
+    Cmp(RelOp),
+}
 
-//             use crate::{
-//                 ast,
-//                 kyir::Translator,
-//                 pass::{SymbolTable, TypeCheckPass},
-//                 PipelineError, Source,
-//             };
+impl From<Kind> for BinOp {
+    fn from(kind: Kind) -> Self {
+        match kind {
+            Kind::Plus => BinOp::Plus,
+            Kind::Minus => BinOp::Minus,
+            Kind::Star => BinOp::Mul,
+            Kind::Slash => BinOp::Div,
+            Kind::BangEqual => BinOp::Cmp(RelOp::NotEqual),
+            Kind::EqualEqual => BinOp::Cmp(RelOp::Equal),
+            Kind::Greater => BinOp::Cmp(RelOp::Greater),
+            Kind::GreaterEqual => BinOp::Cmp(RelOp::GreaterEqual),
+            Kind::Less => BinOp::Cmp(RelOp::Less),
+            Kind::LessEqual => BinOp::Cmp(RelOp::LessEqual),
+            _ => unreachable!("not a valid binary operator"),
+        }
+    }
+}
 
-//             use super::arch::amd64::Amd64;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum RelOp {
+    Equal,
+    NotEqual,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
+}
 
-//             $(
-//                 #[test]
-//                 fn $name() -> Result<(), Box<dyn std::error::Error>> {
-//                     let source = Source::new($path)?;
-//                     let ast = ast::Ast::from_source(&source)?;
-//                     let symbols = SymbolTable::from(&ast.nodes);
-//                     let mut accesses = HashMap::new();
-//                     let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
-//                     pass.run().map_err(PipelineError::TypeError)?;
-//                     let mut translator: Translator<Amd64> = Translator::new(&accesses, &symbols);
-//                     let res = translator.translate(&ast.nodes);
-//                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
-//                         insta::assert_debug_snapshot!(&res);
-//                     });
+impl From<BinOp> for RelOp {
+    fn from(value: BinOp) -> Self {
+        match value {
+            BinOp::Cmp(rel) => rel,
+            _ => panic!("Cannot convert {value:?} to RelOp"),
+        }
+    }
+}
 
-//                     Ok(())
-//                 }
-//             )*
-//         }
-//     };
-// }
+pub struct Temp;
+pub struct Label;
 
-// assert_ir!(
-//     "test-cases/kyir/varied.kya" => varied,
-//     "test-cases/kyir/nested-calls.kya" => nested_calls
-// );
+impl Temp {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> String {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        format!("T{}", ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
+impl Label {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> String {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        format!("L{}", ID.fetch_add(1, Ordering::SeqCst))
+    }
+}

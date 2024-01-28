@@ -94,7 +94,7 @@ impl<'a> Program<'a> {
             );
             ir.compile(&filename, writer)
         } else {
-            let ir = Kyir(kyir::Ir::new(&ast.nodes, &symbols, &accesses));
+            let ir = Kyir(kyir::new::<Amd64>(&ast.nodes, &symbols, &accesses));
             ir.compile::<Amd64>(&filename, writer)
         }
     }

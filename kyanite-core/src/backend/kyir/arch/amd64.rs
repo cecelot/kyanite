@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-
 use crate::{
     ast::{node::FuncDecl, Type},
-    backend::kyir::{BinOp, Expr, Instr, Opcode, Stmt},
-    pass::{Symbol, SymbolTable},
+    backend::kyir::{
+        arch::{RegisterMap, ReturnRegisters},
+        BinOp, Expr, Frame, Instr, Opcode, Stmt,
+    },
+    pass::SymbolTable,
 };
-
-use super::{Frame, RegisterMap, ReturnRegisters};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Amd64 {
     variables: HashMap<String, i64>,
-    formals: Vec<(&'static str, String)>,
+    formals: Vec<Formal>,
     offset: i64,
 }
 
@@ -33,7 +33,7 @@ impl Frame for Amd64 {
                 .params
                 .iter()
                 .enumerate()
-                .map(|(i, param)| (registers.argument[i], param.name.to_string()))
+                .map(|(i, param)| Formal::new(registers.argument[i], param.name.to_string()))
                 .collect(),
             variables,
             offset,
@@ -47,7 +47,7 @@ impl Frame for Amd64 {
     fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Expr {
         let offset = self.get_offset(ident);
         let registers = Self::registers();
-        if self.formals.iter().any(|(_, name)| ident == name) {
+        if self.formals.iter().any(|formal| ident == formal.ident) {
             if let (Some(temp), Some(index)) = (temp, index) {
                 // Special case: record field access on a function argument, so it is not in the
                 // current frame (passed to the function using `lea`). So: first move the record
@@ -89,7 +89,7 @@ impl Frame for Amd64 {
         };
         Expr::Mem(Box::new(Expr::Binary {
             op: BinOp::Plus,
-            left: Box::new(Expr::Temp(registers.frame.to_string())),
+            left: Box::new(Expr::Temp(registers.frame.into())),
             right: Box::new(Expr::ConstInt(offset)),
         }))
     }
@@ -97,10 +97,10 @@ impl Frame for Amd64 {
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr {
         let rec = self.offset;
         self.offset -= i64::try_from(match ty {
-            Some(Type::UserDefined(ty)) => match symbols.get(ty).unwrap() {
-                Symbol::Record(rec) => rec.fields.len() * Self::word_size(),
-                _ => panic!("Expected item to be a `Symbol::Record`"),
-            },
+            Some(Type::UserDefined(ty)) => {
+                let rec = symbols.get(ty).unwrap().record();
+                rec.fields.len() * Self::word_size()
+            }
             _ => 8,
         })
         .unwrap();
@@ -123,24 +123,24 @@ impl Frame for Amd64 {
             src: registers.frame.to_string(),
             dst: String::new(),
             jump: None,
-        });
-        prologue.push(Instr::Oper {
-            opcode: Opcode::Move,
-            src: registers.stack.to_string(),
-            dst: registers.frame.to_string(),
-            jump: None,
-        });
-        for (i, (formal, _)) in self.formals.iter().enumerate() {
-            prologue.push(Instr::Oper {
-                opcode: Opcode::Move,
-                src: (*formal).to_string(),
-                dst: format!(
+        }); // pushq %rbp
+        prologue.push(Instr::oper(
+            Opcode::Move,
+            registers.frame.into(),
+            registers.stack.into(),
+            None,
+        )); // movq %rsp, %rbp
+        for (i, formal) in self.formals.iter().enumerate() {
+            prologue.push(Instr::oper(
+                Opcode::Move,
+                format!(
                     "{}(%{})",
                     -i64::try_from((i + 1) * Self::word_size()).unwrap(),
                     registers.frame
                 ),
-                jump: None,
-            });
+                formal.register.into(),
+                None,
+            )); // movq -(i + 1)*8(%rbp), %formal.register
         }
         prologue
     }
@@ -153,13 +153,13 @@ impl Frame for Amd64 {
                 src: registers.frame.to_string(),
                 dst: String::new(),
                 jump: None,
-            },
+            }, // popq %rbp
             Instr::Oper {
                 opcode: Opcode::Ret,
                 src: String::new(),
                 dst: String::new(),
                 jump: None,
-            },
+            }, // retq
         ]
     }
 
@@ -188,5 +188,17 @@ impl Frame for Amd64 {
 
     fn word_size() -> usize {
         8
+    }
+}
+
+#[derive(Debug)]
+struct Formal {
+    register: &'static str,
+    ident: String,
+}
+
+impl Formal {
+    fn new(register: &'static str, ident: String) -> Self {
+        Self { register, ident }
     }
 }

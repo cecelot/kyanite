@@ -1,4 +1,4 @@
-use super::{Expr, Stmt, Temp};
+use crate::backend::kyir::{Expr, Stmt, Temp};
 
 /// Rewrite any [`Expr::Call`] to [`Expr::ESeq`] if it is not
 /// the immediate child of a [`Stmt::Move`] or [`Stmt::Expr`]

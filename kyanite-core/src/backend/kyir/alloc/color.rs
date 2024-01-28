@@ -1,8 +1,8 @@
+use crate::backend::kyir::{
+    alloc::liveness::{InterferenceGraph, LiveRanges},
+    arch::Frame,
+};
 use std::collections::{HashMap, HashSet};
-
-use crate::backend::kyir::arch::Frame;
-
-use super::liveness::{InterferenceGraph, LiveRanges};
 
 pub struct Color<F: Frame> {
     interferences: Vec<InterferenceGraph>,
