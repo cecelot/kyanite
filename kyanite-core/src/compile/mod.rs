@@ -1,8 +1,8 @@
-mod kyir;
+mod asm;
 mod llvm;
 
-pub use kyir::Kyir;
-pub use llvm::LlvmIr;
+pub use asm::Asm;
+pub use llvm::Ir;
 
 #[must_use]
 pub fn include_dir() -> String {

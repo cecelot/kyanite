@@ -18,7 +18,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub fn new<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) -> String {
+pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) -> String {
     let mut translator: Translator<Amd64> = Translator::new(accesses, symbols);
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);

@@ -1,9 +1,9 @@
 use crate::{compile::include_dir, subprocess, PipelineError};
 use std::{fs::File, io::Write};
 
-pub struct LlvmIr(pub String);
+pub struct Ir(pub String);
 
-impl LlvmIr {
+impl Ir {
     pub fn compile(&self, filename: &str, mut writer: impl Write) -> Result<String, PipelineError> {
         let _ = std::fs::create_dir("kya-dist");
         let ir = &format!("kya-dist/{filename}.ll");

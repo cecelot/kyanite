@@ -5,9 +5,9 @@ use crate::{
 };
 use std::{fs::File, io::Write};
 
-pub struct Kyir(pub String);
+pub struct Asm(pub String);
 
-impl Kyir {
+impl Asm {
     pub fn compile<F: Frame>(
         &self,
         filename: &str,
