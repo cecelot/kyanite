@@ -1,0 +1,7 @@
+fun main() {
+    let x: int = 1;
+    while x < 11 {
+        println_int(x);
+        x = x + 1;
+    }
+}

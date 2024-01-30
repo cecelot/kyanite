@@ -51,6 +51,7 @@ pub struct Codegen<F: Frame> {
     pub(crate) asm: Vec<AsmInstr>,
     functions: HashMap<usize, F>,
     idents: HashMap<String, usize>,
+    call: bool,
 }
 
 impl<F: Frame> Codegen<F> {
@@ -67,6 +68,7 @@ impl<F: Frame> Codegen<F> {
                 })
                 .collect(),
             asm: Vec::new(),
+            call: false,
             functions,
         };
         codegen.compile(ir);
@@ -77,6 +79,7 @@ impl<F: Frame> Codegen<F> {
         for stmt in ir {
             self.stmt(stmt);
         }
+        self.skip_red_zone();
         self.epilogues();
     }
 
@@ -141,6 +144,38 @@ impl<F: Frame> Codegen<F> {
             }
         }
         self.asm.append(&mut instrs);
+    }
+
+    // If we call another function, we need to avoid writing into the "red zone".
+    // more info: https://stackoverflow.com/a/63869171
+    fn skip_red_zone(&mut self) {
+        if self.call {
+            // Find the main function and insert a `subq $16, %rsp` after the prologue.
+            let main = self.asm.iter().position(|instr| {
+                matches!(
+                    &instr.inner,
+                    Instr::Oper {
+                        opcode: Opcode::Label(label),
+                        ..
+                    } if label == "main"
+                )
+            });
+            if let Some(main) = main {
+                let fun = self
+                    .functions
+                    .get(&self.idents[&String::from("main")])
+                    .unwrap();
+                self.asm.insert(
+                    main + fun.prologue().len() + 1,
+                    AsmInstr::new(Instr::oper(
+                        Opcode::Sub,
+                        F::registers().stack.into(),
+                        "$16".into(),
+                        None,
+                    )),
+                );
+            }
+        }
     }
 
     fn emit(&mut self, instr: Instr) {
@@ -239,7 +274,6 @@ impl<F: Frame> Codegen<F> {
                         Some(t),
                     ));
                 } else {
-                    self.expr(*condition, false);
                     self.emit(Instr::Oper {
                         opcode: Opcode::CJump(op.into()),
                         dst: String::new(),
@@ -251,7 +285,7 @@ impl<F: Frame> Codegen<F> {
         }
     }
 
-    fn expr(&mut self, expr: Expr, lhs: bool) -> String {
+    fn expr(&mut self, expr: Expr, swap: bool) -> String {
         match expr {
             Expr::Binary { op, left, right } => {
                 let right = self.expr(*right, false);
@@ -287,7 +321,7 @@ impl<F: Frame> Codegen<F> {
                     src,
                     jump: None,
                 };
-                if lhs {
+                if swap {
                     if let Instr::Oper {
                         ref mut dst,
                         ref mut src,
@@ -302,10 +336,11 @@ impl<F: Frame> Codegen<F> {
                 self.emit(oper);
                 name
             }
-            Expr::Call(name, args) => {
+            Expr::Call { name, args } => {
+                self.call = true;
                 let args: Vec<_> = args
                     .into_iter()
-                    .map(|arg| self.expr(arg, false))
+                    .map(|arg| self.expr(arg, true))
                     .enumerate()
                     .map(|(i, arg)| Instr::Oper {
                         opcode: Opcode::Move,
@@ -314,9 +349,7 @@ impl<F: Frame> Codegen<F> {
                         jump: None,
                     })
                     .collect();
-                for arg in args {
-                    self.emit(arg);
-                }
+                args.into_iter().for_each(|arg| self.emit(arg));
                 self.emit(Instr::Call { name });
                 format!("%{}", F::registers().ret.value)
             }

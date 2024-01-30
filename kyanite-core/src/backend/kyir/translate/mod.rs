@@ -25,7 +25,10 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Mem(Box<Expr>),
-    Call(String, Vec<Expr>),
+    Call {
+        name: String,
+        args: Vec<Expr>,
+    },
     ESeq {
         stmt: Box<Stmt>,
         expr: Box<Expr>,
@@ -40,7 +43,7 @@ impl Expr {
         Self::ESeq { stmt, expr, id }
     }
 
-    pub fn condition(&self) -> Option<RelOp> {
+    pub fn relation(&self) -> Option<RelOp> {
         match self {
             Expr::Binary {
                 op: BinOp::Cmp(rel),
@@ -241,6 +244,7 @@ trait Translate<R> {
 }
 
 impl Translate<Expr> for AstExpr {
+    #[allow(clippy::too_many_lines)]
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         match self {
             AstExpr::Bool(b, _) => Expr::ConstInt((*b).into()),
@@ -253,18 +257,17 @@ impl Translate<Expr> for AstExpr {
                 binary.right.translate(translator),
             ),
             AstExpr::Call(call) => {
+                let args: Vec<_> = call
+                    .args
+                    .iter()
+                    .map(|arg| arg.translate(translator))
+                    .collect();
                 let name = match *call.left {
                     AstExpr::Ident(ref ident) => ident.name.to_string(),
                     AstExpr::Access(_) => todo!(),
                     _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
                 };
-                Expr::Call(
-                    name,
-                    call.args
-                        .iter()
-                        .map(|arg| arg.translate(translator))
-                        .collect(),
-                )
+                Expr::Call { name, args }
             }
             AstExpr::Ident(ident) => translator.frame().get(&ident.name.to_string(), None, None),
             AstExpr::Unary(unary) => match unary.op.kind {
@@ -362,7 +365,7 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Seq {
                                 left: Box::new(Stmt::CJump {
-                                    op: BinOp::Cmp(condition.condition().unwrap()),
+                                    op: BinOp::Cmp(condition.relation().unwrap()),
                                     condition: Box::new(condition),
                                     t: t.clone(),
                                     f: f.clone(),
@@ -406,7 +409,7 @@ impl Translate<Stmt> for AstStmt {
                         left: Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Label(test)),
                             right: Some(Box::new(Stmt::CJump {
-                                op: BinOp::Cmp(condition.condition().unwrap()),
+                                op: BinOp::Cmp(condition.relation().unwrap()),
                                 condition: Box::new(condition),
                                 t: t.clone(),
                                 f: f.clone(),

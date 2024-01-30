@@ -1,0 +1,4 @@
+fun main() {
+    let x: int = 5;
+    println_int(x);
+}

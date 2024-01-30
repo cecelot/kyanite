@@ -120,7 +120,7 @@ impl Frame for Amd64 {
         let mut prologue = vec![];
         prologue.push(Instr::Oper {
             opcode: Opcode::Push,
-            src: registers.frame.to_string(),
+            src: registers.frame.into(),
             dst: String::new(),
             jump: None,
         }); // pushq %rbp

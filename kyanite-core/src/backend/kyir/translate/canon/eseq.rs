@@ -21,7 +21,7 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::Mem(expr) => {
                 expr.replace(search, temp);
             }
-            Expr::Call(_, args) => {
+            Expr::Call { args, .. } => {
                 for arg in args {
                     arg.replace(search, temp);
                 }
@@ -43,7 +43,7 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::Mem(expr) => {
                 expr.eseqs(list);
             }
-            Expr::Call(_, args) => {
+            Expr::Call { args, .. } => {
                 for arg in args {
                     arg.eseqs(list);
                 }
