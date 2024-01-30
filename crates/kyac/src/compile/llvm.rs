@@ -1,4 +1,4 @@
-use crate::{compile::include_dir, subprocess, PipelineError};
+use crate::{compile::include_dir, PipelineError};
 use std::{fs::File, io::Write};
 
 pub struct Ir(pub String);
@@ -15,15 +15,17 @@ impl Ir {
             "Finished",
             subprocess::exec("llc", &["-filetype=obj", "-o", obj, ir]),
             &mut writer,
-        )?;
+        )
+        .map_err(PipelineError::CompileError)?;
         subprocess::handle(
             "Finished",
             subprocess::exec(
                 "clang",
-                &[obj, "-o", exe, "-L", &include_dir(), "-lkyanite_builtins"],
+                &[obj, "-o", exe, "-L", &include_dir(), "-lbuiltins"],
             ),
             &mut writer,
-        )?;
+        )
+        .map_err(PipelineError::CompileError)?;
         Ok(exe.into())
     }
 }

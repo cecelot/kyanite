@@ -1,7 +1,7 @@
 use crate::{
     backend::kyir::arch::Frame,
     compile::{include_dir, release_flag},
-    subprocess, PipelineError,
+    PipelineError,
 };
 use std::{fs::File, io::Write};
 
@@ -29,13 +29,14 @@ impl Asm {
                     "cargo",
                     "build",
                     "--package",
-                    "kyanite_builtins",
+                    "builtins",
                     release_flag(), // This must be last because with debug enabled, this will be treated as "--",
                                     // which escapes any following arguments
                 ],
             ),
             &mut writer,
-        )?;
+        )
+        .map_err(PipelineError::CompileError)?;
         subprocess::handle(
             "Finished",
             // Run via `OrbStack` to use x86 clang for testing purposes
@@ -48,11 +49,12 @@ impl Asm {
                     exe,
                     "-L",
                     &include_dir(),
-                    "-lkyanite_builtins",
+                    "-lbuiltins",
                 ],
             ),
             &mut writer,
-        )?;
+        )
+        .map_err(PipelineError::CompileError)?;
         Ok(exe.into())
     }
 }

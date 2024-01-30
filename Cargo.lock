@@ -78,6 +78,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
+name = "builtins"
+version = "0.1.0"
+
+[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -294,7 +298,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
-name = "kyanite"
+name = "kyac"
 version = "0.1.0"
 dependencies = [
  "colored",
@@ -302,22 +306,20 @@ dependencies = [
  "insta",
  "serde",
  "serde_yaml",
+ "subprocess",
  "thiserror",
 ]
 
 [[package]]
-name = "kyanite_builtins"
-version = "0.1.0"
-
-[[package]]
-name = "kyanite_cli"
+name = "kyanite"
 version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
  "insta",
- "kyanite",
+ "kyac",
  "serde",
+ "subprocess",
  "which",
 ]
 
@@ -540,6 +542,13 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "subprocess"
+version = "0.1.0"
+dependencies = [
+ "colored",
+]
 
 [[package]]
 name = "syn"

@@ -1,5 +1,5 @@
 [package]
-name = "kyanite"
+name = "kyac"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.4"
+subprocess = { path = "../subprocess" }
 inkwell = { version = "0.2.0", features = ["llvm15-0"] }
 insta = { version  = "1.32.0" }
 serde = { version = "1.0.188", features = ["derive"] }
@@ -14,7 +15,7 @@ serde_yaml = "0.9.25"
 thiserror = "1.0.48"
 
 [lib]
-name = "kyanite"
+name = "kyac"
 path = "src/lib.rs"
 
 [lints.clippy]

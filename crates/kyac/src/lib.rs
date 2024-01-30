@@ -1,11 +1,10 @@
 mod ast;
 mod backend;
-pub mod compile; // FIXME: leaky
+pub mod compile; // FIXME: leaky, move all this to cli (kyanite)
 mod macros;
 mod parse;
 mod pass;
 mod reporting;
-pub mod subprocess; // FIXME: leaky
 mod token;
 
 use crate::{

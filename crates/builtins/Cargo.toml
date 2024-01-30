@@ -1,5 +1,5 @@
 [package]
-name = "kyanite_builtins"
+name = "builtins"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 
 [lib]
-name = "kyanite_builtins"
+name = "builtins"
 crate-type = ["cdylib"]
 
 [lints.clippy]

@@ -12,7 +12,7 @@ pub fn include_dir() -> String {
         "target/release"
     };
     let dir = env!("CARGO_MANIFEST_DIR");
-    let dir = &dir[0..dir.len() - 12];
+    let dir = &dir[0..dir.len() - 11];
     let include = &format!("{dir}{build}");
     include.into()
 }

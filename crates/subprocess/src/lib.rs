@@ -1,4 +1,3 @@
-use crate::PipelineError;
 use colored::Colorize;
 use std::io::Write;
 
@@ -21,7 +20,7 @@ pub fn exec(cmd: &str, args: &[&str]) -> ProcessResult {
     }
 }
 
-pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<(), PipelineError> {
+pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<(), String> {
     if res.code == 0 {
         writeln!(writer, "{} `{}`", verb.green().bold(), res.command).unwrap();
         Ok(())
@@ -34,6 +33,6 @@ pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<
             res.output
         )
         .unwrap();
-        Err(PipelineError::CompileError(res.output))
+        Err(res.output)
     }
 }

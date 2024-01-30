@@ -1,5 +1,5 @@
 [package]
-name = "kyanite_cli"
+name = "kyanite"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.4.2", features = ["derive"] }
 colored = "2.0.4"
-kyanite = { path = "../kyanite-core" }
+kyac = { path = "../kyac" }
+subprocess = { path = "../subprocess" }
 insta = { version = "1.32.0", features = ["yaml"] }
 serde = { version = "1.0.188", features = ["derive"] }
 which = "4.4.2"
