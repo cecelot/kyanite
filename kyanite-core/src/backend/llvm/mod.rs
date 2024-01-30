@@ -2,8 +2,7 @@ mod builtins;
 
 use crate::{
     ast::{
-        init,
-        node::{self, RecordDecl},
+        node::{self, Ident, RecordDecl},
         Decl, Expr, Stmt, Type,
     },
     backend::llvm::builtins::Builtins,
@@ -154,17 +153,17 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
 
     fn expr(&mut self, expr: &Expr) -> Result<AnyValueEnum<'ctx>, IrError> {
         match expr {
-            Expr::Str(s, _) => Ok(self.str(s)),
+            Expr::Str(s) => Ok(self.str(s.value)),
             Expr::Access(a) => Ok(self.access(a).into()),
-            &Expr::Bool(b, _) => Ok(self
+            Expr::Bool(b) => Ok(self
                 .context
                 .bool_type()
-                .const_int(u64::from(b), false)
+                .const_int(u64::from(b.value), false)
                 .into()),
-            Expr::Float(f, _) => Ok(self.context.f64_type().const_float(*f).into()),
+            Expr::Float(f) => Ok(self.context.f64_type().const_float(f.value).into()),
             Expr::Call(call) => self.call(call).map(Into::into),
             Expr::Ident(ident) => self.ident(ident).map(Into::into),
-            &Expr::Int(n, _) => Ok(self.int(n).into()),
+            Expr::Int(n) => Ok(self.int(n.value).into()),
             Expr::Binary(binary) => self.binary(binary).map(Into::into),
             Expr::Unary(unary) => self.unary(unary).map(Into::into),
             Expr::Init(init) => self.init(init).map(Into::into),
@@ -646,7 +645,7 @@ impl ToBasicTypeEnum for Option<Token> {
 
 fn main() -> node::Call {
     node::Call::new(
-        Box::new(init::ident(Token {
+        Box::new(Ident::wrapped(Token {
             kind: Kind::Identifier,
             lexeme: Some("_main"),
             span: Span::new(0, 0, 0),

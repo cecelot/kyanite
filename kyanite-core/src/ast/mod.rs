@@ -1,4 +1,3 @@
-pub mod init;
 pub mod node;
 pub mod span;
 #[cfg(test)]
@@ -41,8 +40,8 @@ impl TryFrom<&Source> for Ast {
 
 #[derive(Debug, Clone)]
 pub enum Decl {
-    Record(Rc<node::RecordDecl>),
     Function(Rc<node::FuncDecl>),
+    Record(Rc<node::RecordDecl>),
     Constant(Rc<node::ConstantDecl>),
 }
 
@@ -64,10 +63,10 @@ pub enum Expr {
     Unary(Rc<node::Unary>),
     Ident(Rc<node::Ident>),
     Init(Rc<node::Init>),
-    Str(&'static str, Token),
-    Int(i64, Token),
-    Float(f64, Token),
-    Bool(bool, Token),
+    Str(Rc<node::Literal<&'static str>>),
+    Int(Rc<node::Literal<i64>>),
+    Float(Rc<node::Literal<f64>>),
+    Bool(Rc<node::Literal<bool>>),
 }
 
 impl Expr {
@@ -152,42 +151,6 @@ impl Expr {
             Expr::Init(..) => unimplemented!(),
             Expr::Access(..) => unimplemented!(),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct Initializer {
-    pub name: Token,
-    pub expr: Expr,
-}
-
-impl Initializer {
-    pub fn new(name: Token, expr: Expr) -> Self {
-        Self { name, expr }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Param {
-    pub name: Token,
-    pub ty: Token,
-}
-
-impl Param {
-    pub fn new(name: Token, ty: Token) -> Self {
-        Self { name, ty }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Field {
-    pub name: Token,
-    pub ty: Token,
-}
-
-impl Field {
-    pub fn new(name: Token, ty: Token) -> Self {
-        Self { name, ty }
     }
 }
 

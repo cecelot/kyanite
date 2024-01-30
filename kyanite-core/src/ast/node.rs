@@ -1,20 +1,11 @@
 use crate::{
-    ast::{Expr, Field, Initializer, Param, Stmt},
+    ast::{Decl, Expr, Stmt},
     token::Token,
 };
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct RecordDecl {
-    pub name: Token,
-    pub fields: Vec<Field>,
-}
-
-impl RecordDecl {
-    pub fn new(name: Token, fields: Vec<Field>) -> Self {
-        Self { name, fields }
-    }
-}
+use std::{
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 #[derive(Debug)]
 pub struct FuncDecl {
@@ -45,59 +36,27 @@ impl FuncDecl {
             id,
         }
     }
-}
 
-#[derive(Debug)]
-pub struct If {
-    pub condition: Expr,
-    pub is: Vec<Stmt>,
-    pub otherwise: Vec<Stmt>,
-}
-
-impl If {
-    pub fn new(condition: Expr, is: Vec<Stmt>, otherwise: Vec<Stmt>) -> Self {
-        Self {
-            condition,
-            is,
-            otherwise,
-        }
+    pub fn wrapped(
+        name: Token,
+        params: Vec<Param>,
+        ty: Option<Token>,
+        body: Vec<Stmt>,
+        external: bool,
+    ) -> Decl {
+        Decl::Function(Rc::new(Self::new(name, params, ty, body, external)))
     }
 }
 
-#[derive(Debug)]
-pub struct While {
-    pub condition: Expr,
-    pub body: Vec<Stmt>,
-}
-
-impl While {
-    pub fn new(condition: Expr, body: Vec<Stmt>) -> Self {
-        Self { condition, body }
-    }
-}
-
-#[derive(Debug)]
-pub struct Assign {
-    pub target: Expr,
-    pub expr: Expr,
-}
-
-impl Assign {
-    pub fn new(target: Expr, expr: Expr) -> Self {
-        Self { target, expr }
-    }
-}
-
-#[derive(Debug)]
-pub struct VarDecl {
+#[derive(Debug, PartialEq, Eq)]
+pub struct RecordDecl {
     pub name: Token,
-    pub ty: Token,
-    pub expr: Expr,
+    pub fields: Vec<Field>,
 }
 
-impl VarDecl {
-    pub fn new(name: Token, ty: Token, expr: Expr) -> Self {
-        Self { name, ty, expr }
+impl RecordDecl {
+    pub fn wrapped(name: Token, fields: Vec<Field>) -> Decl {
+        Decl::Record(Rc::new(Self { name, fields }))
     }
 }
 
@@ -109,25 +68,74 @@ pub struct ConstantDecl {
 }
 
 impl ConstantDecl {
-    pub fn new(name: Token, ty: Token, expr: Expr) -> Self {
-        Self { name, ty, expr }
+    pub fn wrapped(name: Token, ty: Token, expr: Expr) -> Decl {
+        Decl::Constant(Rc::new(Self { name, ty, expr }))
     }
 }
 
 #[derive(Debug)]
-pub struct Init {
+pub struct VarDecl {
     pub name: Token,
-    pub initializers: Vec<Initializer>,
-    pub parens: (Token, Token),
+    pub ty: Token,
+    pub expr: Expr,
 }
 
-impl Init {
-    pub fn new(name: Token, initializers: Vec<Initializer>, parens: (Token, Token)) -> Self {
-        Self {
-            name,
-            initializers,
-            parens,
-        }
+impl VarDecl {
+    pub fn wrapped(name: Token, ty: Token, expr: Expr) -> Stmt {
+        Stmt::Var(Rc::new(Self { name, ty, expr }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Assign {
+    pub target: Expr,
+    pub expr: Expr,
+}
+
+impl Assign {
+    pub fn wrapped(target: Expr, expr: Expr) -> Stmt {
+        Stmt::Assign(Rc::new(Self { target, expr }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Return {
+    pub expr: Expr,
+    pub keyword: Token,
+}
+
+impl Return {
+    pub fn wrapped(expr: Expr, keyword: Token) -> Stmt {
+        Stmt::Return(Rc::new(Self { expr, keyword }))
+    }
+}
+
+#[derive(Debug)]
+pub struct If {
+    pub condition: Expr,
+    pub is: Vec<Stmt>,
+    pub otherwise: Vec<Stmt>,
+}
+
+impl If {
+    pub fn wrapped(condition: Expr, is: Vec<Stmt>, otherwise: Vec<Stmt>) -> Stmt {
+        Stmt::If(Rc::new(Self {
+            condition,
+            is,
+            otherwise,
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct While {
+    pub condition: Expr,
+    pub body: Vec<Stmt>,
+}
+
+impl While {
+    pub fn wrapped(condition: Expr, body: Vec<Stmt>) -> Stmt {
+        Stmt::While(Rc::new(Self { condition, body }))
     }
 }
 
@@ -153,6 +161,15 @@ impl Call {
             delimiters,
         }
     }
+
+    pub fn wrapped(
+        left: Expr,
+        args: Vec<Expr>,
+        parens: (Token, Token),
+        delimiters: Vec<Token>,
+    ) -> Expr {
+        Expr::Call(Rc::new(Self::new(Box::new(left), args, parens, delimiters)))
+    }
 }
 
 #[derive(Debug)]
@@ -162,34 +179,10 @@ pub struct Access {
 }
 
 impl Access {
-    pub fn new(chain: Vec<Expr>) -> Self {
+    pub fn wrapped(chain: Vec<Expr>) -> Expr {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
-        Self { chain, id }
-    }
-}
-
-#[derive(Debug)]
-pub struct Return {
-    pub expr: Expr,
-    pub keyword: Token,
-}
-
-impl Return {
-    pub fn new(expr: Expr, keyword: Token) -> Self {
-        Self { expr, keyword }
-    }
-}
-
-#[derive(Debug)]
-pub struct Unary {
-    pub op: Token,
-    pub expr: Box<Expr>,
-}
-
-impl Unary {
-    pub fn new(op: Token, expr: Box<Expr>) -> Self {
-        Self { op, expr }
+        Expr::Access(Rc::new(Self { chain, id }))
     }
 }
 
@@ -201,8 +194,27 @@ pub struct Binary {
 }
 
 impl Binary {
-    pub fn new(left: Box<Expr>, op: Token, right: Box<Expr>) -> Self {
-        Self { left, op, right }
+    pub fn wrapped(left: Expr, op: Token, right: Expr) -> Expr {
+        Expr::Binary(Rc::new(Self {
+            left: Box::new(left),
+            op,
+            right: Box::new(right),
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Unary {
+    pub op: Token,
+    pub expr: Box<Expr>,
+}
+
+impl Unary {
+    pub fn wrapped(op: Token, expr: Expr) -> Expr {
+        Expr::Unary(Rc::new(Self {
+            op,
+            expr: Box::new(expr),
+        }))
     }
 }
 
@@ -212,7 +224,88 @@ pub struct Ident {
 }
 
 impl Ident {
-    pub fn new(name: Token) -> Self {
-        Self { name }
+    pub fn wrapped(name: Token) -> Expr {
+        Expr::Ident(Rc::new(Self { name }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Init {
+    pub name: Token,
+    pub initializers: Vec<Initializer>,
+    pub parens: (Token, Token),
+}
+
+impl Init {
+    pub fn wrapped(name: Token, initializers: Vec<Initializer>, parens: (Token, Token)) -> Expr {
+        Expr::Init(Rc::new(Self {
+            name,
+            initializers,
+            parens,
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Literal<T> {
+    pub value: T,
+    pub token: Token,
+}
+
+impl<T> Literal<T> {
+    pub fn new(value: T, token: Token) -> Self {
+        Self { value, token }
+    }
+
+    pub fn int(value: i64, token: Token) -> Expr {
+        Expr::Int(Rc::new(Literal::new(value, token)))
+    }
+
+    pub fn float(value: f64, token: Token) -> Expr {
+        Expr::Float(Rc::new(Literal::new(value, token)))
+    }
+
+    pub fn string(value: &'static str, token: Token) -> Expr {
+        Expr::Str(Rc::new(Literal::new(value, token)))
+    }
+
+    pub fn bool(value: bool, token: Token) -> Expr {
+        Expr::Bool(Rc::new(Literal::new(value, token)))
+    }
+}
+
+#[derive(Debug)]
+pub struct Initializer {
+    pub name: Token,
+    pub expr: Expr,
+}
+
+impl Initializer {
+    pub fn new(name: Token, expr: Expr) -> Self {
+        Self { name, expr }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Param {
+    pub name: Token,
+    pub ty: Token,
+}
+
+impl Param {
+    pub fn new(name: Token, ty: Token) -> Self {
+        Self { name, ty }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Field {
+    pub name: Token,
+    pub ty: Token,
+}
+
+impl Field {
+    pub fn new(name: Token, ty: Token) -> Self {
+        Self { name, ty }
     }
 }

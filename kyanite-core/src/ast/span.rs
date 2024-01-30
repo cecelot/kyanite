@@ -55,10 +55,10 @@ impl Combined for Expr {
             Expr::Binary(binary) => binary.left.start(),
             Expr::Unary(unary) => unary.op.span.column,
             Expr::Ident(id) => id.name.span.column,
-            Expr::Str(_, token)
-            | Expr::Int(_, token)
-            | Expr::Float(_, token)
-            | Expr::Bool(_, token) => token.span.column,
+            Expr::Str(s) => s.token.span.column,
+            Expr::Int(i) => i.token.span.column,
+            Expr::Float(f) => f.token.span.column,
+            Expr::Bool(b) => b.token.span.column,
             Expr::Init(init) => init.name.span.column,
         }
     }
@@ -70,10 +70,10 @@ impl Combined for Expr {
             Expr::Binary(binary) => binary.right.end(),
             Expr::Unary(unary) => unary.expr.end(),
             Expr::Ident(id) => id.name.span.column + id.name.span.length,
-            Expr::Str(_, token) | Expr::Int(_, token) | Expr::Float(_, token) => {
-                token.span.column + token.span.length
-            }
-            Expr::Bool(_, token) => token.span.column + token.span.length,
+            Expr::Str(s) => s.token.span.column + s.token.span.length,
+            Expr::Int(i) => i.token.span.column + i.token.span.length,
+            Expr::Float(f) => f.token.span.column + f.token.span.length,
+            Expr::Bool(b) => b.token.span.column + b.token.span.length,
             Expr::Init(init) => init.parens.1.span.column + 1,
         }
     }
@@ -85,10 +85,10 @@ impl Combined for Expr {
             Expr::Binary(binary) => binary.left.line(),
             Expr::Unary(unary) => unary.expr.line(),
             Expr::Ident(id) => id.name.span.line,
-            Expr::Str(_, token)
-            | Expr::Int(_, token)
-            | Expr::Float(_, token)
-            | Expr::Bool(_, token) => token.span.line,
+            Expr::Str(s) => s.token.span.line,
+            Expr::Int(i) => i.token.span.line,
+            Expr::Float(f) => f.token.span.line,
+            Expr::Bool(b) => b.token.span.line,
             Expr::Init(init) => init.name.span.line,
         }
     }

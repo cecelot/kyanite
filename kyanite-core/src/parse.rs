@@ -1,10 +1,11 @@
+#[allow(clippy::wildcard_imports)]
 use crate::{
-    ast::{init, Decl, Expr, Field, Initializer, Param, Stmt},
+    ast::{node::*, Decl, Expr, Stmt},
     reporting::error::PreciseError,
     token::{Kind, Span, Token},
     Source,
 };
-use std::collections::VecDeque;
+use std::{collections::VecDeque, rc::Rc};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParseError {
@@ -73,7 +74,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::LeftBrace)?;
         let fields = self.fields()?;
         self.consume(Kind::RightBrace)?;
-        Ok(init::record(name, fields))
+        Ok(RecordDecl::wrapped(name, fields))
     }
 
     fn function(&mut self, external: bool) -> Result<Decl, ParseError> {
@@ -91,9 +92,9 @@ impl<'a> Parser<'a> {
             ty = Some(self.consume(Kind::Identifier)?);
         }
         if external {
-            Ok(init::func(name, params, ty, vec![], external))
+            Ok(FuncDecl::wrapped(name, params, ty, vec![], external))
         } else {
-            Ok(init::func(name, params, ty, self.block()?, external))
+            Ok(FuncDecl::wrapped(name, params, ty, self.block()?, external))
         }
     }
 
@@ -150,7 +151,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::Equal)?;
         let value = self.expression()?;
         self.consume(Kind::Semicolon)?;
-        Ok(init::constant(name, ty, value))
+        Ok(ConstantDecl::wrapped(name, ty, value))
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
@@ -159,9 +160,9 @@ impl<'a> Parser<'a> {
         self.consume(Kind::Colon)?;
         let ty = self.consume(Kind::Identifier)?;
         self.consume(Kind::Equal)?;
-        let value = self.expression()?;
+        let expr = self.expression()?;
         self.consume(Kind::Semicolon)?;
-        Ok(init::var(name, ty, value))
+        Ok(Stmt::Var(Rc::new(VarDecl { name, ty, expr })))
     }
 
     fn condition(&mut self) -> Result<Stmt, ParseError> {
@@ -171,9 +172,9 @@ impl<'a> Parser<'a> {
         if self.peek()?.kind == Kind::Else {
             self.consume(Kind::Else)?;
             let otherwise = self.block()?;
-            Ok(init::conditional(condition, is, otherwise))
+            Ok(If::wrapped(condition, is, otherwise))
         } else {
-            Ok(init::conditional(condition, is, vec![]))
+            Ok(If::wrapped(condition, is, vec![]))
         }
     }
 
@@ -181,7 +182,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::While)?;
         let condition = self.expression()?;
         let block = self.block()?;
-        Ok(init::loops(condition, block))
+        Ok(While::wrapped(condition, block))
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -190,10 +191,10 @@ impl<'a> Parser<'a> {
             Kind::If => self.condition(),
             Kind::While => self.loops(),
             Kind::Return => {
-                let token = self.consume(Kind::Return)?;
-                let value = self.expression()?;
+                let keyword = self.consume(Kind::Return)?;
+                let expr = self.expression()?;
                 self.consume(Kind::Semicolon)?;
-                Ok(init::ret(value, token))
+                Ok(Return::wrapped(expr, keyword))
             }
             _ => self.assignment(),
         }
@@ -205,7 +206,7 @@ impl<'a> Parser<'a> {
             self.consume(Kind::Equal)?;
             let right = self.expression()?;
             self.consume(Kind::Semicolon)?;
-            Ok(init::assign(item, right))
+            Ok(Assign::wrapped(item, right))
         } else {
             self.consume(Kind::Semicolon)?;
             Ok(Stmt::Expr(item))
@@ -221,7 +222,7 @@ impl<'a> Parser<'a> {
         while matches!(self.peek()?.kind, Kind::BangEqual | Kind::EqualEqual) {
             let operator = self.advance().unwrap();
             let right = self.comparison()?;
-            expr = init::binary(expr, operator, right);
+            expr = Binary::wrapped(expr, operator, right);
         }
         Ok(expr)
     }
@@ -234,7 +235,7 @@ impl<'a> Parser<'a> {
         ) {
             let operator = self.advance().unwrap();
             let right = self.term()?;
-            expr = init::binary(expr, operator, right);
+            expr = Binary::wrapped(expr, operator, right);
         }
         Ok(expr)
     }
@@ -244,7 +245,7 @@ impl<'a> Parser<'a> {
         while matches!(self.peek()?.kind, Kind::Minus | Kind::Plus) {
             let operator = self.advance().unwrap();
             let right = self.factor()?;
-            expr = init::binary(expr, operator, right);
+            expr = Binary::wrapped(expr, operator, right);
         }
         Ok(expr)
     }
@@ -254,7 +255,7 @@ impl<'a> Parser<'a> {
         while matches!(self.peek()?.kind, Kind::Slash | Kind::Star) {
             let operator = self.advance().unwrap();
             let right = self.unary()?;
-            expr = init::binary(expr, operator, right);
+            expr = Binary::wrapped(expr, operator, right);
         }
         Ok(expr)
     }
@@ -264,7 +265,7 @@ impl<'a> Parser<'a> {
             Kind::Bang | Kind::Minus => {
                 let operator = self.advance().unwrap();
                 let right = self.unary()?;
-                init::unary(operator, right)
+                Unary::wrapped(operator, right)
             }
             _ => self.access()?,
         })
@@ -278,7 +279,7 @@ impl<'a> Parser<'a> {
             chain.push(self.call()?);
             if self.peek()?.kind != Kind::Dot {
                 chain.insert(0, item);
-                return Ok(init::access(chain));
+                return Ok(Access::wrapped(chain));
             }
         }
         Ok(item)
@@ -298,7 +299,7 @@ impl<'a> Parser<'a> {
                 }
             }
             let close = self.consume(Kind::RightParen)?;
-            left = init::call(left, args, (open, close), delimiters);
+            left = Call::wrapped(left, args, (open, close), delimiters);
         }
         Ok(left)
     }
@@ -315,11 +316,13 @@ impl<'a> Parser<'a> {
                 let token = self.advance().unwrap();
                 let lexeme = token.lexeme.unwrap();
                 match lexeme {
-                    "true" | "false" => Expr::Bool(lexeme == "true", token),
-                    _ if lexeme.starts_with('"') => Expr::Str(lexeme, token),
-                    _ if lexeme.contains('.') => Expr::Float(lexeme.parse().unwrap(), token),
+                    "true" | "false" => Literal::<bool>::bool(lexeme == "true", token),
+                    _ if lexeme.starts_with('"') => Literal::<&str>::string(lexeme, token),
+                    _ if lexeme.contains('.') => {
+                        Literal::<f64>::float(lexeme.parse().unwrap(), token)
+                    }
                     _ if lexeme.chars().next().unwrap().is_ascii_digit() => {
-                        Expr::Int(lexeme.parse().unwrap(), token)
+                        Literal::<i64>::int(lexeme.parse().unwrap(), token)
                     }
                     e => unreachable!("impossible lexeme `{}`", e),
                 }
@@ -329,7 +332,7 @@ impl<'a> Parser<'a> {
                 if self.peek()?.kind == Kind::Colon {
                     self.init(name)?
                 } else {
-                    init::ident(name)
+                    Ident::wrapped(name)
                 }
             }
             _ => Err(ParseError::Unhandled(
@@ -355,7 +358,7 @@ impl<'a> Parser<'a> {
             }
         }
         let right = self.consume(Kind::RightParen)?;
-        Ok(init::init(name, initializers, (left, right)))
+        Ok(Init::wrapped(name, initializers, (left, right)))
     }
 
     fn consume(&mut self, kind: Kind) -> Result<Token, ParseError> {

@@ -2,15 +2,10 @@ mod canon;
 
 pub use canon::canonicalize;
 
+#[allow(clippy::wildcard_imports)]
 use crate::{
     ast::Expr as AstExpr,
-    ast::{
-        node::{
-            Access, Assign, Binary, Call, FuncDecl, Ident, If, Init, RecordDecl, Return, Unary,
-            VarDecl, While,
-        },
-        Decl as AstDecl, Initializer, Stmt as AstStmt, Type,
-    },
+    ast::{node::*, Decl as AstDecl, Stmt as AstStmt, Type},
     backend::kyir::{arch::Frame, Label, Temp},
     pass::{AccessMap, SymbolTable},
     token::Kind,
@@ -58,9 +53,9 @@ trait Translate<R> {
 impl Translate<Expr> for AstExpr {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         match self {
-            AstExpr::Bool(b, _) => Expr::ConstInt((*b).into()),
-            AstExpr::Float(f, _) => Expr::ConstFloat(*f),
-            AstExpr::Int(i, _) => Expr::ConstInt(*i),
+            AstExpr::Int(i) => i.translate(translator),
+            AstExpr::Float(f) => f.translate(translator),
+            AstExpr::Bool(b) => b.translate(translator),
             AstExpr::Str(..) => todo!(),
             AstExpr::Binary(binary) => binary.translate(translator),
             AstExpr::Call(call) => call.translate(translator),
@@ -92,6 +87,24 @@ impl Translate<Stmt> for AstDecl {
             AstDecl::Record(rec) => rec.translate(translator),
             AstDecl::Constant(_) => todo!(),
         }
+    }
+}
+
+impl Translate<Expr> for Literal<i64> {
+    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+        Expr::ConstInt(self.value)
+    }
+}
+
+impl Translate<Expr> for Literal<f64> {
+    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+        Expr::ConstFloat(self.value)
+    }
+}
+
+impl Translate<Expr> for Literal<bool> {
+    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+        Expr::ConstInt(self.value.into())
     }
 }
 
@@ -202,9 +215,9 @@ impl Translate<Expr> for Init {
 impl Translate<Stmt> for If {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let condition = match &self.condition {
-            AstExpr::Int(i, _) => Expr::Binary {
+            AstExpr::Int(i) => Expr::Binary {
                 op: BinOp::Cmp(RelOp::Equal),
-                left: Box::new(Expr::ConstInt(*i)),
+                left: Box::new(Expr::ConstInt(i.value)),
                 right: Box::new(Expr::ConstInt(0)),
             },
             c => c.translate(translator),
@@ -254,9 +267,9 @@ impl Translate<Stmt> for If {
 impl Translate<Stmt> for While {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let condition = match &self.condition {
-            AstExpr::Int(i, _) => Expr::Binary {
+            AstExpr::Int(i) => Expr::Binary {
                 op: BinOp::Cmp(RelOp::Equal),
-                left: Box::new(Expr::ConstInt(*i)),
+                left: Box::new(Expr::ConstInt(i.value)),
                 right: Box::new(Expr::ConstInt(0)),
             },
             c => c.translate(translator),
