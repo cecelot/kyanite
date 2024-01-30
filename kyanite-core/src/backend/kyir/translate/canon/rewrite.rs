@@ -15,7 +15,7 @@ impl Rewrite<Vec<Expr>> for Vec<Expr> {
         self.into_iter()
             .map(|arg| match arg {
                 Expr::Call { .. } => {
-                    let temp = Temp::new();
+                    let temp = Temp::next();
                     Expr::eseq(
                         Box::new(Stmt::Move {
                             target: Box::new(Expr::Temp(temp.clone())),
@@ -46,7 +46,7 @@ impl Rewrite<Expr> for Expr {
                 if immediate {
                     Expr::Call { name, args }
                 } else {
-                    let temp = Temp::new();
+                    let temp = Temp::next();
                     Expr::eseq(
                         Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Move {
@@ -68,7 +68,7 @@ impl Rewrite<Expr> for Expr {
                     op,
                 };
                 if immediate && child {
-                    let temp = Temp::new();
+                    let temp = Temp::next();
                     Expr::eseq(
                         Box::new(Stmt::Seq {
                             left: Box::new(Stmt::Move {

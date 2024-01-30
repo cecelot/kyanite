@@ -43,7 +43,7 @@ fn conditionals(traces: &mut [Vec<BasicBlock>]) {
                     if let Some(next) = next {
                         if f != next {
                             let prev = f.clone();
-                            let label = Label::new();
+                            let label = Label::next();
                             *f = label.clone();
                             insertions
                                 .push(((i, j), BasicBlock::new(vec![Stmt::Jump(prev)], label)));

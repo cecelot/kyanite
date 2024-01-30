@@ -8,7 +8,7 @@ use crate::{
     backend::kyir::{
         arch::{amd64::Amd64, Frame},
         opcode::Opcode,
-        translate::{BinOp, Expr, RelOp, Stmt, Temp, Translator},
+        translate::{BinOp, Expr, RelOp, Stmt, Translator},
     },
     pass::{AccessMap, SymbolTable},
 };
@@ -218,7 +218,7 @@ impl<F: Frame> Codegen<F> {
                 }
                 let src = match *expr {
                     Expr::Mem(_) => {
-                        let temp = Temp::new();
+                        let temp = Temp::next();
                         let (rbp, offset) = Self::access(*expr);
                         self.emit(Instr::Oper {
                             opcode: Opcode::Move,
@@ -264,7 +264,7 @@ impl<F: Frame> Codegen<F> {
             } => {
                 let tmp = self.expr(*condition.clone(), false);
                 if let Expr::ConstInt(_) = *condition {
-                    let one = Temp::new();
+                    let one = Temp::next();
                     self.emit(Instr::oper(Opcode::Move, one.clone(), "$1".into(), None));
                     self.emit(Instr::oper(Opcode::Cmp(RelOp::Equal), tmp, one, None));
                     self.emit(Instr::oper(
@@ -299,7 +299,7 @@ impl<F: Frame> Codegen<F> {
                 left
             }
             Expr::ConstInt(i) => {
-                let name = Temp::new();
+                let name = Temp::next();
                 self.emit(Instr::Oper {
                     opcode: Opcode::Move,
                     dst: name.clone(),
@@ -311,7 +311,7 @@ impl<F: Frame> Codegen<F> {
             Expr::ConstFloat(_) => todo!(),
             Expr::Temp(t) => t,
             Expr::Mem(mem) => {
-                let name = Temp::new();
+                let name = Temp::next();
                 let src = name.clone();
                 let (rbp, offset) = Self::access(*mem);
                 let dst = format!("{offset}(%{rbp})");
@@ -458,5 +458,23 @@ impl Display for AsmInstr {
                 Ok(())
             }
         }
+    }
+}
+
+pub struct Temp;
+
+impl Temp {
+    pub fn next() -> String {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        format!("T{}", ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
+pub struct Label;
+
+impl Label {
+    pub fn next() -> String {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        format!("L{}", ID.fetch_add(1, Ordering::SeqCst))
     }
 }

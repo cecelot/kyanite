@@ -87,7 +87,7 @@ impl<'a> Program<'a> {
         let mut pass = TypeCheckPass::new(&symbols, &mut accesses, self.source, &ast.nodes);
         pass.run().map_err(PipelineError::TypeError)?;
         if self.llvm {
-            let ir = Ir(llvm::Ir::new(&mut ast.nodes, symbols, accesses)
+            let ir = Ir(llvm::Ir::build(&mut ast.nodes, symbols, accesses)
                 .map_err(PipelineError::IrError)?
                 .to_string());
             ir.compile(&filename, writer)

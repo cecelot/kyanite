@@ -91,8 +91,7 @@ pub struct Ir<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(
+    pub fn build(
         program: &mut Vec<Decl>,
         symbols: SymbolTable,
         accesses: AccessMap,
