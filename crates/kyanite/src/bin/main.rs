@@ -1,5 +1,5 @@
 use colored::Colorize;
-use kyac::{Amd64, Backend, Output, Source};
+use kyac::{Amd64, Backend, Output, PipelineError, Source};
 use kyanite::{asm, installed, llvm, Commands};
 use std::io::Write;
 
@@ -17,25 +17,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
     match cli.command {
         Commands::Run { path } => {
-            let source = Source::new(path).unwrap_or_else(|e| {
-                writeln!(&mut stdout, "{}: {}", "error".bold().red(), e).unwrap();
-                std::process::exit(1);
-            });
-            let output = kyac::compile(&source, &backend).unwrap_or_else(|e| {
-                writeln!(&mut stdout, "{}: {}", "error".bold().red(), e).unwrap();
-                std::process::exit(1);
-            });
+            let source = Source::new(path).unwrap_or_else(exit);
+            let output = kyac::compile(&source, &backend).unwrap_or_else(exit);
             let filename = kyanite::filename(&source);
             let exe = match &output {
-                Output::Llvm(ir) => llvm::compile(ir, &filename, &mut stdout).unwrap_or_else(|e| {
-                    writeln!(&mut stdout, "{}: {}", "error".bold().red(), e).unwrap();
-                    std::process::exit(1);
-                }),
-                Output::Asm(asm) => asm::compile::<Amd64>(asm, &filename, &mut stdout)
-                    .unwrap_or_else(|e| {
-                        writeln!(&mut stdout, "{}: {}", "error".bold().red(), e).unwrap();
-                        std::process::exit(1);
-                    }),
+                Output::Llvm(ir) => llvm::compile(ir, &filename, &mut stdout).unwrap_or_else(exit),
+                Output::Asm(asm) => {
+                    asm::compile::<Amd64>(asm, &filename, &mut stdout).unwrap_or_else(exit)
+                }
             };
             writeln!(&mut stdout, "{} `./{}`", "Running".bold().green(), exe).unwrap();
             if let Output::Llvm(_) = output {
@@ -60,4 +49,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn exit<R>(e: PipelineError) -> R {
+    let mut stdout = std::io::stdout();
+    writeln!(stdout, "{}: {}", "error".bold().red(), e).unwrap();
+    std::process::exit(1);
 }
