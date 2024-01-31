@@ -12,6 +12,7 @@ use std::collections::HashMap;
 pub struct Amd64 {
     variables: HashMap<String, i64>,
     formals: Vec<Formal>,
+    label: String,
     offset: i64,
 }
 
@@ -35,9 +36,14 @@ impl Frame for Amd64 {
                 .enumerate()
                 .map(|(i, param)| Formal::new(registers.argument[i], param.name.to_string()))
                 .collect(),
+            label: func.name.to_string(),
             variables,
             offset,
         }
+    }
+
+    fn label(&self) -> &String {
+        &self.label
     }
 
     fn get_offset(&self, ident: &str) -> i64 {

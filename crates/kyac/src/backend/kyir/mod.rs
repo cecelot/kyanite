@@ -48,10 +48,11 @@ pub struct AsmInstr {
 
 #[derive(Debug)]
 pub struct Codegen<F: Frame> {
-    pub(crate) asm: Vec<AsmInstr>,
+    asm: Vec<AsmInstr>,
     functions: HashMap<usize, F>,
+    stack: Vec<usize>,
     idents: HashMap<String, usize>,
-    call: bool,
+    call: HashMap<usize, bool>,
 }
 
 impl<F: Frame> Codegen<F> {
@@ -68,7 +69,8 @@ impl<F: Frame> Codegen<F> {
                 })
                 .collect(),
             asm: Vec::new(),
-            call: false,
+            call: HashMap::new(),
+            stack: vec![],
             functions,
         };
         codegen.compile(ir);
@@ -146,34 +148,33 @@ impl<F: Frame> Codegen<F> {
         self.asm.append(&mut instrs);
     }
 
-    // If we call another function, we need to avoid writing into the "red zone".
+    // If any function calls another function, we need to avoid writing into the "red zone".
     // more info: https://stackoverflow.com/a/63869171
     fn skip_red_zone(&mut self) {
-        if self.call {
-            // Find the main function and insert a `subq $16, %rsp` after the prologue.
-            let main = self.asm.iter().position(|instr| {
-                matches!(
-                    &instr.inner,
-                    Instr::Oper {
-                        opcode: Opcode::Label(label),
-                        ..
-                    } if label == "main"
-                )
-            });
-            if let Some(main) = main {
-                let fun = self
-                    .functions
-                    .get(&self.idents[&String::from("main")])
-                    .unwrap();
-                self.asm.insert(
-                    main + fun.prologue().len() + 1,
-                    AsmInstr::new(Instr::oper(
-                        Opcode::Sub,
-                        F::registers().stack.into(),
-                        "$16".into(),
-                        None,
-                    )),
-                );
+        for (id, function) in &self.functions {
+            if self.call.contains_key(id) {
+                // Find the function and insert a `subq $16, %rsp` after the prologue.
+                let start = self.asm.iter().position(|instr| {
+                    matches!(
+                        &instr.inner,
+                        Instr::Oper {
+                            opcode: Opcode::Label(label),
+                            ..
+                        } if label == function.label()
+                    )
+                });
+                let fun = self.functions.get(&self.idents[function.label()]).unwrap();
+                if let Some(start) = start {
+                    self.asm.insert(
+                        start + fun.prologue().len() + 1,
+                        AsmInstr::new(Instr::oper(
+                            Opcode::Sub,
+                            F::registers().stack.into(),
+                            "$16".into(),
+                            None,
+                        )),
+                    );
+                }
             }
         }
     }
@@ -189,6 +190,9 @@ impl<F: Frame> Codegen<F> {
                 self.expr(*e, false);
             }
             Stmt::Jump(label) => {
+                if label.ends_with("epilogue") {
+                    self.stack.pop();
+                }
                 self.emit(Instr::Oper {
                     opcode: Opcode::Jump,
                     dst: String::new(),
@@ -253,6 +257,7 @@ impl<F: Frame> Codegen<F> {
                     jump: None,
                 });
                 if let Some(id) = id {
+                    self.stack.push(id);
                     let function = self.functions.get(&id).unwrap();
                     for instr in function.prologue() {
                         self.emit(instr);
@@ -337,7 +342,9 @@ impl<F: Frame> Codegen<F> {
                 name
             }
             Expr::Call { name, args } => {
-                self.call = true;
+                if let Some(&id) = self.stack.last() {
+                    self.call.insert(id, true);
+                }
                 let args: Vec<_> = args
                     .into_iter()
                     .map(|arg| self.expr(arg, true))

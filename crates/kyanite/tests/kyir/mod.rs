@@ -47,3 +47,17 @@ fn nested_condition() -> Result<(), Box<dyn std::error::Error>> {
     );
     Ok(())
 }
+
+#[test]
+fn nested_loop() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nested-loop.kya")?;
+    assert_eq!(res.output, "5\n6\n7\n8\n9\n");
+    Ok(())
+}
+
+#[test]
+fn called_nested_loop() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/called-nested-loop.kya")?;
+    assert_eq!(res.output, "5\n6\n7\n8\n9\n");
+    Ok(())
+}

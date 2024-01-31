@@ -15,6 +15,7 @@ pub trait Frame {
     fn get_offset(&self, ident: &str) -> i64;
     fn offset(&self) -> i64;
     fn prologue(&self) -> Vec<Instr>;
+    fn label(&self) -> &String;
     fn epilogue(&self) -> Vec<Instr>;
     fn header() -> String;
     fn registers() -> RegisterMap;
