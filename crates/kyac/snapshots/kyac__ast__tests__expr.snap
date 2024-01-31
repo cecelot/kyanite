@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -46,16 +46,18 @@ Ast {
                                                     left: Binary(
                                                         Binary {
                                                             left: Float(
-                                                                5.0,
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "5.",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 2,
-                                                                        column: 13,
-                                                                        length: 2,
+                                                                Literal {
+                                                                    value: 5.0,
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "5.",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 2,
+                                                                            column: 13,
+                                                                            length: 2,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),
@@ -69,16 +71,18 @@ Ast {
                                                                 },
                                                             },
                                                             right: Float(
-                                                                100.0,
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "100.",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 2,
-                                                                        column: 18,
-                                                                        length: 4,
+                                                                Literal {
+                                                                    value: 100.0,
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "100.",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 2,
+                                                                            column: 18,
+                                                                            length: 4,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),
@@ -94,16 +98,18 @@ Ast {
                                                         },
                                                     },
                                                     right: Float(
-                                                        15.0,
-                                                        Token {
-                                                            kind: Literal,
-                                                            lexeme: Some(
-                                                                "15.",
-                                                            ),
-                                                            span: Span {
-                                                                line: 2,
-                                                                column: 25,
-                                                                length: 3,
+                                                        Literal {
+                                                            value: 15.0,
+                                                            token: Token {
+                                                                kind: Literal,
+                                                                lexeme: Some(
+                                                                    "15.",
+                                                                ),
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 25,
+                                                                    length: 3,
+                                                                },
                                                             },
                                                         },
                                                     ),
@@ -121,16 +127,18 @@ Ast {
                                             right: Binary(
                                                 Binary {
                                                     left: Float(
-                                                        7.0,
-                                                        Token {
-                                                            kind: Literal,
-                                                            lexeme: Some(
-                                                                "7.",
-                                                            ),
-                                                            span: Span {
-                                                                line: 2,
-                                                                column: 31,
-                                                                length: 2,
+                                                        Literal {
+                                                            value: 7.0,
+                                                            token: Token {
+                                                                kind: Literal,
+                                                                lexeme: Some(
+                                                                    "7.",
+                                                                ),
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 31,
+                                                                    length: 2,
+                                                                },
                                                             },
                                                         },
                                                     ),
@@ -144,16 +152,18 @@ Ast {
                                                         },
                                                     },
                                                     right: Float(
-                                                        8.0,
-                                                        Token {
-                                                            kind: Literal,
-                                                            lexeme: Some(
-                                                                "8.",
-                                                            ),
-                                                            span: Span {
-                                                                line: 2,
-                                                                column: 36,
-                                                                length: 2,
+                                                        Literal {
+                                                            value: 8.0,
+                                                            token: Token {
+                                                                kind: Literal,
+                                                                lexeme: Some(
+                                                                    "8.",
+                                                                ),
+                                                                span: Span {
+                                                                    line: 2,
+                                                                    column: 36,
+                                                                    length: 2,
+                                                                },
                                                             },
                                                         },
                                                     ),
@@ -214,16 +224,18 @@ Ast {
                                                             left: Binary(
                                                                 Binary {
                                                                     left: Int(
-                                                                        5,
-                                                                        Token {
-                                                                            kind: Literal,
-                                                                            lexeme: Some(
-                                                                                "5",
-                                                                            ),
-                                                                            span: Span {
-                                                                                line: 3,
-                                                                                column: 13,
-                                                                                length: 1,
+                                                                        Literal {
+                                                                            value: 5,
+                                                                            token: Token {
+                                                                                kind: Literal,
+                                                                                lexeme: Some(
+                                                                                    "5",
+                                                                                ),
+                                                                                span: Span {
+                                                                                    line: 3,
+                                                                                    column: 13,
+                                                                                    length: 1,
+                                                                                },
                                                                             },
                                                                         },
                                                                     ),
@@ -237,16 +249,18 @@ Ast {
                                                                         },
                                                                     },
                                                                     right: Int(
-                                                                        100,
-                                                                        Token {
-                                                                            kind: Literal,
-                                                                            lexeme: Some(
-                                                                                "100",
-                                                                            ),
-                                                                            span: Span {
-                                                                                line: 3,
-                                                                                column: 17,
-                                                                                length: 3,
+                                                                        Literal {
+                                                                            value: 100,
+                                                                            token: Token {
+                                                                                kind: Literal,
+                                                                                lexeme: Some(
+                                                                                    "100",
+                                                                                ),
+                                                                                span: Span {
+                                                                                    line: 3,
+                                                                                    column: 17,
+                                                                                    length: 3,
+                                                                                },
                                                                             },
                                                                         },
                                                                     ),
@@ -262,16 +276,18 @@ Ast {
                                                                 },
                                                             },
                                                             right: Int(
-                                                                15,
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "15",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 3,
-                                                                        column: 23,
-                                                                        length: 2,
+                                                                Literal {
+                                                                    value: 15,
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "15",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 3,
+                                                                            column: 23,
+                                                                            length: 2,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),
@@ -289,16 +305,18 @@ Ast {
                                                     right: Binary(
                                                         Binary {
                                                             left: Int(
-                                                                7,
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "7",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 3,
-                                                                        column: 28,
-                                                                        length: 1,
+                                                                Literal {
+                                                                    value: 7,
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "7",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 3,
+                                                                            column: 28,
+                                                                            length: 1,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),
@@ -312,16 +330,18 @@ Ast {
                                                                 },
                                                             },
                                                             right: Int(
-                                                                8,
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "8",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 3,
-                                                                        column: 32,
-                                                                        length: 1,
+                                                                Literal {
+                                                                    value: 8,
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "8",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 3,
+                                                                            column: 32,
+                                                                            length: 1,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),
@@ -339,16 +359,18 @@ Ast {
                                                 },
                                             },
                                             right: Int(
-                                                7,
-                                                Token {
-                                                    kind: Literal,
-                                                    lexeme: Some(
-                                                        "7",
-                                                    ),
-                                                    span: Span {
-                                                        line: 3,
-                                                        column: 37,
-                                                        length: 1,
+                                                Literal {
+                                                    value: 7,
+                                                    token: Token {
+                                                        kind: Literal,
+                                                        lexeme: Some(
+                                                            "7",
+                                                        ),
+                                                        span: Span {
+                                                            line: 3,
+                                                            column: 37,
+                                                            length: 1,
+                                                        },
                                                     },
                                                 },
                                             ),

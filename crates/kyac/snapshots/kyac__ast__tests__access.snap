@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -91,16 +91,18 @@ Ast {
                                                         ),
                                                         args: [
                                                             Str(
-                                                                "\"examples/access.kya\"",
-                                                                Token {
-                                                                    kind: Literal,
-                                                                    lexeme: Some(
-                                                                        "\"examples/access.kya\"",
-                                                                    ),
-                                                                    span: Span {
-                                                                        line: 2,
-                                                                        column: 29,
-                                                                        length: 21,
+                                                                Literal {
+                                                                    value: "\"examples/access.kya\"",
+                                                                    token: Token {
+                                                                        kind: Literal,
+                                                                        lexeme: Some(
+                                                                            "\"examples/access.kya\"",
+                                                                        ),
+                                                                        span: Span {
+                                                                            line: 2,
+                                                                            column: 29,
+                                                                            length: 21,
+                                                                        },
                                                                     },
                                                                 },
                                                             ),

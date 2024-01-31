@@ -26,6 +26,7 @@
         buildInputs = with pkgs; [
           rust-stable
           cargo-audit
+          cargo-insta
           llvmPackages_15.libllvm
           # LLVM dependencies
           ncurses # -ltinfo

@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -29,16 +29,18 @@ Ast {
                     },
                 },
                 expr: Float(
-                    5.0,
-                    Token {
-                        kind: Literal,
-                        lexeme: Some(
-                            "5.",
-                        ),
-                        span: Span {
-                            line: 1,
-                            column: 20,
-                            length: 2,
+                    Literal {
+                        value: 5.0,
+                        token: Token {
+                            kind: Literal,
+                            lexeme: Some(
+                                "5.",
+                            ),
+                            span: Span {
+                                line: 1,
+                                column: 20,
+                                length: 2,
+                            },
                         },
                     },
                 ),
@@ -146,16 +148,18 @@ Ast {
                                 },
                             },
                             expr: Float(
-                                8.0,
-                                Token {
-                                    kind: Literal,
-                                    lexeme: Some(
-                                        "8.",
-                                    ),
-                                    span: Span {
-                                        line: 4,
-                                        column: 22,
-                                        length: 2,
+                                Literal {
+                                    value: 8.0,
+                                    token: Token {
+                                        kind: Literal,
+                                        lexeme: Some(
+                                            "8.",
+                                        ),
+                                        span: Span {
+                                            line: 4,
+                                            column: 22,
+                                            length: 2,
+                                        },
                                     },
                                 },
                             ),
@@ -291,16 +295,18 @@ Ast {
                                 },
                             },
                             expr: Float(
-                                5.0,
-                                Token {
-                                    kind: Literal,
-                                    lexeme: Some(
-                                        "5.",
-                                    ),
-                                    span: Span {
-                                        line: 9,
-                                        column: 20,
-                                        length: 2,
+                                Literal {
+                                    value: 5.0,
+                                    token: Token {
+                                        kind: Literal,
+                                        lexeme: Some(
+                                            "5.",
+                                        ),
+                                        span: Span {
+                                            line: 9,
+                                            column: 20,
+                                            length: 2,
+                                        },
                                     },
                                 },
                             ),
@@ -331,16 +337,18 @@ Ast {
                                 },
                             },
                             expr: Int(
-                                7,
-                                Token {
-                                    kind: Literal,
-                                    lexeme: Some(
-                                        "7",
-                                    ),
-                                    span: Span {
-                                        line: 10,
-                                        column: 18,
-                                        length: 1,
+                                Literal {
+                                    value: 7,
+                                    token: Token {
+                                        kind: Literal,
+                                        lexeme: Some(
+                                            "7",
+                                        ),
+                                        span: Span {
+                                            line: 10,
+                                            column: 18,
+                                            length: 1,
+                                        },
                                     },
                                 },
                             ),

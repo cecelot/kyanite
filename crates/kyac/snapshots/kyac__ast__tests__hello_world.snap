@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -40,16 +40,18 @@ Ast {
                                 ),
                                 args: [
                                     Str(
-                                        "\"Hello, world!\"",
-                                        Token {
-                                            kind: Literal,
-                                            lexeme: Some(
-                                                "\"Hello, world!\"",
-                                            ),
-                                            span: Span {
-                                                line: 2,
-                                                column: 12,
-                                                length: 15,
+                                        Literal {
+                                            value: "\"Hello, world!\"",
+                                            token: Token {
+                                                kind: Literal,
+                                                lexeme: Some(
+                                                    "\"Hello, world!\"",
+                                                ),
+                                                span: Span {
+                                                    line: 2,
+                                                    column: 12,
+                                                    length: 15,
+                                                },
                                             },
                                         },
                                     ),

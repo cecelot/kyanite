@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -121,16 +121,18 @@ Ast {
                     Return(
                         Return {
                             expr: Float(
-                                42.0,
-                                Token {
-                                    kind: Literal,
-                                    lexeme: Some(
-                                        "42.",
-                                    ),
-                                    span: Span {
-                                        line: 6,
-                                        column: 11,
-                                        length: 3,
+                                Literal {
+                                    value: 42.0,
+                                    token: Token {
+                                        kind: Literal,
+                                        lexeme: Some(
+                                            "42.",
+                                        ),
+                                        span: Span {
+                                            line: 6,
+                                            column: 11,
+                                            length: 3,
+                                        },
                                     },
                                 },
                             ),
@@ -186,16 +188,18 @@ Ast {
                                 ),
                                 args: [
                                     Str(
-                                        "\"Hello world!\"",
-                                        Token {
-                                            kind: Literal,
-                                            lexeme: Some(
-                                                "\"Hello world!\"",
-                                            ),
-                                            span: Span {
-                                                line: 10,
-                                                column: 12,
-                                                length: 14,
+                                        Literal {
+                                            value: "\"Hello world!\"",
+                                            token: Token {
+                                                kind: Literal,
+                                                lexeme: Some(
+                                                    "\"Hello world!\"",
+                                                ),
+                                                span: Span {
+                                                    line: 10,
+                                                    column: 12,
+                                                    length: 14,
+                                                },
                                             },
                                         },
                                     ),
@@ -326,16 +330,18 @@ Ast {
                                             ),
                                             args: [
                                                 Int(
-                                                    72,
-                                                    Token {
-                                                        kind: Literal,
-                                                        lexeme: Some(
-                                                            "72",
-                                                        ),
-                                                        span: Span {
-                                                            line: 15,
-                                                            column: 16,
-                                                            length: 2,
+                                                    Literal {
+                                                        value: 72,
+                                                        token: Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "72",
+                                                            ),
+                                                            span: Span {
+                                                                line: 15,
+                                                                column: 16,
+                                                                length: 2,
+                                                            },
                                                         },
                                                     },
                                                 ),
@@ -511,30 +517,34 @@ Ast {
                                             ),
                                             args: [
                                                 Int(
-                                                    10,
-                                                    Token {
-                                                        kind: Literal,
-                                                        lexeme: Some(
-                                                            "10",
-                                                        ),
-                                                        span: Span {
-                                                            line: 17,
-                                                            column: 16,
-                                                            length: 2,
+                                                    Literal {
+                                                        value: 10,
+                                                        token: Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "10",
+                                                            ),
+                                                            span: Span {
+                                                                line: 17,
+                                                                column: 16,
+                                                                length: 2,
+                                                            },
                                                         },
                                                     },
                                                 ),
                                                 Int(
-                                                    300,
-                                                    Token {
-                                                        kind: Literal,
-                                                        lexeme: Some(
-                                                            "300",
-                                                        ),
-                                                        span: Span {
-                                                            line: 17,
-                                                            column: 20,
-                                                            length: 3,
+                                                    Literal {
+                                                        value: 300,
+                                                        token: Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "300",
+                                                            ),
+                                                            span: Span {
+                                                                line: 17,
+                                                                column: 20,
+                                                                length: 3,
+                                                            },
                                                         },
                                                     },
                                                 ),
@@ -635,30 +645,34 @@ Ast {
                                             ),
                                             args: [
                                                 Float(
-                                                    10.0,
-                                                    Token {
-                                                        kind: Literal,
-                                                        lexeme: Some(
-                                                            "10.",
-                                                        ),
-                                                        span: Span {
-                                                            line: 18,
-                                                            column: 16,
-                                                            length: 3,
+                                                    Literal {
+                                                        value: 10.0,
+                                                        token: Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "10.",
+                                                            ),
+                                                            span: Span {
+                                                                line: 18,
+                                                                column: 16,
+                                                                length: 3,
+                                                            },
                                                         },
                                                     },
                                                 ),
                                                 Float(
-                                                    300.0,
-                                                    Token {
-                                                        kind: Literal,
-                                                        lexeme: Some(
-                                                            "300.",
-                                                        ),
-                                                        span: Span {
-                                                            line: 18,
-                                                            column: 21,
-                                                            length: 4,
+                                                    Literal {
+                                                        value: 300.0,
+                                                        token: Token {
+                                                            kind: Literal,
+                                                            lexeme: Some(
+                                                                "300.",
+                                                            ),
+                                                            span: Span {
+                                                                line: 18,
+                                                                column: 21,
+                                                                length: 4,
+                                                            },
                                                         },
                                                     },
                                                 ),
