@@ -1,0 +1,10 @@
+fun main() {
+    let x: int = 1;
+    while x < 11 {
+        println_int(x);
+        if x > 5 {
+            println_int(x * 2);
+        }
+        x = x + 1;
+    }
+}

@@ -40,14 +40,13 @@ fn conditionals(traces: &mut [Vec<BasicBlock>]) {
             for (j, block) in trace.iter_mut().enumerate() {
                 let next = labels.get(i).and_then(|labels| labels.get(j + 1));
                 if let Some(Stmt::CJump { f, .. }) = block.body.last_mut() {
-                    if let Some(next) = next {
-                        if f != next {
-                            let prev = f.clone();
-                            let label = Label::next();
-                            *f = label.clone();
-                            insertions
-                                .push(((i, j), BasicBlock::new(vec![Stmt::Jump(prev)], label)));
-                        }
+                    // If the false branch is not the next block, insert a block that jumps to it. Alternatively, if there is
+                    // no next block in this trace, insert a block that jumps to the false branch.
+                    if next.is_some_and(|next| next != f) || next.is_none() {
+                        let prev = f.clone();
+                        let label = Label::next();
+                        *f = label.clone();
+                        insertions.push(((i, j), BasicBlock::new(vec![Stmt::Jump(prev)], label)));
                     }
                 }
             }

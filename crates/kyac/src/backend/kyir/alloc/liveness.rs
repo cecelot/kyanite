@@ -4,13 +4,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 #[derive(Debug, Default)]
 pub struct Graph<'a> {
     adj: HashMap<usize, Vec<usize>>,
-    details: HashMap<usize, &'a AsmInstr>,
+    instrs: &'a [AsmInstr],
 }
 
 impl<'a> Graph<'a> {
     pub fn new(instrs: &'a [AsmInstr]) -> Self {
         Self {
-            details: instrs.iter().map(|x| (x.id, x)).collect(),
+            instrs,
             ..Self::default()
         }
     }
@@ -20,23 +20,24 @@ impl<'a> Graph<'a> {
     }
 
     pub fn temporaries(&self) -> HashSet<String> {
-        self.details
+        self.instrs
             .iter()
-            .flat_map(|(_, v)| v.uses().into_iter().chain(v.defines()))
+            .flat_map(|v| v.uses().into_iter().chain(v.defines()))
             .filter(|x| x.starts_with('T'))
             .collect()
     }
 
     fn uses(&self, temp: &String) -> Vec<usize> {
-        self.details
+        self.instrs
             .iter()
+            .enumerate()
             .filter(|(_, v)| v.uses().contains(temp))
-            .map(|(&k, _)| k)
+            .map(|(k, _)| k)
             .collect()
     }
 
     fn defines(&self, cur: usize, temp: &String) -> bool {
-        let cur = self.details.get(&cur).unwrap();
+        let cur = self.instrs.get(cur).unwrap();
         cur.defines().contains(temp)
     }
 
