@@ -2,16 +2,15 @@
 name = "kyac"
 version = "0.1.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 colored = "2.0.4"
-subprocess = { path = "../subprocess" }
 inkwell = { version = "0.2.0", features = ["llvm15-0"] }
-insta = { version  = "1.32.0" }
+insta = { version = "1.32.0" }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_yaml = "0.9.25"
+subprocess = { path = "../subprocess" }
 thiserror = "1.0.48"
 
 [lib]

@@ -6,7 +6,7 @@ use crate::backend::kyir::{
         color::Color,
         liveness::{Graph, LiveRanges},
     },
-    arch::{amd64::Amd64, Frame},
+    arch::Frame,
     AsmInstr,
 };
 use std::collections::HashMap;
@@ -15,6 +15,6 @@ pub fn registers<F: Frame>(asm: &Vec<AsmInstr>) -> HashMap<String, String> {
     let graph = Graph::from(asm);
     let ranges = LiveRanges::from(graph);
     let ig = ranges.interference_graphs(asm.len());
-    let color: Color<Amd64> = Color::new(ig);
+    let color: Color<F> = Color::new(ig);
     color.color(&ranges)
 }

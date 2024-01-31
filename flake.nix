@@ -25,8 +25,10 @@
       devShells.default = pkgs.mkShell {
         buildInputs = with pkgs; [
           rust-stable
+          # Cargo subcommands
           cargo-audit
           cargo-insta
+          cargo-sort
           llvmPackages_15.libllvm
           # LLVM dependencies
           ncurses # -ltinfo

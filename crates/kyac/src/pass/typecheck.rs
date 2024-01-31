@@ -80,7 +80,7 @@ pub struct TypeCheckPass<'a> {
     program: &'a Vec<Decl>,
     symbols: &'a SymbolTable,
     accesses: &'a mut AccessMap,
-    source: Source,
+    source: &'a Source,
     errors: Vec<PreciseError<'a>>,
     scopes: Vec<SymbolTable>,
     function: Option<Token>,
@@ -134,7 +134,7 @@ impl<'a> TypeCheckPass<'a> {
     pub fn new(
         symbols: &'a SymbolTable,
         accesses: &'a mut AccessMap,
-        source: Source,
+        source: &'a Source,
         program: &'a Vec<Decl>,
     ) -> Self {
         Self {
@@ -182,7 +182,7 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
-        let error = PreciseError::new(&self.source, at, heading, text);
+        let error = PreciseError::new(self.source, at, heading, text);
         println!("{error}");
         self.errors.push(error);
     }
@@ -497,7 +497,7 @@ macro_rules! assert_typecheck {
                     let ast = crate::ast::Ast::try_from(&source)?;
                     let symbols = SymbolTable::from(&ast.nodes);
                     let mut accesses = HashMap::new();
-                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, &source, &ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_debug_snapshot!(pass.errors);

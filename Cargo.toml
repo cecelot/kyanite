@@ -2,8 +2,8 @@
 
 resolver = "2"
 members = [
-    "crates/kyanite",
+    "crates/builtins",
     "crates/kyac",
-    "crates/builtins", 
+    "crates/kyanite", 
     "crates/subprocess"
 ]
