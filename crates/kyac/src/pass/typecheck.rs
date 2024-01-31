@@ -4,8 +4,8 @@ use crate::{
         span::Combined,
         Decl, Expr, Stmt, Type,
     },
+    error::PreciseError,
     pass::{Symbol, SymbolTable},
-    reporting::error::PreciseError,
     token::{Kind, Span, Token},
     Source,
 };

@@ -2,7 +2,7 @@ mod kind;
 
 pub use kind::Kind;
 
-use crate::{reporting::error::PreciseError, Source};
+use crate::{error::PreciseError, Source};
 use std::{
     collections::VecDeque,
     fmt,

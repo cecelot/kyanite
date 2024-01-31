@@ -1,7 +1,7 @@
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::{node::*, Decl, Expr, Stmt},
-    reporting::error::PreciseError,
+    error::PreciseError,
     token::{Kind, Span, Token},
     Source,
 };

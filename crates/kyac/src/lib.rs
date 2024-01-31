@@ -1,9 +1,9 @@
 mod ast;
 mod backend;
+mod error;
 mod macros;
 mod parse;
 mod pass;
-mod reporting;
 mod token;
 
 pub use crate::backend::kyir::arch::{amd64::Amd64, Frame};
