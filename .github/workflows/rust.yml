@@ -3,16 +3,14 @@ on:
   pull_request:
   push:
     paths:
-      - "kyanite-core/**"
-      - "kyanite-cli/**"
-      - "kyanite-builtins/**"
+      - "crates/**"
 jobs:
   tests:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v22
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    - run: nix develop -c cargo build
-    - run: nix develop -c cargo test
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v22
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: nix develop -c cargo build
+      - run: nix develop -c cargo test
