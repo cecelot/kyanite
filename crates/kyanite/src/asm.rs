@@ -43,7 +43,7 @@ pub fn compile<F: Frame>(
                 exe,
                 "-L",
                 &include_dir(),
-                "-lbuiltins",
+                "-lkyanite_builtins",
             ],
         ),
         &mut writer,

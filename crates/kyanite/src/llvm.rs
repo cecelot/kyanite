@@ -19,7 +19,7 @@ pub fn compile(ir: &str, filename: &str, mut writer: impl Write) -> Result<Strin
         "Finished",
         subprocess::exec(
             "clang",
-            &[obj, "-o", exe, "-L", &include_dir(), "-lbuiltins"],
+            &[obj, "-o", exe, "-L", &include_dir(), "-lkyanite_builtins"],
         ),
         &mut writer,
     )

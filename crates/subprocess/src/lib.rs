@@ -1,6 +1,7 @@
 use colored::Colorize;
 use std::io::Write;
 
+#[derive(Debug)]
 pub struct ProcessResult {
     pub command: String,
     pub code: i32,

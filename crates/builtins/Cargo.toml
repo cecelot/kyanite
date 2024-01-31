@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 
 [lib]
-name = "builtins"
+name = "kyanite_builtins"
 crate-type = ["cdylib"]
 
 [lints.clippy]

@@ -7,9 +7,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.4.2", features = ["derive"] }
 colored = "2.0.4"
-insta = { version = "1.32.0", features = ["yaml"] }
 kyac = { path = "../kyac" }
-serde = { version = "1.0.188", features = ["derive"] }
 subprocess = { path = "../subprocess" }
 which = "4.4.2"
 
