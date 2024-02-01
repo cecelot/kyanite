@@ -32,6 +32,7 @@ impl<'a, F: Frame> Translator<'a, F> {
         }
     }
 
+    #[must_use]
     pub fn translate(&mut self, ast: &[AstDecl]) -> Vec<Stmt> {
         ast.iter().map(|decl| decl.translate(self)).collect()
     }

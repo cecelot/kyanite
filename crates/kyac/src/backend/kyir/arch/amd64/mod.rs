@@ -1,8 +1,10 @@
+mod red_zone;
+
 use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{RegisterMap, ReturnRegisters},
-        BinOp, Expr, Frame, Instr, Opcode, Stmt,
+        BinOp, Codegen, Expr, Frame, Instr, Opcode, Stmt,
     },
     pass::SymbolTable,
 };
@@ -167,6 +169,10 @@ impl Frame for Amd64 {
                 jump: None,
             }, // retq
         ]
+    }
+
+    fn passes(codegen: &mut Codegen<Self>) {
+        red_zone::run(codegen);
     }
 
     fn header() -> String {

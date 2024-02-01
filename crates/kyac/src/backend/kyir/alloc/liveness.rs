@@ -162,7 +162,6 @@ fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
 trait FlowGraphMeta {
     fn defines(&self) -> Vec<String>;
     fn uses(&self) -> Vec<String>;
-    fn mov(&self) -> bool;
 }
 
 impl FlowGraphMeta for AsmInstr {
@@ -184,18 +183,5 @@ impl FlowGraphMeta for AsmInstr {
             Instr::Oper { src, .. } => vec![src.clone()],
             Instr::Call { .. } => vec![],
         }
-    }
-
-    fn mov(&self) -> bool {
-        matches!(
-            self,
-            AsmInstr {
-                inner: Instr::Oper {
-                    opcode: Opcode::Move,
-                    ..
-                },
-                ..
-            }
-        )
     }
 }
