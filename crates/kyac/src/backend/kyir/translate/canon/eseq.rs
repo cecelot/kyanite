@@ -1,4 +1,4 @@
-use super::{Expr, Stmt};
+use crate::backend::kyir::ir::{Expr, Stmt};
 
 pub trait ESeqs<'a> {
     fn eseqs(&'a self, list: &mut Vec<&'a Expr>);
@@ -8,21 +8,21 @@ pub trait ESeqs<'a> {
 impl<'a> ESeqs<'a> for Expr {
     fn replace(&'a mut self, search: usize, temp: &Expr) {
         match self {
-            Expr::Binary { left, right, .. } => {
-                left.replace(search, temp);
-                right.replace(search, temp);
+            Expr::Binary(bin) => {
+                bin.left.replace(search, temp);
+                bin.right.replace(search, temp);
             }
             Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) => {}
-            Expr::ESeq { id, .. } => {
-                if search == *id {
+            Expr::ESeq(eseq) => {
+                if search == eseq.id {
                     *self = temp.clone();
                 }
             }
-            Expr::Mem(expr) => {
-                expr.replace(search, temp);
+            Expr::Mem(mem) => {
+                mem.expr.replace(search, temp);
             }
-            Expr::Call { args, .. } => {
-                for arg in args {
+            Expr::Call(call) => {
+                for arg in &mut call.args {
                     arg.replace(search, temp);
                 }
             }
@@ -31,20 +31,20 @@ impl<'a> ESeqs<'a> for Expr {
 
     fn eseqs(&'a self, list: &mut Vec<&'a Expr>) {
         match self {
-            Expr::Binary { left, right, .. } => {
-                left.eseqs(list);
-                right.eseqs(list);
+            Expr::Binary(bin) => {
+                bin.left.eseqs(list);
+                bin.right.eseqs(list);
             }
-            Expr::ESeq { stmt, expr, .. } => {
+            Expr::ESeq(eseq) => {
                 list.push(self);
-                stmt.eseqs(list);
-                expr.eseqs(list);
+                eseq.stmt.eseqs(list);
+                eseq.expr.eseqs(list);
             }
-            Expr::Mem(expr) => {
-                expr.eseqs(list);
+            Expr::Mem(mem) => {
+                mem.expr.eseqs(list);
             }
-            Expr::Call { args, .. } => {
-                for arg in args {
+            Expr::Call(call) => {
+                for arg in &call.args {
                     arg.eseqs(list);
                 }
             }
@@ -59,19 +59,19 @@ impl<'a> ESeqs<'a> for Stmt {
             Stmt::Expr(e) => {
                 e.replace(search, temp);
             }
-            Stmt::Seq { left, right } => {
-                left.replace(search, temp);
-                if let Some(right) = right {
+            Stmt::Seq(seq) => {
+                seq.left.replace(search, temp);
+                if let Some(right) = &mut seq.right {
                     right.replace(search, temp);
                 }
             }
             Stmt::Jump(_) | Stmt::Label(_) | Stmt::Noop => {}
-            Stmt::CJump { condition, .. } => {
-                condition.replace(search, temp);
+            Stmt::CJump(cjmp) => {
+                cjmp.condition.replace(search, temp);
             }
-            Stmt::Move { target, expr } => {
-                expr.replace(search, temp);
-                target.replace(search, temp);
+            Stmt::Move(m) => {
+                m.expr.replace(search, temp);
+                m.target.replace(search, temp);
             }
         }
     }
@@ -81,19 +81,19 @@ impl<'a> ESeqs<'a> for Stmt {
             Stmt::Expr(e) => {
                 e.eseqs(list);
             }
-            Stmt::Seq { left, right } => {
-                left.eseqs(list);
-                if let Some(right) = right {
+            Stmt::Seq(seq) => {
+                seq.left.eseqs(list);
+                if let Some(right) = &seq.right {
                     right.eseqs(list);
                 }
             }
             Stmt::Jump(_) | Stmt::Label(_) | Stmt::Noop => {}
-            Stmt::CJump { condition, .. } => {
-                condition.eseqs(list);
+            Stmt::CJump(cjmp) => {
+                cjmp.condition.eseqs(list);
             }
-            Stmt::Move { target, expr } => {
-                expr.eseqs(list);
-                target.eseqs(list);
+            Stmt::Move(m) => {
+                m.expr.eseqs(list);
+                m.target.eseqs(list);
             }
         }
     }

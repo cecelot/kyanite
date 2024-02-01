@@ -1,6 +1,6 @@
 use crate::backend::kyir::{
     translate::canon::blocks::BasicBlock,
-    translate::{Label, Stmt},
+    translate::{Jump, Label, Stmt},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -11,11 +11,11 @@ pub fn new(blocks: VecDeque<BasicBlock>) -> Vec<Stmt> {
     let mut blocks = self::blocks(traces);
     let main = blocks.pop().unwrap();
     let jmp = main.body.last().unwrap();
-    if let Stmt::CJump { ref f, .. } = jmp {
+    if let Stmt::CJump(jmp) = jmp {
         let idx = blocks
             .iter()
             .map(|block| block.label.clone())
-            .position(|label| label == *f)
+            .position(|label| label == jmp.f)
             .unwrap();
         blocks.insert(idx, main);
         let (left, right) = blocks.split_at(idx);
@@ -39,14 +39,15 @@ fn conditionals(traces: &mut [Vec<BasicBlock>]) {
         for (i, trace) in traces.iter_mut().enumerate() {
             for (j, block) in trace.iter_mut().enumerate() {
                 let next = labels.get(i).and_then(|labels| labels.get(j + 1));
-                if let Some(Stmt::CJump { f, .. }) = block.body.last_mut() {
+                if let Some(Stmt::CJump(jmp)) = block.body.last_mut() {
                     // If the false branch is not the next block, insert a block that jumps to it. Alternatively, if there is
                     // no next block in this trace, insert a block that jumps to the false branch.
-                    if next.is_some_and(|next| next != f) || next.is_none() {
-                        let prev = f.clone();
+                    if next.is_some_and(|next| *next != jmp.f) || next.is_none() {
+                        let prev = jmp.f.clone();
                         let label = Label::next();
-                        *f = label.clone();
-                        insertions.push(((i, j), BasicBlock::new(vec![Stmt::Jump(prev)], label)));
+                        jmp.f = label.clone();
+                        insertions
+                            .push(((i, j), BasicBlock::new(vec![Jump::wrapped(prev)], label)));
                     }
                 }
             }
@@ -69,7 +70,7 @@ fn unconditionals(traces: &mut [Vec<BasicBlock>]) {
                 let right = trace[j].label.clone();
                 let left = &mut trace[i];
                 if let (Some(Stmt::Jump(l)), r) = (&left.body.last(), &right) {
-                    if l == r {
+                    if l.target == *r {
                         left.body.remove(left.body.len() - 1);
                     }
                 }
@@ -95,8 +96,11 @@ fn traces(mut blocks: VecDeque<BasicBlock>) -> Vec<Vec<BasicBlock>> {
             trace.push(block.clone());
             if !successors.is_empty() {
                 let end = block.body.last().unwrap();
-                let first = if let Stmt::CJump { f, .. } = end {
-                    let next = successors.iter().find(|block| block.label == **f).unwrap();
+                let first = if let Stmt::CJump(jmp) = end {
+                    let next = successors
+                        .iter()
+                        .find(|block| block.label == jmp.f)
+                        .unwrap();
                     (**next).clone()
                 } else {
                     (**successors.remove(0)).clone()
@@ -123,6 +127,10 @@ fn blocks(traces: Vec<Vec<BasicBlock>>) -> Vec<BasicBlock> {
 fn stmts(blocks: Vec<BasicBlock>) -> Vec<Stmt> {
     blocks
         .into_iter()
-        .flat_map(|block| vec![Stmt::Label(block.label)].into_iter().chain(block.body))
+        .flat_map(|block| {
+            vec![Label::wrapped(block.label)]
+                .into_iter()
+                .chain(block.body)
+        })
         .collect()
 }

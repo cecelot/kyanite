@@ -5,15 +5,12 @@ pub use canon::canonicalize;
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::Expr as AstExpr,
-    ast::{node::*, Decl as AstDecl, Stmt as AstStmt, Type},
-    backend::kyir::{arch::Frame, Label, Temp},
+    ast::{self, Decl as AstDecl, Stmt as AstStmt, Type},
+    backend::kyir::{arch::Frame, ir::*},
     pass::{AccessMap, SymbolTable},
     token::Kind,
 };
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::HashMap;
 
 pub struct Translator<'a, F: Frame> {
     functions: HashMap<usize, F>,
@@ -91,35 +88,35 @@ impl Translate<Stmt> for AstDecl {
     }
 }
 
-impl Translate<Expr> for Literal<i64> {
+impl Translate<Expr> for ast::node::Literal<i64> {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
-        Expr::ConstInt(self.value)
+        Const::<i64>::int(self.value)
     }
 }
 
-impl Translate<Expr> for Literal<f64> {
+impl Translate<Expr> for ast::node::Literal<f64> {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
-        Expr::ConstFloat(self.value)
+        Const::<f64>::float(self.value)
     }
 }
 
-impl Translate<Expr> for Literal<bool> {
+impl Translate<Expr> for ast::node::Literal<bool> {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
-        Expr::ConstInt(self.value.into())
+        Const::<i64>::int(self.value.into())
     }
 }
 
-impl Translate<Expr> for Binary {
+impl Translate<Expr> for ast::node::Binary {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         Expr::checked_binary(
             self.op.kind.into(),
-            Box::new(self.left.translate(translator)),
+            self.left.translate(translator),
             self.right.translate(translator),
         )
     }
 }
 
-impl Translate<Expr> for Call {
+impl Translate<Expr> for ast::node::Call {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let args: Vec<_> = self
             .args
@@ -131,35 +128,35 @@ impl Translate<Expr> for Call {
                     AstExpr::Access(_) => todo!(),
                     _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
                 };
-        Expr::Call { name, args }
+        Call::wrapped(name, args)
     }
 }
 
-impl Translate<Expr> for Ident {
+impl Translate<Expr> for ast::node::Ident {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         translator.frame().get(&self.name.to_string(), None, None)
     }
 }
 
-impl Translate<Expr> for Unary {
+impl Translate<Expr> for ast::node::Unary {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         match self.op.kind {
-            Kind::Minus => Expr::Binary {
-                op: BinOp::Minus,
-                left: Box::new(Expr::ConstInt(0)),
-                right: Box::new(self.expr.translate(translator)),
-            },
-            Kind::Bang => Expr::Binary {
-                op: BinOp::Xor,
-                left: Box::new(self.expr.translate(translator)),
-                right: Box::new(Expr::ConstInt(1)),
-            },
+            Kind::Minus => Binary::wrapped(
+                BinOp::Minus,
+                Const::<i64>::int(0),
+                self.expr.translate(translator),
+            ),
+            Kind::Bang => Binary::wrapped(
+                BinOp::Xor,
+                self.expr.translate(translator),
+                Const::<i64>::int(1),
+            ),
             _ => unreachable!("not a valid unary operator"),
         }
     }
 }
 
-impl Translate<Expr> for Access {
+impl Translate<Expr> for ast::node::Access {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let temp = Temp::next();
         let frame = translator.frame();
@@ -177,7 +174,7 @@ impl Translate<Expr> for Access {
     }
 }
 
-impl Translate<Expr> for Init {
+impl Translate<Expr> for ast::node::Init {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let registers = F::registers();
         let ty = Type::from(&self.name);
@@ -193,34 +190,28 @@ impl Translate<Expr> for Init {
             .enumerate()
             .map(|(index, expr)| {
                 Stmt::checked_move(
-                    Box::new(Expr::Binary {
-                        op: BinOp::Plus,
-                        left: Box::new(Expr::Temp(registers.frame.to_string())),
-                        right: Box::new(Expr::ConstInt(
-                            end + i64::try_from(index * F::word_size()).unwrap(),
-                        )),
-                    }),
+                    Binary::wrapped(
+                        BinOp::Plus,
+                        Temp::wrapped(registers.frame.to_string()),
+                        Const::<i64>::int(end + i64::try_from(index * F::word_size()).unwrap()),
+                    ),
                     expr,
                 )
             })
             .collect();
         // Evaluate the initializers, then return start address of initialized memory for record
-        Expr::ESeq {
-            stmt: Box::new(Stmt::from(&stmts[..])),
-            expr: Box::new(Expr::ConstInt(begin)),
-            id,
-        }
+        ESeq::wrapped(Stmt::from(&stmts[..]), Const::<i64>::int(begin))
     }
 }
 
-impl Translate<Stmt> for If {
+impl Translate<Stmt> for ast::node::If {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let condition = match &self.condition {
-            AstExpr::Int(i) => Expr::Binary {
-                op: BinOp::Cmp(RelOp::Equal),
-                left: Box::new(Expr::ConstInt(i.value)),
-                right: Box::new(Expr::ConstInt(0)),
-            },
+            AstExpr::Int(i) => Binary::wrapped(
+                BinOp::Cmp(RelOp::Equal),
+                Const::<i64>::int(i.value),
+                Const::<i64>::int(0),
+            ),
             c => c.translate(translator),
         };
         let t = Label::next();
@@ -238,41 +229,35 @@ impl Translate<Stmt> for If {
             .collect();
         let is = Stmt::from(&is[..]);
         let otherwise = Stmt::from(&otherwise[..]);
-        Stmt::Seq {
-            left: Box::new(Stmt::Seq {
-                left: Box::new(Stmt::Seq {
-                    left: Box::new(Stmt::Seq {
-                        left: Box::new(Stmt::CJump {
-                            op: BinOp::Cmp(condition.relation().unwrap()),
-                            condition: Box::new(condition),
-                            t: t.clone(),
-                            f: f.clone(),
-                        }),
-                        right: Some(Box::new(Stmt::Seq {
-                            left: Box::new(Stmt::Label(t.clone())),
-                            right: Some(Box::new(is)),
-                        })),
-                    }),
-                    right: Some(Box::new(Stmt::Jump(done.clone()))),
-                }),
-                right: Some(Box::new(Stmt::Seq {
-                    left: Box::new(Stmt::Label(f)),
-                    right: Some(Box::new(otherwise)),
-                })),
-            }),
-            right: Some(Box::new(Stmt::Label(done))),
-        }
+        Seq::wrapped(
+            Seq::wrapped(
+                Seq::wrapped(
+                    Seq::wrapped(
+                        CJump::wrapped(
+                            BinOp::Cmp(condition.relation().unwrap()),
+                            condition,
+                            t.clone(),
+                            f.clone(),
+                        ),
+                        Some(Seq::wrapped(Label::wrapped(t), Some(is))),
+                    ),
+                    Some(Jump::wrapped(done.clone())),
+                ),
+                Some(Seq::wrapped(Label::wrapped(f), Some(otherwise))),
+            ),
+            Some(Label::wrapped(done)),
+        )
     }
 }
 
-impl Translate<Stmt> for While {
+impl Translate<Stmt> for ast::node::While {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let condition = match &self.condition {
-            AstExpr::Int(i) => Expr::Binary {
-                op: BinOp::Cmp(RelOp::Equal),
-                left: Box::new(Expr::ConstInt(i.value)),
-                right: Box::new(Expr::ConstInt(0)),
-            },
+            AstExpr::Int(i) => Binary::wrapped(
+                BinOp::Cmp(RelOp::Equal),
+                Const::<i64>::int(i.value),
+                Const::<i64>::int(0),
+            ),
             c => c.translate(translator),
         };
         let t = Label::next();
@@ -283,33 +268,30 @@ impl Translate<Stmt> for While {
             .iter()
             .map(|stmt| stmt.translate(translator))
             .collect();
-        body.push(Stmt::Jump(test.clone()));
+        body.push(Jump::wrapped(test.clone()));
         let body = Stmt::from(&body[..]);
-        Stmt::Seq {
-            left: Box::new(Stmt::Seq {
-                left: Box::new(Stmt::Seq {
-                    left: Box::new(Stmt::Label(test)),
-                    right: Some(Box::new(Stmt::CJump {
-                        op: BinOp::Cmp(condition.relation().unwrap()),
-                        condition: Box::new(condition),
-                        t: t.clone(),
-                        f: f.clone(),
-                    })),
-                }),
-                right: Some(Box::new(Stmt::Seq {
-                    left: Box::new(Stmt::Label(t)),
-                    right: Some(Box::new(body)),
-                })),
-            }),
-            right: Some(Box::new(Stmt::Label(f))),
-        }
+        Seq::wrapped(
+            Seq::wrapped(
+                Seq::wrapped(
+                    Label::wrapped(test),
+                    Some(CJump::wrapped(
+                        BinOp::Cmp(condition.relation().unwrap()),
+                        condition,
+                        t.clone(),
+                        f.clone(),
+                    )),
+                ),
+                Some(Seq::wrapped(Label::wrapped(t.clone()), Some(body))),
+            ),
+            Some(Label::wrapped(f)),
+        )
     }
 }
 
-impl Translate<Stmt> for Assign {
+impl Translate<Stmt> for ast::node::Assign {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         Stmt::checked_move(
-            Box::new(self.target.translate(translator)),
+            self.target.translate(translator),
             self.expr.translate(translator),
         )
     }
@@ -321,17 +303,17 @@ impl Translate<Stmt> for AstExpr {
     }
 }
 
-impl Translate<Stmt> for Return {
+impl Translate<Stmt> for ast::node::Return {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let registers = F::registers();
         Stmt::checked_move(
-            Box::new(Expr::Temp(registers.ret.value.to_string())),
+            Temp::wrapped(registers.ret.value.to_string()),
             self.expr.translate(translator),
         )
     }
 }
 
-impl Translate<Stmt> for VarDecl {
+impl Translate<Stmt> for ast::node::VarDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let id = translator.function.unwrap();
         let name = self.name.to_string();
@@ -339,16 +321,16 @@ impl Translate<Stmt> for VarDecl {
         // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
         let target = frame.allocate(translator.symbols, &name, None);
         let expr = self.expr.translate(translator);
-        Stmt::checked_move(Box::new(target), expr)
+        Stmt::checked_move(target, expr)
     }
 }
 
-impl Translate<Stmt> for FuncDecl {
+impl Translate<Stmt> for ast::node::FuncDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let frame = F::new(self);
         translator.functions.insert(self.id, frame);
         translator.function = Some(self.id);
-        let stmts: Vec<Stmt> = vec![Stmt::Label(self.name.to_string())]
+        let stmts: Vec<Stmt> = vec![Label::wrapped(self.name.to_string())]
             .into_iter()
             .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
             .collect();
@@ -356,7 +338,7 @@ impl Translate<Stmt> for FuncDecl {
     }
 }
 
-impl Translate<Stmt> for RecordDecl {
+impl Translate<Stmt> for ast::node::RecordDecl {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Stmt {
         Stmt::Noop
     }
@@ -366,7 +348,7 @@ trait Flatten<R, A> {
     fn flatten(&self, aux: A) -> R;
 }
 
-impl<F: Frame> Flatten<Vec<Expr>, &'_ mut Translator<'_, F>> for Vec<Initializer> {
+impl<F: Frame> Flatten<Vec<Expr>, &'_ mut Translator<'_, F>> for Vec<ast::node::Initializer> {
     fn flatten(&self, translator: &'_ mut Translator<'_, F>) -> Vec<Expr> {
         self.iter()
             .flat_map(|init| match &init.expr {
@@ -377,7 +359,7 @@ impl<F: Frame> Flatten<Vec<Expr>, &'_ mut Translator<'_, F>> for Vec<Initializer
     }
 }
 
-impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for RecordDecl {
+impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for ast::node::RecordDecl {
     fn flatten(&self, symbols: &'_ SymbolTable) -> Vec<(String, Type)> {
         self.fields
             .iter()
@@ -393,219 +375,5 @@ impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for RecordDecl {
                 }
             })
             .collect()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {
-    ConstInt(i64),
-    ConstFloat(f64),
-    Temp(String),
-    Binary {
-        op: BinOp,
-        left: Box<Expr>,
-        right: Box<Expr>,
-    },
-    Mem(Box<Expr>),
-    Call {
-        name: String,
-        args: Vec<Expr>,
-    },
-    ESeq {
-        stmt: Box<Stmt>,
-        expr: Box<Expr>,
-        id: usize,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Stmt {
-    /// Moves `expr` into the location specified by `target` (either a temporary or a memory offset in the frame)
-    Move {
-        target: Box<Expr>,
-        expr: Box<Expr>,
-    },
-    Expr(Box<Expr>),
-    Label(String),
-    /// Evaluates `left`, then evaluates `right`
-    Seq {
-        left: Box<Stmt>,
-        right: Option<Box<Stmt>>,
-    },
-    Jump(String),
-    Noop,
-    CJump {
-        op: BinOp,
-        condition: Box<Expr>,
-        t: String,
-        f: String,
-    },
-}
-
-impl From<&[Stmt]> for Stmt {
-    fn from(stmts: &[Stmt]) -> Self {
-        match stmts.len() {
-            0 => Stmt::Noop,
-            1 => stmts[0].clone(),
-            _ => Stmt::Seq {
-                left: Box::new(stmts[0].clone()),
-                right: Some(Box::new(Stmt::from(&stmts[1..]))),
-            },
-        }
-    }
-}
-
-/// Returns a new `Expr` that loads the value at the memory location specified by `expr`
-/// and stores it in a temporary. This is required because (a) moves from memory address to memory
-/// address are unsupported and (b) binary operations require at least one of their operands to be
-/// in registers.
-fn wrap_memory_load(expr: Box<Expr>) -> Expr {
-    let temp = Temp::next();
-    Expr::eseq(
-        Box::new(Stmt::Move {
-            target: Box::new(Expr::Temp(temp.clone())),
-            expr,
-        }),
-        Box::new(Expr::Temp(temp)),
-    )
-}
-
-impl Expr {
-    /// Returns a new `Expr` where `left` and `right` are not both memory addresses.
-    fn checked_binary(op: BinOp, left: Box<Expr>, right: Expr) -> Self {
-        let right = match (&*left, right) {
-            (Expr::Mem(_), Expr::Mem(expr)) => wrap_memory_load(expr),
-            (Expr::Mem(_), Expr::ESeq { stmt, expr, id }) => {
-                if matches!(*expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr)
-                } else {
-                    Expr::ESeq { stmt, expr, id }
-                }
-            }
-            (_, right) => right,
-        };
-        Self::Binary {
-            op,
-            left,
-            right: Box::new(right),
-        }
-    }
-}
-
-impl Stmt {
-    /// Returns a new `Stmt` where `target` and `expr` are not both memory addresses.
-    fn checked_move(target: Box<Expr>, expr: Expr) -> Self {
-        let expr = match (&*target, expr) {
-            (Expr::Mem(_), Expr::Mem(expr)) => wrap_memory_load(expr),
-            (Expr::Mem(_), Expr::ESeq { stmt, expr, id }) => {
-                if matches!(*expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr)
-                } else {
-                    Expr::ESeq { stmt, expr, id }
-                }
-            }
-            (_, expr) => expr,
-        };
-        Self::Move {
-            target,
-            expr: Box::new(expr),
-        }
-    }
-}
-
-impl Expr {
-    pub fn eseq(stmt: Box<Stmt>, expr: Box<Expr>) -> Self {
-        static ID: AtomicUsize = AtomicUsize::new(0);
-        let id = ID.fetch_add(1, Ordering::SeqCst);
-        Self::ESeq { stmt, expr, id }
-    }
-
-    pub fn relation(&self) -> Option<RelOp> {
-        match self {
-            Self::Binary {
-                op: BinOp::Cmp(rel),
-                ..
-            } => Some(*rel),
-            Self::ConstInt(_) => Some(RelOp::Equal),
-            _ => None,
-        }
-    }
-
-    pub fn temp(&self) -> Option<String> {
-        match self {
-            Self::Temp(t) => Some(t.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn int(&self) -> Option<i64> {
-        match self {
-            Self::ConstInt(i) => Some(*i),
-            _ => None,
-        }
-    }
-
-    pub fn binary(self) -> Option<(BinOp, Box<Self>, Box<Self>)> {
-        match self {
-            Self::Binary { op, left, right } => Some((op, left, right)),
-            _ => None,
-        }
-    }
-}
-
-impl Stmt {
-    pub fn label(&self) -> String {
-        match self {
-            Self::Seq { left, .. } => left.label(),
-            Self::Label(label) => label.clone(),
-            _ => panic!("called `Stmt::label()` on a non-label statement"),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BinOp {
-    Plus,
-    Minus,
-    Mul,
-    Div,
-    Xor,
-    Cmp(RelOp),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum RelOp {
-    Equal,
-    NotEqual,
-    Less,
-    Greater,
-    LessEqual,
-    GreaterEqual,
-}
-
-impl From<Kind> for BinOp {
-    fn from(kind: Kind) -> Self {
-        match kind {
-            Kind::Plus => BinOp::Plus,
-            Kind::Minus => BinOp::Minus,
-            Kind::Star => BinOp::Mul,
-            Kind::Slash => BinOp::Div,
-            Kind::BangEqual => BinOp::Cmp(RelOp::NotEqual),
-            Kind::EqualEqual => BinOp::Cmp(RelOp::Equal),
-            Kind::Greater => BinOp::Cmp(RelOp::Greater),
-            Kind::GreaterEqual => BinOp::Cmp(RelOp::GreaterEqual),
-            Kind::Less => BinOp::Cmp(RelOp::Less),
-            Kind::LessEqual => BinOp::Cmp(RelOp::LessEqual),
-            _ => unreachable!("not a valid binary operator"),
-        }
-    }
-}
-
-impl From<BinOp> for RelOp {
-    fn from(value: BinOp) -> Self {
-        match value {
-            BinOp::Cmp(rel) => rel,
-            _ => panic!("Cannot convert {value:?} to RelOp"),
-        }
     }
 }

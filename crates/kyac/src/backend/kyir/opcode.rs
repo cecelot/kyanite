@@ -1,4 +1,4 @@
-use crate::backend::kyir::translate::{BinOp, RelOp};
+use crate::backend::kyir::ir::{BinOp, RelOp};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

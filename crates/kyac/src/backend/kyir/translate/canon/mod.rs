@@ -3,9 +3,12 @@ mod eseq;
 mod rewrite;
 mod trace;
 
-use crate::backend::kyir::translate::{
-    canon::{blocks::BasicBlocks, eseq::ESeqs, rewrite::Rewrite},
-    Expr, Stmt,
+use crate::backend::kyir::{
+    ir::Move,
+    translate::{
+        canon::{blocks::BasicBlocks, eseq::ESeqs, rewrite::Rewrite},
+        Expr, Stmt,
+    },
 };
 use std::collections::VecDeque;
 
@@ -41,33 +44,20 @@ pub trait Extract {
 impl Extract for Stmt {
     fn extract(self, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Expr>)>) {
         match self {
-            Stmt::Seq { left, right } => {
-                left.extract(ir, replacements);
-                if let Some(right) = right {
+            Stmt::Seq(seq) => {
+                seq.left.extract(ir, replacements);
+                if let Some(right) = seq.right {
                     right.extract(ir, replacements);
                 }
             }
-            Stmt::Move { expr, target } => {
-                update(&expr, ir, replacements);
-                ir.push(Stmt::Move {
-                    target: target.clone(),
-                    expr: expr.clone(),
-                });
+            Stmt::Move(m) => {
+                update(&m.expr, ir, replacements);
+                ir.push(Move::wrapped(*m.target.clone(), *m.expr.clone()));
             }
             Stmt::Label(_) | Stmt::Noop | Stmt::Jump(_) | Stmt::Expr(_) => ir.push(self),
-            Stmt::CJump {
-                condition,
-                op,
-                t,
-                f,
-            } => {
-                update(&condition, ir, replacements);
-                ir.push(Stmt::CJump {
-                    condition,
-                    op,
-                    t,
-                    f,
-                });
+            Stmt::CJump(cjmp) => {
+                update(&cjmp.condition, ir, replacements);
+                ir.push(Stmt::CJump(cjmp));
             }
         }
     }
@@ -77,21 +67,16 @@ fn update(expr: &Expr, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Ex
     let mut nested = vec![];
     expr.eseqs(&mut nested);
     for expr in nested.iter().rev() {
-        if let Expr::ESeq {
-            stmt,
-            expr: temp,
-            id: search,
-        } = expr
-        {
-            if let Stmt::Seq { left, right } = *stmt.clone() {
-                ir.push(*left);
-                if let Some(right) = right {
+        if let Expr::ESeq(eseq) = expr {
+            if let Stmt::Seq(seq) = *eseq.stmt.clone() {
+                ir.push(*seq.left);
+                if let Some(right) = seq.right {
                     ir.push(*right);
                 }
             } else {
-                ir.push(*stmt.clone());
+                ir.push(*eseq.stmt.clone());
             }
-            replacements.push((*search, temp.clone()));
+            replacements.push((eseq.id, eseq.expr.clone()));
         } else {
             panic!("Expected `Expr::ESeq`")
         }

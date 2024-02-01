@@ -4,7 +4,8 @@ use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{RegisterMap, ReturnRegisters},
-        BinOp, Codegen, Expr, Frame, Instr, Opcode, Stmt,
+        ir::{BinOp, Binary, Const, ESeq, Expr, Mem, Move, Seq, Temp},
+        Codegen, Frame, Instr, Opcode,
     },
     pass::SymbolTable,
 };
@@ -61,30 +62,30 @@ impl Frame for Amd64 {
                 // current frame (passed to the function using `lea`). So: first move the record
                 // ptr into %temp, then dereference it, accessing the (index*8)th word.
                 // Finally, return %temp.
-                return Expr::eseq(
-                    Box::new(Stmt::Seq {
+                return ESeq::wrapped(
+                    Seq::wrapped(
                         // movq offset(%rbp), %temp
-                        left: Box::new(Stmt::Move {
-                            target: Box::new(Expr::Temp(temp.clone())),
-                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary {
-                                op: BinOp::Plus,
-                                left: Box::new(Expr::Temp(registers.frame.to_string())),
-                                right: Box::new(Expr::ConstInt(offset)),
-                            }))),
-                        }),
+                        Move::wrapped(
+                            Temp::wrapped(temp.clone()),
+                            Mem::wrapped(Binary::wrapped(
+                                BinOp::Plus,
+                                Temp::wrapped(registers.frame.into()),
+                                Const::<i64>::int(offset),
+                            )),
+                        ),
                         // movq index*8(%temp), %temp
-                        right: Some(Box::new(Stmt::Move {
-                            target: Box::new(Expr::Temp(temp.clone())),
-                            expr: Box::new(Expr::Mem(Box::new(Expr::Binary {
-                                op: BinOp::Plus,
-                                left: Box::new(Expr::Temp(temp.clone())),
-                                right: Box::new(Expr::ConstInt(
+                        Some(Move::wrapped(
+                            Temp::wrapped(temp.clone()),
+                            Mem::wrapped(Binary::wrapped(
+                                BinOp::Plus,
+                                Temp::wrapped(temp.clone()),
+                                Const::<i64>::int(
                                     i64::try_from(index * Self::word_size()).unwrap(),
-                                )),
-                            }))),
-                        })),
-                    }),
-                    Box::new(Expr::Temp(temp)),
+                                ),
+                            )),
+                        )),
+                    ),
+                    Temp::wrapped(temp),
                 );
             }
         }
@@ -95,11 +96,11 @@ impl Frame for Amd64 {
         } else {
             offset
         };
-        Expr::Mem(Box::new(Expr::Binary {
-            op: BinOp::Plus,
-            left: Box::new(Expr::Temp(registers.frame.into())),
-            right: Box::new(Expr::ConstInt(offset)),
-        }))
+        Mem::wrapped(Binary::wrapped(
+            BinOp::Plus,
+            Temp::wrapped(registers.frame.into()),
+            Const::<i64>::int(offset),
+        ))
     }
 
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr {
