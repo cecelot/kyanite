@@ -1,0 +1,13 @@
+rec Coordinate {
+    x: int,
+    y: int
+}
+
+fun main() {
+    let c: Coordinate = Coordinate:init(
+        x: 3,
+        y: 4
+    );
+    let sum: int = c.x + c.y;
+    println_int(sum);
+}

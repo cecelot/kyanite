@@ -28,11 +28,32 @@ pub fn run<F: Frame>(codegen: &mut Codegen<F>) {
                     AsmInstr::new(Instr::oper(
                         Opcode::Sub,
                         F::registers().stack.into(),
-                        "$16".into(),
+                        // Not sure if we actually need to align the stack to a multiple of 16 bytes, but we do it anyway.
+                        format!("${}", next_multiple_of(fun.offset().abs(), 16)),
                         None,
                     )),
                 );
             }
         }
+    }
+}
+
+/// Stolen from <https://github.com/rust-lang/rust/issues/88581> until this is in stable.
+fn next_multiple_of(n: i64, rhs: i64) -> i64 {
+    if rhs == -1 {
+        return n;
+    }
+
+    let r = n % rhs;
+    let m = if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+        r + rhs
+    } else {
+        r
+    };
+
+    if m == 0 {
+        n
+    } else {
+        n + (rhs - m)
     }
 }

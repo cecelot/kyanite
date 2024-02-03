@@ -108,7 +108,9 @@ impl Frame for Amd64 {
         self.offset -= i64::try_from(match ty {
             Some(Type::UserDefined(ty)) => {
                 let rec = symbols.get(ty).unwrap().record();
-                rec.fields.len() * Self::word_size()
+                // The magic +1 is here because the first word is used to
+                // store the address of the record in the frame.
+                (rec.fields.len() + 1) * Self::word_size()
             }
             _ => 8,
         })

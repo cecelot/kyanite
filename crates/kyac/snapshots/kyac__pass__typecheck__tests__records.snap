@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/pass/typecheck.rs
+source: crates/kyac/src/pass/typecheck.rs
 expression: pass.errors
 ---
 [
@@ -32,7 +32,7 @@ expression: pass.errors
         span: Span {
             line: 28,
             column: 26,
-            length: 20,
+            length: 3,
         },
         text: "expression of type Bar",
     },

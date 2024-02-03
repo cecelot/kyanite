@@ -61,3 +61,24 @@ fn called_nested_loop() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "5\n6\n7\n8\n9\n");
     Ok(())
 }
+
+#[test]
+fn simple_record() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/simple-record.kya")?;
+    assert_eq!(res.output, "3\n");
+    Ok(())
+}
+
+#[test]
+fn record_with_addition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/record-with-addition.kya")?;
+    assert_eq!(res.output, "7\n");
+    Ok(())
+}
+
+#[test]
+fn nested_records() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nested-records.kya")?;
+    assert_eq!(res.output, "1\n2\ntrue\n");
+    Ok(())
+}

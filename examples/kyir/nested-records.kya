@@ -1,0 +1,22 @@
+rec Coordinate {
+    pos: Position,
+    is_fun: bool
+}
+
+rec Position {
+    x: int,
+    y: int
+}
+
+fun main() {
+    let c: Coordinate = Coordinate:init(
+        pos: Position:init(x: 1, y: 2),
+        is_fun: true
+    );
+    let x: int = c.pos.x;
+    let y: int = c.pos.y;
+    println_int(x);
+    println_int(y);
+    let is_fun: bool = c.is_fun;
+    println_bool(is_fun);
+}

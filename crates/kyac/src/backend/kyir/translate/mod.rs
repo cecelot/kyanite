@@ -167,9 +167,10 @@ impl Translate<Expr> for ast::node::Access {
         let last = self.chain.last().unwrap().ident().name.to_string();
         let (index, _) = flat
             .iter()
+            .rev()
             .enumerate()
             .find(|(_, (name, _))| name == &last)
-            .unwrap();
+            .expect("field access for non-terminal fields is not yet supported");
         frame.get(&parent, Some(temp), Some(index))
     }
 }
@@ -183,7 +184,9 @@ impl Translate<Expr> for ast::node::Init {
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         frame.allocate(translator.symbols, &name, Some(&ty));
-        let begin = frame.get_offset(&name);
+        // We begin at the current frame's offset - one word size (since the current frame's offset is used
+        // to store the start address of the actual fields)
+        let begin = frame.get_offset(&name) - i64::try_from(F::word_size()).unwrap();
         let end = begin - i64::try_from((initializers.len() - 1) * F::word_size()).unwrap();
         let stmts: Vec<Stmt> = initializers
             .into_iter()
@@ -199,7 +202,10 @@ impl Translate<Expr> for ast::node::Init {
                 )
             })
             .collect();
-        // Evaluate the initializers, then return start address of initialized memory for record
+        // Evaluate the initializers, then return start address of initialized memory for record.
+        // This doesn't technically need to exist since the frame already stores this information.
+        // [-8, -16, -32, ...]
+        // [ start address, field 1, field 2, ...]
         ESeq::wrapped(Stmt::from(&stmts[..]), Const::<i64>::int(begin))
     }
 }

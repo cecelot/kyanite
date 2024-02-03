@@ -5,6 +5,7 @@ use crate::{
 
 pub trait Combined {
     fn span(&self) -> Span {
+        assert!(self.end() >= self.start(), "likely a multi-line span");
         Span::new(self.line(), self.start(), self.end() - self.start())
     }
     fn start(&self) -> usize;
@@ -74,7 +75,8 @@ impl Combined for Expr {
             Expr::Int(i) => i.token.span.column + i.token.span.length,
             Expr::Float(f) => f.token.span.column + f.token.span.length,
             Expr::Bool(b) => b.token.span.column + b.token.span.length,
-            Expr::Init(init) => init.parens.1.span.column + 1,
+            // TODO: support multi-line spans
+            Expr::Init(init) => init.name.span.column + init.name.span.length,
         }
     }
 
