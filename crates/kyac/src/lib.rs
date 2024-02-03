@@ -24,9 +24,7 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
     pass.run().map_err(PipelineError::TypeError)?;
     match backend {
         Backend::Llvm => Ok(Output::Llvm(
-            llvm::Ir::build(&mut ast.nodes, symbols, accesses)
-                .map_err(PipelineError::IrError)?
-                .to_string(),
+            llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
         )),
         Backend::Kyir => Ok(Output::Asm(kyir::asm::<Amd64>(
             &ast.nodes, &symbols, &accesses,
