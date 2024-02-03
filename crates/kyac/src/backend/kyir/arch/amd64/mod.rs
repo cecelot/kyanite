@@ -190,11 +190,11 @@ impl Frame for Amd64 {
 
     fn header() -> &'static str {
         indoc::indoc! {"
-            .text
-            .global _main
+                    .text
+                    .global _main
             _main:
-                callq main
-                ret
+                    callq main
+                    ret
         "}
     }
 

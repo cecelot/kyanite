@@ -423,6 +423,7 @@ impl AsmInstr {
 
 impl Display for AsmInstr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let pad = " ".repeat(8);
         match &self.inner {
             Instr::Oper {
                 opcode,
@@ -430,19 +431,23 @@ impl Display for AsmInstr {
                 src,
                 jump,
             } => {
+                let pad = match opcode {
+                    Opcode::Label(_) => String::new(),
+                    _ => pad,
+                };
                 match opcode {
-                    Opcode::Jump => write!(f, "{opcode} {}", jump.as_ref().unwrap())?,
-                    Opcode::CJump(_) => write!(f, "{opcode} {}", jump.as_ref().unwrap())?,
+                    Opcode::Jump => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
+                    Opcode::CJump(_) => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
                     _ => write!(
                         f,
-                        "{opcode} {src}{} {dst}",
+                        "{pad}{opcode} {src}{} {dst}",
                         if self.operands() == 2 { "," } else { "" }
                     )?,
                 }
                 Ok(())
             }
             Instr::Call { name } => {
-                write!(f, "callq {name}")?;
+                write!(f, "{pad}callq {name}")?;
                 Ok(())
             }
         }
