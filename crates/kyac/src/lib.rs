@@ -99,6 +99,7 @@ pub enum Output {
     Asm(String),
 }
 
+#[derive(Debug)]
 pub enum Backend {
     Llvm,
     Kyir,

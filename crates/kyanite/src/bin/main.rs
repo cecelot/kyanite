@@ -1,4 +1,3 @@
-use colored::Colorize;
 use kyac::{Amd64, Backend, Output, Source};
 use kyanite::{asm, include_dir, installed, llvm, Commands};
 use std::{
@@ -8,8 +7,11 @@ use std::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = kyanite::init();
-    if !(cli.kyir || installed("llc") && installed("clang")) {
+    let cli = kyanite::cli();
+    kyanite::init_logger(cli.verbose)?;
+    if !(cli.kyir
+        || installed("llc", "try installing LLVM") && installed("clang", "try installing LLVM"))
+    {
         return Ok(());
     }
     let backend = if cli.kyir {
@@ -17,21 +19,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Backend::Llvm
     };
-    let cli = kyanite::init();
-    let mut stdout = std::io::stdout();
+    log::debug!("using backend: {:?}", backend);
+    let cli = kyanite::cli();
+    log::debug!("DYLD_LIBRARY_PATH: `{}`", include_dir(&backend, None));
+    std::env::set_var("DYLD_LIBRARY_PATH", include_dir(&backend, None));
     match cli.command {
         Commands::Run { path } => {
             let source = Source::new(path).unwrap_or_else(exit);
             let output = kyac::compile(&source, &backend).unwrap_or_else(exit);
             let filename = kyanite::filename(&source);
             let exe = match &output {
-                Output::Llvm(ir) => llvm::compile(ir, &filename, &mut stdout).unwrap_or_else(exit),
-                Output::Asm(asm) => {
-                    asm::compile::<Amd64>(asm, &filename, &mut stdout).unwrap_or_else(exit)
-                }
+                Output::Llvm(ir) => llvm::compile(ir, &filename).unwrap_or_else(exit),
+                Output::Asm(asm) => asm::compile::<Amd64>(asm, &filename).unwrap_or_else(exit),
             };
-            std::env::set_var("DYLD_LIBRARY_PATH", include_dir(&backend, None));
-            writeln!(&mut stdout, "{} `./{}`", "Running".bold().green(), exe).unwrap();
+            log::info!("running `./{}`", exe);
             let child = std::process::Command::new(exe)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
@@ -39,6 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .spawn()
                 .unwrap_or_else(exit);
             let reader = BufReader::new(child.stdout.unwrap());
+            let mut stdout = std::io::stdout();
             for line in reader.lines() {
                 writeln!(&mut stdout, "{}", line.unwrap()).unwrap();
             }
@@ -54,7 +56,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[allow(clippy::needless_pass_by_value)]
 fn exit<E: fmt::Display, R>(e: E) -> R {
-    let mut stdout = std::io::stdout();
-    writeln!(stdout, "{}: {}", "error".bold().red(), e).unwrap();
+    log::error!("{}", e);
     std::process::exit(1);
 }

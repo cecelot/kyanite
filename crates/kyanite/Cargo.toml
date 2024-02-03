@@ -11,7 +11,9 @@ kyir-tests = []
 [dependencies]
 clap = { version = "4.4.2", features = ["derive"] }
 colored = "2.0.4"
+fern = { version = "0.6.2", features = ["colored"] }
 kyac = { path = "../kyac" }
+log = "0.4.20"
 subprocess = { path = "../subprocess" }
 which = "4.4.2"
 

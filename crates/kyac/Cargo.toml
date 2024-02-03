@@ -5,7 +5,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-colored = "2.0.4"
+colored = "2.1.0"
 indoc = "2.0.4"
 inkwell = { version = "0.2.0", features = ["llvm15-0"] }
 insta = { version = "1.32.0" }

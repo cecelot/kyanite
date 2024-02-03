@@ -1,6 +1,3 @@
-use colored::Colorize;
-use std::io::Write;
-
 #[derive(Debug)]
 pub struct ProcessResult {
     pub command: String,
@@ -21,19 +18,12 @@ pub fn exec(cmd: &str, args: &[&str]) -> ProcessResult {
     }
 }
 
-pub fn handle(verb: &str, res: ProcessResult, mut writer: impl Write) -> Result<(), String> {
+pub fn handle(res: ProcessResult) -> Result<(), String> {
     if res.code == 0 {
-        writeln!(writer, "{} `{}`", verb.green().bold(), res.command).unwrap();
+        log::info!("completed `{}`", res.command);
         Ok(())
     } else {
-        writeln!(
-            writer,
-            "{} `{}`\n\t{}",
-            "Failed".red().bold(),
-            res.command,
-            res.output
-        )
-        .unwrap();
+        log::error!("while running `{}`\n\t{}", res.command, res.output);
         Err(res.output)
     }
 }

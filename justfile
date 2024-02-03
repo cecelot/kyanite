@@ -9,8 +9,8 @@ build:
     cargo build --package builtins --target x86_64-apple-darwin
     cargo build
 
-run file:
-    cargo run -- --kyir run {{file}}
+run file verbosity = "":
+    cargo run -- --kyir run {{file}} {{verbosity}}
 
-run-llvm file:
-    cargo run -- run {{file}}
+run-llvm file verbosity = "":
+    cargo run -- run {{file}} {{verbosity}}

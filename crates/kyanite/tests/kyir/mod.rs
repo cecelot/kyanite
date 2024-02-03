@@ -6,7 +6,7 @@ fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     let Output::Asm(asm) = kyac::compile(&source, &Backend::Kyir)? else {
         unreachable!()
     };
-    let exe = kyanite::asm::compile::<Amd64>(&asm, &kyanite::filename(&source), &mut vec![])?;
+    let exe = kyanite::asm::compile::<Amd64>(&asm, &kyanite::filename(&source))?;
     let res = subprocess::exec(&exe, &[]);
     Ok(res)
 }
