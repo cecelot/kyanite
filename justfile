@@ -4,6 +4,7 @@ alias rl := run-llvm
 
 _default:
     @just --list
+
 build:
     cargo build --package builtins --target x86_64-apple-darwin
     cargo build
