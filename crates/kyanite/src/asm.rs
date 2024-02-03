@@ -7,7 +7,7 @@ pub fn compile<F: Frame>(instrs: &str, filename: &str) -> Result<String, Pipelin
     let asm = &format!("kya-dist/{filename}.s");
     let exe = &format!("kya-dist/{filename}");
     let mut file = File::create(asm).expect("well-formed file structure");
-    writeln!(file, "{}\n{}", F::header(), instrs).unwrap();
+    write!(file, "{}{}", F::header(), instrs).unwrap();
     crate::dylib(&include_dir(&Backend::Kyir, Some("x86_64-apple-darwin")));
     // We need to run a bash shell because otherwise Zig complains that -target is an unknown Clang option
     // for some reason.
