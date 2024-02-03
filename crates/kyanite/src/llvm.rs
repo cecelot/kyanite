@@ -1,5 +1,5 @@
-use crate::{include_dir, release_flag};
-use kyac::PipelineError;
+use crate::include_dir;
+use kyac::{Backend, PipelineError};
 use std::{fs::File, io::Write};
 
 pub fn compile(ir: &str, filename: &str, mut writer: impl Write) -> Result<String, PipelineError> {
@@ -11,21 +11,6 @@ pub fn compile(ir: &str, filename: &str, mut writer: impl Write) -> Result<Strin
     write!(file, "{ir}").unwrap();
     subprocess::handle(
         "Finished",
-        subprocess::exec(
-            "cargo",
-            &[
-                "build",
-                "--package",
-                "builtins",
-                release_flag(), // This must be last because with debug enabled, this will be treated as "--",
-                                // which escapes any following arguments
-            ],
-        ),
-        &mut writer,
-    )
-    .map_err(PipelineError::CompileError)?;
-    subprocess::handle(
-        "Finished",
         subprocess::exec("llc", &["-filetype=obj", "-o", obj, path]),
         &mut writer,
     )
@@ -34,7 +19,14 @@ pub fn compile(ir: &str, filename: &str, mut writer: impl Write) -> Result<Strin
         "Finished",
         subprocess::exec(
             "clang",
-            &[obj, "-o", exe, "-L", &include_dir(), "-lkyanite_builtins"],
+            &[
+                obj,
+                "-o",
+                exe,
+                "-L",
+                &include_dir(&Backend::Llvm, None),
+                "-lkyanite_builtins",
+            ],
         ),
         &mut writer,
     )

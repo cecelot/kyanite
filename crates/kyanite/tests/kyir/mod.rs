@@ -7,13 +7,7 @@ fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
         unreachable!()
     };
     let exe = kyanite::asm::compile::<Amd64>(&asm, &kyanite::filename(&source), &mut vec![])?;
-    let res = subprocess::exec(
-        "orb",
-        &[
-            &format!("LD_LIBRARY_PATH={}", kyanite::include_dir()),
-            &format!("./{exe}"),
-        ],
-    );
+    let res = subprocess::exec(&exe, &[]);
     Ok(res)
 }
 

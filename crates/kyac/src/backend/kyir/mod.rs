@@ -63,7 +63,6 @@ impl<F: Frame> Codegen<F> {
     #[must_use]
     fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self, false));
-        F::passes(self);
         self.epilogues();
         &self.asm
     }
@@ -203,6 +202,12 @@ impl Assembly<String> for Mem {
 
 impl Assembly<String> for Call {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) -> String {
+        const BUILTINS: [&str; 4] = [
+            "println_int",
+            "println_bool",
+            "println_str",
+            "println_float",
+        ];
         if let Some(&id) = codegen.stack.last() {
             codegen.call.insert(id, true);
         }
@@ -220,7 +225,11 @@ impl Assembly<String> for Call {
             .collect();
         args.into_iter().for_each(|arg| codegen.emit(arg));
         codegen.emit(Instr::Call {
-            name: self.name.clone(),
+            name: if BUILTINS.contains(&self.name.as_ref()) {
+                F::prefixed(&self.name)
+            } else {
+                self.name.clone()
+            },
         });
         format!("%{}", F::registers().ret.value)
     }

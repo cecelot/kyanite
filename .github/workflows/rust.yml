@@ -12,5 +12,7 @@ jobs:
       - uses: cachix/install-nix-action@v22
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - run: nix develop -c cargo build
-      - run: nix develop -c cargo test --no-default-features
+      - run: |
+          nix develop -c cargo build --package builtins --target x86_64-apple-darwin
+          nix develop -c cargo build
+      - run: nix develop -c cargo test

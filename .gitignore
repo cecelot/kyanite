@@ -1,9 +1,12 @@
-# Rust
+# rust
 /target
 
-# Direnv
+# direnv
 .direnv
 .envrc
 
 # kyanite
 kya-dist
+
+# nix
+result

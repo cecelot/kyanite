@@ -1,7 +1,11 @@
 use colored::Colorize;
-use kyac::{Amd64, Backend, Output, PipelineError, Source};
-use kyanite::{asm, installed, llvm, Commands};
-use std::io::Write;
+use kyac::{Amd64, Backend, Output, Source};
+use kyanite::{asm, include_dir, installed, llvm, Commands};
+use std::{
+    fmt,
+    io::{BufRead, BufReader, Write},
+    process::Stdio,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = kyanite::init();
@@ -26,20 +30,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     asm::compile::<Amd64>(asm, &filename, &mut stdout).unwrap_or_else(exit)
                 }
             };
+            std::env::set_var("DYLD_LIBRARY_PATH", include_dir(&backend, None));
             writeln!(&mut stdout, "{} `./{}`", "Running".bold().green(), exe).unwrap();
-            if let Output::Llvm(_) = output {
-                let output = subprocess::exec(&exe, &[]).output;
-                write!(stdout, "{output}")?;
-            } else {
-                let output = subprocess::exec(
-                    "orb",
-                    &[
-                        &format!("LD_LIBRARY_PATH={}", kyanite::include_dir()),
-                        &format!("./{exe}"),
-                    ],
-                )
-                .output;
-                write!(stdout, "{output}")?;
+            let child = std::process::Command::new(exe)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap_or_else(exit);
+            let reader = BufReader::new(child.stdout.unwrap());
+            for line in reader.lines() {
+                writeln!(&mut stdout, "{}", line.unwrap()).unwrap();
             }
             Ok(())
         }
@@ -52,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn exit<R>(e: PipelineError) -> R {
+fn exit<E: fmt::Display, R>(e: E) -> R {
     let mut stdout = std::io::stdout();
     writeln!(stdout, "{}: {}", "error".bold().red(), e).unwrap();
     std::process::exit(1);

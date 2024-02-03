@@ -1,11 +1,9 @@
-mod red_zone;
-
 use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{RegisterMap, ReturnRegisters},
         ir::{BinOp, Binary, Const, ESeq, Expr, Mem, Move, Seq, Temp},
-        Codegen, Frame, Instr, Opcode,
+        Frame, Instr, Opcode,
     },
     pass::SymbolTable,
 };
@@ -47,6 +45,10 @@ impl Frame for Amd64 {
 
     fn label(&self) -> &String {
         &self.label
+    }
+
+    fn prefixed(call: &str) -> String {
+        format!("_{call}")
     }
 
     fn get_offset(&self, ident: &str) -> i64 {
@@ -141,6 +143,12 @@ impl Frame for Amd64 {
             registers.stack.into(),
             None,
         )); // movq %rsp, %rbp
+        prologue.push(Instr::oper(
+            Opcode::Sub,
+            registers.stack.into(),
+            format!("${}", next_multiple_of(self.offset.abs(), 16)),
+            None,
+        )); // subq $(), %rsp
         for (i, formal) in self.formals.iter().enumerate() {
             prologue.push(Instr::oper(
                 Opcode::Move,
@@ -160,6 +168,12 @@ impl Frame for Amd64 {
         let registers = Self::registers();
         vec![
             Instr::Oper {
+                opcode: Opcode::Add,
+                src: format!("${}", next_multiple_of(self.offset.abs(), 16)),
+                dst: registers.stack.into(),
+                jump: None,
+            }, // addq $(), %rsp
+            Instr::Oper {
                 opcode: Opcode::Pop,
                 src: registers.frame.to_string(),
                 dst: String::new(),
@@ -174,12 +188,14 @@ impl Frame for Amd64 {
         ]
     }
 
-    fn passes(codegen: &mut Codegen<Self>) {
-        red_zone::run(codegen);
-    }
-
-    fn header() -> String {
-        String::from(".text\n.global main\n")
+    fn header() -> &'static str {
+        indoc::indoc! {"
+            .text
+            .global _main
+            _main:
+                callq main
+                ret
+        "}
     }
 
     fn registers() -> RegisterMap {
@@ -197,10 +213,6 @@ impl Frame for Amd64 {
         }
     }
 
-    fn offset(&self) -> i64 {
-        self.offset
-    }
-
     fn word_size() -> usize {
         8
     }
@@ -215,5 +227,25 @@ struct Formal {
 impl Formal {
     fn new(register: &'static str, ident: String) -> Self {
         Self { register, ident }
+    }
+}
+
+/// Stolen from <https://github.com/rust-lang/rust/issues/88581> until this is in stable.
+fn next_multiple_of(n: i64, rhs: i64) -> i64 {
+    if rhs == -1 {
+        return n;
+    }
+
+    let r = n % rhs;
+    let m = if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+        r + rhs
+    } else {
+        r
+    };
+
+    if m == 0 {
+        n
+    } else {
+        n + (rhs - m)
     }
 }

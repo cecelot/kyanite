@@ -2,7 +2,7 @@ pub mod amd64;
 
 use crate::{
     ast::{node::FuncDecl, Type},
-    backend::kyir::{Codegen, Expr, Instr},
+    backend::kyir::{Expr, Instr},
     pass::SymbolTable,
 };
 
@@ -13,14 +13,11 @@ pub trait Frame {
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr;
     fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Expr;
     fn get_offset(&self, ident: &str) -> i64;
-    fn offset(&self) -> i64;
     fn prologue(&self) -> Vec<Instr>;
     fn label(&self) -> &String;
-    fn passes(codegen: &mut Codegen<Self>)
-    where
-        Self: Sized;
+    fn prefixed(call: &str) -> String;
     fn epilogue(&self) -> Vec<Instr>;
-    fn header() -> String;
+    fn header() -> &'static str;
     fn registers() -> RegisterMap;
     fn word_size() -> usize;
 }

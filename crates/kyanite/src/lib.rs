@@ -3,7 +3,7 @@ pub mod llvm;
 
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use kyac::Source;
+use kyac::{Backend, Source};
 use std::path::PathBuf;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -56,25 +56,27 @@ pub fn installed(s: &str) -> bool {
 }
 
 #[must_use]
-pub fn include_dir() -> String {
-    let build = if cfg!(debug_assertions) {
-        "target/debug"
-    } else {
-        "target/release"
+pub fn include_dir(backend: &Backend, target: Option<&str>) -> String {
+    let default = || -> String {
+        let target = match target {
+            Some(target) => format!("/{target}"),
+            None => String::new(),
+        };
+        let build = if cfg!(debug_assertions) {
+            format!("target{target}/debug")
+        } else {
+            format!("target{target}/release")
+        };
+        let dir = env!("CARGO_MANIFEST_DIR");
+        let dir = &dir[0..dir.len() - 14];
+        let include = &format!("{dir}{build}");
+        include.into()
     };
-    let dir = env!("CARGO_MANIFEST_DIR");
-    let dir = &dir[0..dir.len() - 14];
-    let include = &format!("{dir}{build}");
-    include.into()
-}
-
-#[must_use]
-fn release_flag() -> &'static str {
-    if cfg!(debug_assertions) {
-        "--"
-    } else {
-        "--release"
-    }
+    let subdir = match backend {
+        Backend::Kyir => "kyir-support",
+        Backend::Llvm => "llvm-support",
+    };
+    std::env::var("KYANITE_BUILTINS_LIB").map_or_else(|_| default(), |s| format!("{s}/{subdir}"))
 }
 
 #[must_use]
