@@ -62,7 +62,12 @@
           cp target/release/main $out/bin/kyanite
           wrapProgram $out/bin/kyanite \
             --set KYANITE_BUILTINS_LIB $out/lib \
-            --prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [zig-custom])}
+            --prefix PATH : ${pkgs.lib.makeBinPath (
+            with pkgs; [
+              llvmPackages_15.libllvm
+              zig-custom
+            ]
+          )}
         '';
         CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
         LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
