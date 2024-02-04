@@ -1,0 +1,18 @@
+rec Foo {
+    x: int,
+    y: int
+}
+
+fun main() {
+    let foo: Foo = Foo:init(x: 2, y: 1);
+    if foo.x < foo.y {
+        println_int(100);
+    } else {
+        println_int(20);
+    }
+    println_int(50);
+    println_int(60);
+    if 0 > foo.y {
+        println_int(100);
+    }
+}

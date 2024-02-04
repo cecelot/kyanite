@@ -105,6 +105,10 @@ impl Temp {
     pub fn wrapped(name: String) -> Expr {
         Expr::Temp(Self { name })
     }
+
+    pub fn dereferenced(name: String) -> Expr {
+        Expr::Dereferenced(Self { name })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

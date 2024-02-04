@@ -8,56 +8,33 @@ pub fn new(blocks: VecDeque<BasicBlock>) -> Vec<Stmt> {
     let mut traces = traces(blocks);
     self::unconditionals(&mut traces);
     self::conditionals(&mut traces);
-    let mut blocks = self::blocks(traces);
-    let main = blocks.pop().unwrap();
-    let jmp = main.body.last().unwrap();
-    if let Stmt::CJump(jmp) = jmp {
-        let idx = blocks
-            .iter()
-            .map(|block| block.label.clone())
-            .position(|label| label == jmp.f)
-            .unwrap();
-        blocks.insert(idx, main);
-        let (left, right) = blocks.split_at(idx);
-        self::stmts(right.iter().cloned().chain(left.to_vec()).collect())
-    } else {
-        blocks.insert(0, main);
-        self::stmts(blocks)
-    }
+    let blocks = self::blocks(traces);
+    self::stmts(blocks)
 }
 
 /// Inserts blocks which jump to the false branch of conditional jumps where the false branch is not the next block
 /// for consistency.
 fn conditionals(traces: &mut [Vec<BasicBlock>]) {
-    /// Returns a list of blocks to insert into the relevant trace.
-    fn insertions(traces: &mut [Vec<BasicBlock>]) -> Vec<((usize, usize), BasicBlock)> {
-        let labels: Vec<Vec<_>> = traces
-            .iter()
-            .map(|trace| trace.iter().map(|block| block.label.clone()).collect())
-            .collect();
-        let mut insertions = vec![];
-        for (i, trace) in traces.iter_mut().enumerate() {
-            for (j, block) in trace.iter_mut().enumerate() {
-                let next = labels.get(i).and_then(|labels| labels.get(j + 1));
-                if let Some(Stmt::CJump(jmp)) = block.body.last_mut() {
-                    // If the false branch is not the next block, insert a block that jumps to it. Alternatively, if there is
-                    // no next block in this trace, insert a block that jumps to the false branch.
-                    if next.is_some_and(|next| *next != jmp.f) || next.is_none() {
-                        let prev = jmp.f.clone();
-                        let label = Label::next();
-                        jmp.f = label.clone();
-                        insertions
-                            .push(((i, j), BasicBlock::new(vec![Jump::wrapped(prev)], label)));
-                    }
+    let labels: Vec<Vec<_>> = traces
+        .iter()
+        .map(|trace| trace.iter().map(|block| block.label.clone()).collect())
+        .collect();
+    for (i, trace) in traces.iter_mut().enumerate() {
+        for (j, block) in trace.iter_mut().enumerate() {
+            let next = labels.get(i).and_then(|labels| labels.get(j + 1));
+            if let Some(Stmt::CJump(jmp)) = block.body.last_mut() {
+                // If the false branch is not the next block, insert a block that jumps to it. Alternatively, if there is
+                // no next block in this trace, insert a block that jumps to the false branch.
+                if next.is_some_and(|next| *next != jmp.f) || next.is_none() {
+                    let prev = jmp.f.clone();
+                    let label = Label::next();
+                    jmp.f = label.clone();
+                    block
+                        .body
+                        .append(&mut vec![Label::wrapped(label), Jump::wrapped(prev)]);
                 }
             }
         }
-        insertions
-    }
-    let insertions = insertions(traces);
-    for insertion in insertions {
-        let ((i, j), block) = insertion;
-        traces[i].insert(j + 1, block);
     }
 }
 

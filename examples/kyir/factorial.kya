@@ -1,0 +1,12 @@
+fun factorial(n: int): int {
+    if n == 0 {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+fun main() {
+    println_int(factorial(5));
+    println_int(factorial(10));
+}

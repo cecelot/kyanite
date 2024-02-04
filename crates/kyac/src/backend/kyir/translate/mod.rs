@@ -167,46 +167,61 @@ impl Translate<Expr> for ast::node::Access {
         let last = self.chain.last().unwrap().ident().name.to_string();
         let (index, _) = flat
             .iter()
-            .rev()
             .enumerate()
             .find(|(_, (name, _))| name == &last)
             .expect("field access for non-terminal fields is not yet supported");
-        frame.get(&parent, Some(temp), Some(index))
+        let base = frame.get(&parent, None, None);
+        let offset: i64 = (index * F::word_size()).try_into().unwrap();
+        let stmts = [
+            Stmt::checked_move(Temp::wrapped(temp.clone()), base), // copy base pointer
+            Stmt::Expr(Box::new(Binary::wrapped(
+                BinOp::Plus,
+                Temp::wrapped(temp.clone()),
+                Const::<i64>::int(offset),
+            ))), // add offset to base pointer
+            Stmt::checked_move(
+                Temp::wrapped(temp.clone()),
+                Temp::dereferenced(temp.clone()),
+            ),
+        ];
+        ESeq::wrapped(Stmt::from(&stmts[..]), Temp::wrapped(temp))
     }
 }
 
 impl Translate<Expr> for ast::node::Init {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let registers = F::registers();
-        let ty = Type::from(&self.name);
         let initializers = self.initializers.flatten(translator);
-        let name = Temp::next();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        frame.allocate(translator.symbols, &name, Some(&ty));
-        // We begin at the current frame's offset - one word size (since the current frame's offset is used
-        // to store the start address of the actual fields)
-        let begin = frame.get_offset(&name) - i64::try_from(F::word_size()).unwrap();
-        let end = begin - i64::try_from((initializers.len() - 1) * F::word_size()).unwrap();
-        let stmts: Vec<Stmt> = initializers
+        let temp = Temp::next();
+        // `temp` is guaranteed to be unique
+        let base = frame.allocate(translator.symbols, &format!("_alloc_{temp}"), None);
+        let setup = [
+            Stmt::Expr(Box::new(Call::wrapped(
+                "alloc".into(),
+                vec![Const::<i64>::int(
+                    (initializers.len() * F::word_size()).try_into().unwrap(),
+                )],
+            ))),
+            Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
+        ];
+        let stmts: Vec<_> = setup
             .into_iter()
-            .enumerate()
-            .map(|(index, expr)| {
-                Stmt::checked_move(
-                    Binary::wrapped(
+            .chain(initializers.into_iter().enumerate().flat_map(|(i, init)| {
+                let offset: i64 = (i * F::word_size()).try_into().unwrap();
+                vec![
+                    Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
+                    Stmt::Expr(Box::new(Binary::wrapped(
                         BinOp::Plus,
-                        Temp::wrapped(registers.frame.to_string()),
-                        Const::<i64>::int(end + i64::try_from(index * F::word_size()).unwrap()),
-                    ),
-                    expr,
-                )
-            })
+                        Temp::wrapped(temp.clone()),
+                        Const::<i64>::int(offset),
+                    ))), // add offset to base pointer
+                    Stmt::checked_move(Temp::dereferenced(temp.clone()), init), // store value at offset
+                ]
+            }))
             .collect();
-        // Evaluate the initializers, then return start address of initialized memory for record.
-        // This doesn't technically need to exist since the frame already stores this information.
-        // [-8, -16, -32, ...]
-        // [ start address, field 1, field 2, ...]
-        ESeq::wrapped(Stmt::from(&stmts[..]), Const::<i64>::int(begin))
+        ESeq::wrapped(Stmt::from(&stmts[..]), base)
     }
 }
 

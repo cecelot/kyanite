@@ -26,7 +26,10 @@
         pname = "kyanite";
         version = "0.1.0";
         src = ./.;
-        doCheck = false;
+        checkFlags = [
+          # these want a writeable fs for some reason
+          "--skip=kyir"
+        ];
         nativeBuildInputs = with pkgs; [
           # rust/cargo
           rust-stable
@@ -69,6 +72,7 @@
             ]
           )}
         '';
+        LIBRARY_PATH = pkgs.lib.makeLibraryPath [pkgs.libiconv]; # -liconv *why* (https://github.com/nix-community/home-manager/issues/3482)
         CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
         LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
         CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER = "${pkgs.pkgsx86_64Darwin.llvmPackages.clangUseLLVM}/bin/cc";

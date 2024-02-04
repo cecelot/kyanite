@@ -76,3 +76,31 @@ fn nested_records() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "1\n2\ntrue\n");
     Ok(())
 }
+
+#[test]
+fn big_record() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/big-record.kya")?;
+    assert_eq!(res.output, "1\n8\n19\n28\n");
+    Ok(())
+}
+
+#[test]
+fn record_access_in_condition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/record-access-in-condition.kya")?;
+    assert_eq!(res.output, "20\n50\n60\n");
+    Ok(())
+}
+
+#[test]
+fn factorial() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/factorial.kya")?;
+    assert_eq!(res.output, "120\n3628800\n");
+    Ok(())
+}
+
+#[test]
+fn record_as_arg() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/record-as-arg.kya")?;
+    assert_eq!(res.output, "1\n2\n18\n");
+    Ok(())
+}

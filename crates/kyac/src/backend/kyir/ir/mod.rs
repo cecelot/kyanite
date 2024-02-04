@@ -10,6 +10,7 @@ pub enum Expr {
     ConstInt(Const<i64>),
     ConstFloat(Const<f64>),
     Temp(Temp),
+    Dereferenced(Temp),
     Binary(Binary),
     Mem(Mem),
     Call(Call),
@@ -100,6 +101,7 @@ impl Expr {
     pub fn temp(&self) -> Option<String> {
         match self {
             Self::Temp(t) => Some(t.name.clone()),
+            Self::Dereferenced(t) => Some(format!("({})", t.name)),
             _ => None,
         }
     }

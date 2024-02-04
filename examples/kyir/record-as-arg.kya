@@ -1,0 +1,18 @@
+rec Coords {
+    x: int,
+    y: int
+}
+
+fun add(c: Coords): int {
+    return c.x + c.y + 15;
+}
+
+fun main() {
+    let c: Coords = Coords:init(x: 1, y: 2);
+    let x: int = c.x;
+    let y: int = c.y;
+    println_int(x);
+    println_int(y);
+    let result: int = add(c);
+    println_int(result);
+}

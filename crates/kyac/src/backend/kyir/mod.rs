@@ -138,6 +138,7 @@ impl Assembly<String> for Expr {
             Self::Mem(mem) => mem.assembly(codegen, swap),
             Self::Call(call) => call.assembly(codegen, swap),
             Self::Temp(t) => t.name.clone(),
+            Self::Dereferenced(t) => format!("({})", t.name),
             Self::ConstFloat(_) => todo!(),
             Self::ESeq { .. } => panic!("`Expr::ESeq` not removed by canonicalization"),
         }
@@ -202,12 +203,6 @@ impl Assembly<String> for Mem {
 
 impl Assembly<String> for Call {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) -> String {
-        const BUILTINS: [&str; 4] = [
-            "println_int",
-            "println_bool",
-            "println_str",
-            "println_float",
-        ];
         if let Some(&id) = codegen.stack.last() {
             codegen.call.insert(id, true);
         }
@@ -453,3 +448,15 @@ impl Display for AsmInstr {
         }
     }
 }
+
+const BUILTINS: &[&str] = &[
+    "max_int",
+    "min_int",
+    "max_float",
+    "min_float",
+    "println_bool",
+    "println_int",
+    "println_float",
+    "println_str",
+    "alloc",
+];

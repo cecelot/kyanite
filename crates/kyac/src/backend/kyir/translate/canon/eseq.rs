@@ -12,7 +12,7 @@ impl<'a> ESeqs<'a> for Expr {
                 bin.left.replace(search, temp);
                 bin.right.replace(search, temp);
             }
-            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) => {}
+            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) | Expr::Dereferenced(_) => {}
             Expr::ESeq(eseq) => {
                 if search == eseq.id {
                     *self = temp.clone();
@@ -48,7 +48,7 @@ impl<'a> ESeqs<'a> for Expr {
                     arg.eseqs(list);
                 }
             }
-            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) => {}
+            Expr::ConstInt(_) | Expr::ConstFloat(_) | Expr::Temp(_) | Expr::Dereferenced(_) => {}
         }
     }
 }
