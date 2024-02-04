@@ -125,3 +125,17 @@ fn fibonacci() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "1\n1\n2\n3\n5\n8\n102334155\n");
     Ok(())
 }
+
+#[test]
+fn early_return() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/early-return.kya")?;
+    assert_eq!(res.output, "1\n0\n");
+    Ok(())
+}
+
+#[test]
+fn nested_early_return() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nested-early-return.kya")?;
+    assert_eq!(res.output, "1\n3\n5\n");
+    Ok(())
+}

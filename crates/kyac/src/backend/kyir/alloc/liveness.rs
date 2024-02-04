@@ -167,15 +167,25 @@ trait FlowGraphMeta {
 impl FlowGraphMeta for AsmInstr {
     fn defines(&self) -> Vec<String> {
         match &self.inner {
-            Instr::Oper { dst, .. } => vec![dst.clone()],
-            Instr::Call { .. } => vec![],
+            Instr::Oper {
+                dst,
+                opcode: Opcode::Move,
+                ..
+            } => vec![dst.clone()],
+            _ => vec![],
         }
     }
 
     fn uses(&self) -> Vec<String> {
         match &self.inner {
             Instr::Oper {
-                opcode: Opcode::Move,
+                opcode:
+                    Opcode::Move
+                    | Opcode::Cmp(_)
+                    | Opcode::Add
+                    | Opcode::Sub
+                    | Opcode::Mul
+                    | Opcode::Div,
                 src,
                 dst,
                 ..

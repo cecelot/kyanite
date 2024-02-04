@@ -49,30 +49,24 @@ impl BasicBlocks {
                     }
                     if !body.is_empty() {
                         body.push(Jump::wrapped(l.clone().name));
-                        // Process the next block
                         let mut rest = Self::block(l.name, function, substitutions, func);
                         blocks.append(&mut rest);
-                        // Stop processing this block
                         jump = false;
                         break;
                     }
                 }
                 Stmt::CJump(cjmp) => {
                     body.push(Self::consume(function));
-                    // Create a new block for the true branch and process it
                     let mut t = Self::block(cjmp.t.clone(), function, substitutions, func);
-                    // Create a new block for the false branch and process it
                     let mut f = Self::block(cjmp.f.clone(), function, substitutions, func);
                     blocks.append(&mut t);
                     blocks.append(&mut f);
                     jump = false;
-                    // Stop processing this block
                     break;
                 }
                 Stmt::Jump(_) => {
                     body.push(Self::consume(function));
                     jump = false;
-                    // Stop processing this block
                     break;
                 }
                 _ => body.push(Self::consume(function)),

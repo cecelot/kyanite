@@ -1,0 +1,13 @@
+fun foo(b: bool): int {
+    if b == true {
+        return 1;
+    }
+    return 0;
+}
+
+fun main() {
+    let a: int = foo(true);
+    let b: int = foo(false);
+    println_int(a);
+    println_int(b);
+}

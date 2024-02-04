@@ -1,0 +1,18 @@
+fun foo(): int {
+    if true {
+        println_int(1);
+        if false {
+            println_int(2);
+            return 0;
+        }
+        println_int(3);
+        return 5;
+    }
+    println_int(4);
+    return 0;
+}
+
+fun main() {
+    let x: int = foo();
+    println_int(x);
+}

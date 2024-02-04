@@ -17,6 +17,11 @@ pub struct Translator<'a, F: Frame> {
     function: Option<usize>,
     accesses: &'a AccessMap,
     symbols: &'a SymbolTable,
+    ctx: Context,
+}
+
+struct Context {
+    ret: bool,
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
@@ -24,6 +29,7 @@ impl<'a, F: Frame> Translator<'a, F> {
         Self {
             functions: HashMap::new(),
             function: None,
+            ctx: Context { ret: false },
             accesses,
             symbols,
         }
@@ -248,21 +254,28 @@ impl Translate<Stmt> for ast::node::If {
             ),
             c => c.translate(translator),
         };
-        let t = Label::next();
-        let f = Label::next();
-        let done = Label::next();
         let is: Vec<Stmt> = self
             .is
             .iter()
             .map(|stmt| stmt.translate(translator))
             .collect();
+        let is = Stmt::from(&is[..]);
+        let done = if translator.ctx.ret {
+            translator.ctx.ret = false;
+            let id = translator.function.unwrap();
+            let frame = translator.functions.get_mut(&id).unwrap();
+            format!("{}.epilogue", frame.label())
+        } else {
+            Label::next()
+        };
         let otherwise: Vec<Stmt> = self
             .otherwise
             .iter()
             .map(|stmt| stmt.translate(translator))
             .collect();
-        let is = Stmt::from(&is[..]);
         let otherwise = Stmt::from(&otherwise[..]);
+        let t = Label::next();
+        let f = Label::next();
         Seq::wrapped(
             Seq::wrapped(
                 Seq::wrapped(
@@ -279,7 +292,7 @@ impl Translate<Stmt> for ast::node::If {
                 ),
                 Some(Seq::wrapped(Label::wrapped(f), Some(otherwise))),
             ),
-            Some(Label::wrapped(done)),
+            (!done.ends_with("epilogue")).then_some(Label::wrapped(done)),
         )
     }
 }
@@ -340,6 +353,7 @@ impl Translate<Stmt> for AstExpr {
 impl Translate<Stmt> for ast::node::Return {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let registers = F::registers();
+        translator.ctx.ret = true;
         Stmt::checked_move(
             Temp::wrapped(registers.ret.value.to_string()),
             self.expr.translate(translator),
