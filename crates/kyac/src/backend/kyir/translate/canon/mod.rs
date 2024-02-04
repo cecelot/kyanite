@@ -54,11 +54,15 @@ impl Extract for Stmt {
                 update(&m.expr, ir, replacements);
                 ir.push(Move::wrapped(*m.target.clone(), *m.expr.clone()));
             }
-            Stmt::Label(_) | Stmt::Noop | Stmt::Jump(_) | Stmt::Expr(_) => ir.push(self),
+            Stmt::Expr(e) => {
+                update(&e, ir, replacements);
+                ir.push(Stmt::Expr(e));
+            }
             Stmt::CJump(cjmp) => {
                 update(&cjmp.condition, ir, replacements);
                 ir.push(Stmt::CJump(cjmp));
             }
+            Stmt::Label(_) | Stmt::Noop | Stmt::Jump(_) => ir.push(self),
         }
     }
 }

@@ -104,3 +104,24 @@ fn record_as_arg() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "1\n2\n18\n");
     Ok(())
 }
+
+#[test]
+fn anon_calls() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/anon-calls.kya")?;
+    assert_eq!(res.output, "38\n");
+    Ok(())
+}
+
+#[test]
+fn half_anon_call() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/half-anon-call.kya")?;
+    assert_eq!(res.output, "38\n38\n38\n38\n");
+    Ok(())
+}
+
+#[test]
+fn fibonacci() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/fibonacci.kya")?;
+    assert_eq!(res.output, "1\n1\n2\n3\n5\n8\n102334155\n");
+    Ok(())
+}

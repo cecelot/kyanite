@@ -62,7 +62,7 @@ impl<F: Frame> Codegen<F> {
 
     #[must_use]
     fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr> {
-        ir.into_iter().for_each(|stmt| stmt.assembly(self, false));
+        ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
         &self.asm
     }
@@ -111,19 +111,19 @@ impl<F: Frame> Codegen<F> {
 }
 
 trait Assembly<R> {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, swap: bool) -> R;
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> R;
 }
 
 impl Assembly<()> for Stmt {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
         match self {
-            Self::Jump(jmp) => jmp.assembly(codegen, false),
-            Self::Label(label) => label.assembly(codegen, false),
-            Self::Move(m) => m.assembly(codegen, false),
-            Self::CJump(cjmp) => cjmp.assembly(codegen, false),
-            Self::Seq(seq) => seq.assembly(codegen, false),
+            Self::Jump(jmp) => jmp.assembly(codegen),
+            Self::Label(label) => label.assembly(codegen),
+            Self::Move(m) => m.assembly(codegen),
+            Self::CJump(cjmp) => cjmp.assembly(codegen),
+            Self::Seq(seq) => seq.assembly(codegen),
             Self::Expr(e) => {
-                e.assembly(codegen, false);
+                e.assembly(codegen);
             }
             Self::Noop => {}
         }
@@ -131,12 +131,12 @@ impl Assembly<()> for Stmt {
 }
 
 impl Assembly<String> for Expr {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, swap: bool) -> String {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
         match self {
-            Self::Binary(bin) => bin.assembly(codegen, swap),
-            Self::ConstInt(i) => i.assembly(codegen, swap),
-            Self::Mem(mem) => mem.assembly(codegen, swap),
-            Self::Call(call) => call.assembly(codegen, swap),
+            Self::Binary(bin) => bin.assembly(codegen),
+            Self::ConstInt(i) => i.assembly(codegen),
+            Self::Mem(mem) => mem.assembly(codegen),
+            Self::Call(call) => call.assembly(codegen),
             Self::Temp(t) => t.name.clone(),
             Self::Dereferenced(t) => format!("({})", t.name),
             Self::ConstFloat(_) => todo!(),
@@ -146,7 +146,7 @@ impl Assembly<String> for Expr {
 }
 
 impl Assembly<String> for Const<i64> {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) -> String {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
         let name = Temp::next();
         codegen.emit(Instr::Oper {
             opcode: Opcode::Move,
@@ -159,9 +159,9 @@ impl Assembly<String> for Const<i64> {
 }
 
 impl Assembly<String> for Binary {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) -> String {
-        let right = self.right.assembly(codegen, false);
-        let left = self.left.assembly(codegen, true);
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+        let right = self.right.assembly(codegen);
+        let left = self.left.assembly(codegen);
         codegen.emit(Instr::Oper {
             opcode: Opcode::from(self.op),
             dst: left.clone(),
@@ -173,43 +173,30 @@ impl Assembly<String> for Binary {
 }
 
 impl Assembly<String> for Mem {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, swap: bool) -> String {
-        let name = Temp::next();
-        let src = name.clone();
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+        let dst = Temp::next();
         let (rbp, offset) = Codegen::<F>::access(&self.expr);
-        let dst = format!("{offset}(%{rbp})");
-        let mut oper = Instr::Oper {
+        let src = format!("{offset}(%{rbp})");
+        let oper = Instr::Oper {
             opcode: Opcode::Move,
-            dst,
+            dst: dst.clone(),
             src,
             jump: None,
         };
-        if swap {
-            if let Instr::Oper {
-                ref mut dst,
-                ref mut src,
-                ..
-            } = oper
-            {
-                std::mem::swap(dst, src);
-            } else {
-                panic!("Expected `Instr::Oper`");
-            }
-        }
         codegen.emit(oper);
-        name
+        dst
     }
 }
 
 impl Assembly<String> for Call {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) -> String {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
         if let Some(&id) = codegen.stack.last() {
             codegen.call.insert(id, true);
         }
         let args: Vec<_> = self
             .args
             .iter()
-            .map(|arg| arg.assembly(codegen, true))
+            .map(|arg| arg.assembly(codegen))
             .enumerate()
             .map(|(i, arg)| Instr::Oper {
                 opcode: Opcode::Move,
@@ -231,7 +218,7 @@ impl Assembly<String> for Call {
 }
 
 impl Assembly<()> for Jump {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
         if self.target.ends_with("epilogue") {
             codegen.stack.pop();
         }
@@ -245,7 +232,7 @@ impl Assembly<()> for Jump {
 }
 
 impl Assembly<()> for Label {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
         let id = codegen.idents.get(&self.name).copied();
         codegen.emit(Instr::Oper {
             opcode: Opcode::Label(self.name.clone()),
@@ -264,7 +251,7 @@ impl Assembly<()> for Label {
 }
 
 impl Assembly<()> for Move {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
         if let Expr::Binary(ref bin) = *self.expr {
             if bin.left.temp().is_some_and(|t| t == "rbp") {
                 let (rbp, offset) = Codegen::<F>::access(&self.expr);
@@ -289,7 +276,7 @@ impl Assembly<()> for Move {
                 });
                 temp
             }
-            _ => self.expr.assembly(codegen, false),
+            _ => self.expr.assembly(codegen),
         };
         let dst = match *self.target {
             Expr::Mem(_) | Expr::Binary { .. } => {
@@ -308,8 +295,8 @@ impl Assembly<()> for Move {
 }
 
 impl Assembly<()> for CJump {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
-        let tmp = self.condition.assembly(codegen, false);
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+        let tmp = self.condition.assembly(codegen);
         if let Expr::ConstInt(_) = *self.condition {
             let one = Temp::next();
             codegen.emit(Instr::oper(Opcode::Move, one.clone(), "$1".into(), None));
@@ -332,10 +319,10 @@ impl Assembly<()> for CJump {
 }
 
 impl Assembly<()> for Seq {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>, _: bool) {
-        self.left.assembly(codegen, false);
+    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+        self.left.assembly(codegen);
         if let Some(right) = &self.right {
-            right.assembly(codegen, false);
+            right.assembly(codegen);
         }
     }
 }

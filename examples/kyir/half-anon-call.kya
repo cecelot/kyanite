@@ -1,0 +1,12 @@
+fun foo(x: int): int {
+    return x + x;
+}
+
+fun main() {
+    let x: int = foo(12);
+    println_int(x + foo(7));
+    println_int(foo(7) + x);
+    let y: int = foo(7);
+    println_int(foo(12) + y);
+    println_int(y + foo(12));
+}

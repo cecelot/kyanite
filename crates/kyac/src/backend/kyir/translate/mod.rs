@@ -124,11 +124,24 @@ impl Translate<Expr> for ast::node::Call {
             .map(|arg| arg.translate(translator))
             .collect();
         let name = match *self.left {
-                    AstExpr::Ident(ref ident) => ident.name.to_string(),
-                    AstExpr::Access(_) => todo!(),
-                    _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
-                };
-        Call::wrapped(name, args)
+            AstExpr::Ident(ref ident) => ident.name.to_string(),
+            AstExpr::Access(_) => todo!(),
+            _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
+        };
+        let temp = Temp::next();
+        let id = translator.function.unwrap();
+        let frame = translator.functions.get_mut(&id).unwrap();
+        let saved = frame.allocate(translator.symbols, &temp, None);
+        ESeq::wrapped(
+            Seq::wrapped(
+                Stmt::Expr(Box::new(Call::wrapped(name, args))),
+                Some(Move::wrapped(
+                    saved.clone(),
+                    Temp::wrapped(F::registers().ret.value.into()),
+                )),
+            ),
+            saved,
+        )
     }
 }
 

@@ -1,0 +1,17 @@
+fun fib(n: int): int {
+    if n < 2 {
+        return n;
+    } else {
+        return fib(n-1) + fib(n-2);
+    }
+}
+
+fun main() {
+    println_int(fib(1));
+    println_int(fib(2));
+    println_int(fib(3));
+    println_int(fib(4));
+    println_int(fib(5));
+    println_int(fib(6));
+    println_int(fib(40));
+}

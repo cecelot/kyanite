@@ -1,0 +1,7 @@
+fun foo(x: int): int {
+    return x + x;
+}
+
+fun main() {
+    println_int(foo(12) + foo(7));
+}
