@@ -153,3 +153,17 @@ fn multi_depth_functions_with_conditions() -> Result<(), Box<dyn std::error::Err
     assert_eq!(res.output, "3\n3\n6\n7\n2\n2\n0\n1\n6\n6\n12\n0\n");
     Ok(())
 }
+
+#[test]
+fn simple_if() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/simple-if.kya")?;
+    assert_eq!(res.output, "1\n");
+    Ok(())
+}
+
+#[test]
+fn record_return() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/record-return.kya")?;
+    assert_eq!(res.output, "1\n2\n");
+    Ok(())
+}

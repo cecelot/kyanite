@@ -1,0 +1,7 @@
+fun main() {
+    if true {
+        println_int(1);
+    } else {
+        println_int(0);
+    }
+}

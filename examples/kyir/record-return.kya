@@ -1,0 +1,16 @@
+rec Foo {
+    x: int,
+    y: int
+}
+
+fun foo(): Foo {
+    return Foo:init(x: 1, y: 2);
+}
+
+fun main() {
+    let f: Foo = foo();
+    let x: int = f.x;
+    let y: int = f.y;
+    println_int(x);
+    println_int(y);
+}
