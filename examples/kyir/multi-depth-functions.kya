@@ -1,0 +1,11 @@
+fun foo(i: int): int {
+    return bar(i) + 1;
+}
+
+fun bar(i: int): int {
+    return i * 2;
+}
+
+fun main() {
+    println_int(foo(3));
+}

@@ -1,0 +1,23 @@
+fun foo(i: int): int {
+    println_int(i);
+    let j: int = bar(i);
+    println_int(j);
+    if j > 10 {
+        return 0;
+    }
+    return j + 1;
+}
+
+fun bar(i: int): int {
+    println_int(i);
+    if i > 2 {
+        return i * 2;
+    }
+    return 0;
+}
+
+fun main() {
+    println_int(foo(3));
+    println_int(foo(2));
+    println_int(foo(6));
+}

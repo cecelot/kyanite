@@ -139,3 +139,17 @@ fn nested_early_return() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "1\n3\n5\n");
     Ok(())
 }
+
+#[test]
+fn multi_depth_functions() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/multi-depth-functions.kya")?;
+    assert_eq!(res.output, "7\n");
+    Ok(())
+}
+
+#[test]
+fn multi_depth_functions_with_conditions() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/multi-depth-functions-with-conditions.kya")?;
+    assert_eq!(res.output, "3\n3\n6\n7\n2\n2\n0\n1\n6\n6\n12\n0\n");
+    Ok(())
+}
