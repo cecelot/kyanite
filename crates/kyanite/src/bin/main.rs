@@ -46,6 +46,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
+        Commands::Clean => {
+            if let Err(e) = std::fs::remove_dir_all("kya-dist") {
+                log::warn!("failed to remove kya-dist: {e}");
+            }
+            Ok(())
+        }
         Commands::Build { path: _ } => todo!(),
         Commands::Version => {
             println!("kyanite {} (kyac {})", kyanite::VERSION, kyac::VERSION);

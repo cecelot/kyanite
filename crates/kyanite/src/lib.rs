@@ -34,6 +34,8 @@ pub enum Commands {
         /// The path to the .kya file
         path: PathBuf,
     },
+    /// Cleans the target directory
+    Clean,
     /// Prints the kyanite version
     Version,
 }
