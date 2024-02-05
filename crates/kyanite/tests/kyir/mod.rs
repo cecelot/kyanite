@@ -181,3 +181,10 @@ fn embedded_record_init() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "7721\n14000\n");
     Ok(())
 }
+
+#[test]
+fn shadow() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/shadow.kya")?;
+    assert_eq!(res.output, "17\n17\n");
+    Ok(())
+}

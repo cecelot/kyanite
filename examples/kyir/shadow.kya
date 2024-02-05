@@ -1,0 +1,15 @@
+rec Bar {
+    x: int
+}
+
+fun foo(b: Bar): int {
+    let b: int = b.x;
+    println_int(b);
+    return b;
+}
+
+fun main() {
+    let b: Bar = Bar:init(x: 17);
+    let c: int = foo(b);
+    println_int(c);
+}

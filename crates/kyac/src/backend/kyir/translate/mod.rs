@@ -363,12 +363,12 @@ impl Translate<Stmt> for ast::node::Return {
 
 impl Translate<Stmt> for ast::node::VarDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+        let expr = self.expr.translate(translator);
         let id = translator.function.unwrap();
         let name = self.name.to_string();
         let frame = translator.functions.get_mut(&id).unwrap();
         // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
         let target = frame.allocate(translator.symbols, &name, None);
-        let expr = self.expr.translate(translator);
         Stmt::checked_move(target, expr)
     }
 }
