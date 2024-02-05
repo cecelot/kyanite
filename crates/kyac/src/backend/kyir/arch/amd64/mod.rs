@@ -2,7 +2,7 @@ use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{RegisterMap, ReturnRegisters},
-        ir::{BinOp, Binary, Const, ESeq, Expr, Mem, Move, Seq, Temp},
+        ir::{BinOp, Binary, Const, Expr, Mem, Temp},
         Frame, Instr, Opcode,
     },
     pass::SymbolTable,
@@ -35,7 +35,7 @@ impl Frame for Amd64 {
                 .params
                 .iter()
                 .enumerate()
-                .map(|(i, param)| Formal::new(registers.argument[i], param.name.to_string()))
+                .map(|(i, _)| Formal::new(registers.argument[i]))
                 .collect(),
             label: func.name.to_string(),
             variables,
@@ -55,49 +55,9 @@ impl Frame for Amd64 {
         self.variables.get(ident).copied().unwrap()
     }
 
-    fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Expr {
+    fn get(&self, ident: &str) -> Expr {
         let offset = self.get_offset(ident);
         let registers = Self::registers();
-        if self.formals.iter().any(|formal| ident == formal.ident) {
-            if let (Some(temp), Some(index)) = (temp, index) {
-                // Special case: record field access on a function argument, so it is not in the
-                // current frame (passed to the function using `lea`). So: first move the record
-                // ptr into %temp, then dereference it, accessing the (index*8)th word.
-                // Finally, return %temp.
-                return ESeq::wrapped(
-                    Seq::wrapped(
-                        // movq offset(%rbp), %temp
-                        Move::wrapped(
-                            Temp::wrapped(temp.clone()),
-                            Mem::wrapped(Binary::wrapped(
-                                BinOp::Plus,
-                                Temp::wrapped(registers.frame.into()),
-                                Const::<i64>::int(offset),
-                            )),
-                        ),
-                        // movq index*8(%temp), %temp
-                        Some(Move::wrapped(
-                            Temp::wrapped(temp.clone()),
-                            Mem::wrapped(Binary::wrapped(
-                                BinOp::Plus,
-                                Temp::wrapped(temp.clone()),
-                                Const::<i64>::int(
-                                    i64::try_from(index * Self::word_size()).unwrap(),
-                                ),
-                            )),
-                        )),
-                    ),
-                    Temp::wrapped(temp),
-                );
-            }
-        }
-        let offset = if let Some(index) = index {
-            // The address mapped to `ident` is one word before the start of the record in the frame
-            // because one word is used to store where the record begins, so index + 1
-            offset - i64::try_from((index + 1) * Self::word_size()).unwrap()
-        } else {
-            offset
-        };
         Mem::wrapped(Binary::wrapped(
             BinOp::Plus,
             Temp::wrapped(registers.frame.into()),
@@ -125,7 +85,7 @@ impl Frame for Amd64 {
                 self.offset
             },
         );
-        self.get(ident, None, None)
+        self.get(ident)
     }
 
     fn prologue(&self) -> Vec<Instr> {
@@ -221,12 +181,11 @@ impl Frame for Amd64 {
 #[derive(Debug)]
 struct Formal {
     register: &'static str,
-    ident: String,
 }
 
 impl Formal {
-    fn new(register: &'static str, ident: String) -> Self {
-        Self { register, ident }
+    fn new(register: &'static str) -> Self {
+        Self { register }
     }
 }
 

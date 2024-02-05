@@ -11,7 +11,7 @@ pub trait Frame {
     where
         Self: Sized;
     fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr;
-    fn get(&self, ident: &str, temp: Option<String>, index: Option<usize>) -> Expr;
+    fn get(&self, ident: &str) -> Expr;
     fn get_offset(&self, ident: &str) -> i64;
     fn prologue(&self) -> Vec<Instr>;
     fn label(&self) -> &String;

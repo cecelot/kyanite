@@ -153,7 +153,7 @@ impl Translate<Expr> for ast::node::Call {
 
 impl Translate<Expr> for ast::node::Ident {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
-        translator.frame().get(&self.name.to_string(), None, None)
+        translator.frame().get(&self.name.to_string())
     }
 }
 
@@ -189,7 +189,7 @@ impl Translate<Expr> for ast::node::Access {
             .enumerate()
             .find(|(_, (name, _))| name == &last)
             .expect("field access for non-terminal fields is not yet supported");
-        let base = frame.get(&parent, None, None);
+        let base = frame.get(&parent);
         let offset: i64 = (index * F::word_size()).try_into().unwrap();
         let stmts = [
             Stmt::checked_move(Temp::wrapped(temp.clone()), base), // copy base pointer
