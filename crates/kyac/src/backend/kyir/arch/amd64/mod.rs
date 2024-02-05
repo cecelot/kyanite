@@ -97,6 +97,8 @@ impl Frame for Amd64 {
             dst: String::new(),
             jump: None,
         }); // pushq %rbp
+        let saves = list(Opcode::Push);
+        prologue.extend(saves);
         prologue.push(Instr::oper(
             Opcode::Move,
             registers.frame.into(),
@@ -126,26 +128,28 @@ impl Frame for Amd64 {
 
     fn epilogue(&self) -> Vec<Instr> {
         let registers = Self::registers();
-        vec![
-            Instr::Oper {
-                opcode: Opcode::Add,
-                src: format!("${}", next_multiple_of(self.offset.abs(), 16)),
-                dst: registers.stack.into(),
-                jump: None,
-            }, // addq $(), %rsp
-            Instr::Oper {
-                opcode: Opcode::Pop,
-                src: registers.frame.to_string(),
-                dst: String::new(),
-                jump: None,
-            }, // popq %rbp
-            Instr::Oper {
-                opcode: Opcode::Ret,
-                src: String::new(),
-                dst: String::new(),
-                jump: None,
-            }, // retq
-        ]
+        let mut epilogue = vec![];
+        epilogue.push(Instr::Oper {
+            opcode: Opcode::Add,
+            src: format!("${}", next_multiple_of(self.offset.abs(), 16)),
+            dst: registers.stack.into(),
+            jump: None,
+        }); // addq $(), %rsp
+        let restores: Vec<_> = list(Opcode::Pop).into_iter().rev().collect();
+        epilogue.extend(restores);
+        epilogue.push(Instr::Oper {
+            opcode: Opcode::Pop,
+            src: registers.frame.to_string(),
+            dst: String::new(),
+            jump: None,
+        }); // popq %rbp
+        epilogue.push(Instr::Oper {
+            opcode: Opcode::Ret,
+            src: String::new(),
+            dst: String::new(),
+            jump: None,
+        }); // retq
+        epilogue
     }
 
     fn header() -> &'static str {
@@ -176,6 +180,23 @@ impl Frame for Amd64 {
     fn word_size() -> usize {
         8
     }
+}
+
+fn list(opcode: Opcode) -> Vec<Instr> {
+    // TODO: only push registers that are actually used.
+    // Currently, there's no way to know which registers are used
+    // in which function.
+    Amd64::registers()
+        .callee
+        .iter()
+        .filter(|&&reg| reg != "rbp" && reg != "rsp")
+        .map(move |&reg| Instr::Oper {
+            opcode: opcode.clone(),
+            src: reg.to_string(),
+            dst: String::new(),
+            jump: None,
+        })
+        .collect()
 }
 
 #[derive(Debug)]

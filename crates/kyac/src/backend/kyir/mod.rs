@@ -35,9 +35,7 @@ pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) 
 pub struct Codegen<F: Frame> {
     asm: Vec<AsmInstr>,
     functions: HashMap<usize, F>,
-    stack: Vec<usize>,
     idents: HashMap<String, usize>,
-    call: HashMap<usize, bool>,
 }
 
 impl<F: Frame> Codegen<F> {
@@ -54,8 +52,6 @@ impl<F: Frame> Codegen<F> {
                 })
                 .collect(),
             asm: Vec::new(),
-            call: HashMap::new(),
-            stack: vec![],
             functions,
         }
     }
@@ -190,9 +186,6 @@ impl Assembly<String> for Mem {
 
 impl Assembly<String> for Call {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
-        if let Some(&id) = codegen.stack.last() {
-            codegen.call.insert(id, true);
-        }
         let args: Vec<_> = self
             .args
             .iter()
@@ -219,9 +212,6 @@ impl Assembly<String> for Call {
 
 impl Assembly<()> for Jump {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
-        if self.target.ends_with("epilogue") {
-            codegen.stack.pop();
-        }
         codegen.emit(Instr::Oper {
             opcode: Opcode::Jump,
             dst: String::new(),
@@ -241,7 +231,6 @@ impl Assembly<()> for Label {
             jump: None,
         });
         if let Some(id) = id {
-            codegen.stack.push(id);
             let function = codegen.functions.get(&id).unwrap();
             for instr in function.prologue() {
                 codegen.emit(instr);
