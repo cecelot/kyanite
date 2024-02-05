@@ -1,0 +1,20 @@
+rec Bar {
+    a: int
+}
+
+fun many_args(a: int, b: int, c: int, d: Bar, e: int, f: bool): int {
+    println_int(a);
+    println_int(b);
+    println_int(c);
+    let g: int = d.a;
+    println_int(g);
+    println_int(e);
+    println_bool(f);
+    return 16;
+}
+
+fun main() {
+    let bar: Bar = Bar:init(a: 790);
+    let foo: int = many_args(1292, 1497, 101, bar, 982, false);
+    println_int(foo);
+}

@@ -167,3 +167,17 @@ fn record_return() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "1\n2\n");
     Ok(())
 }
+
+#[test]
+fn many_args() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/many-args.kya")?;
+    assert_eq!(res.output, "1292\n1497\n101\n790\n982\nfalse\n16\n");
+    Ok(())
+}
+
+#[test]
+fn embedded_record_init() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/embedded-record-init.kya")?;
+    assert_eq!(res.output, "7721\n14000\n");
+    Ok(())
+}

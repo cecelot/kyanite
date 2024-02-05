@@ -1,0 +1,14 @@
+rec Bar {
+    a: int
+}
+
+fun foo(f: Bar): int {
+    let g: int = f.a;
+    println_int(g);
+    return 14000;
+}
+
+fun main() {
+    let i: int = foo(Bar:init(a: 7721));
+    println_int(i);
+}
