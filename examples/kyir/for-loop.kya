@@ -1,0 +1,11 @@
+fun main() {
+    let b: int = 5;
+    for i in [b, b + 5] {
+        println_int(i);
+        if i > 8 {
+            println_int(1);
+        }
+    }
+    println_int(b + 5);
+    println_int(b);
+}

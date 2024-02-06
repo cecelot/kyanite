@@ -137,6 +137,8 @@ impl<'a> Lexer<'a> {
                     '.' => Token::new(Kind::Dot, None, self.span),
                     '{' => Token::new(Kind::LeftBrace, None, self.span),
                     '}' => Token::new(Kind::RightBrace, None, self.span),
+                    '[' => Token::new(Kind::LeftBracket, None, self.span),
+                    ']' => Token::new(Kind::RightBracket, None, self.span),
                     // Types
                     '"' => self.string(),
                     '0'..='9' => self.number(),
@@ -249,6 +251,8 @@ impl<'a> Lexer<'a> {
             "if" => Token::new(Kind::If, None, lexer.span),
             "else" => Token::new(Kind::Else, None, lexer.span),
             "while" => Token::new(Kind::While, None, lexer.span),
+            "for" => Token::new(Kind::For, None, lexer.span),
+            "in" => Token::new(Kind::In, None, lexer.span),
             _ => Token::new(Kind::Identifier, Some(lexeme.leak()), lexer.span),
         })
     }

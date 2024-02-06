@@ -178,7 +178,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn loops(&mut self) -> Result<Stmt, ParseError> {
+    fn r#for(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(Kind::For)?;
+        let index = self.consume(Kind::Identifier)?;
+        self.consume(Kind::In)?;
+        let range = self.range()?;
+        let block = self.block()?;
+        Ok(For::wrapped(index, range, block))
+    }
+
+    fn r#while(&mut self) -> Result<Stmt, ParseError> {
         self.consume(Kind::While)?;
         let condition = self.expression()?;
         let block = self.block()?;
@@ -189,7 +198,8 @@ impl<'a> Parser<'a> {
         match self.peek()?.kind {
             Kind::Let => self.declaration(),
             Kind::If => self.condition(),
-            Kind::While => self.loops(),
+            Kind::For => self.r#for(),
+            Kind::While => self.r#while(),
             Kind::Return => {
                 let keyword = self.consume(Kind::Return)?;
                 let expr = self.expression()?;
@@ -215,6 +225,15 @@ impl<'a> Parser<'a> {
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
         self.equality()
+    }
+
+    fn range(&mut self) -> Result<Expr, ParseError> {
+        let left = self.consume(Kind::LeftBracket)?;
+        let start = self.expression()?;
+        self.consume(Kind::Comma)?;
+        let end = self.expression()?;
+        let right = self.consume(Kind::RightBracket)?;
+        Ok(Range::wrapped(start, end, (left, right)))
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {

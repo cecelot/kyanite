@@ -153,6 +153,23 @@ impl While {
 }
 
 #[derive(Debug)]
+pub struct For {
+    pub index: Token,
+    pub iter: Expr,
+    pub body: Vec<Stmt>,
+}
+
+impl For {
+    pub fn wrapped(index: Token, range: Expr, body: Vec<Stmt>) -> Stmt {
+        Stmt::For(Rc::new(Self {
+            index,
+            iter: range,
+            body,
+        }))
+    }
+}
+
+#[derive(Debug)]
 pub struct Call {
     pub left: Box<Expr>,
     pub args: Vec<Expr>,
@@ -255,6 +272,23 @@ impl Init {
             name,
             initializers,
             parens,
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct Range {
+    pub start: Expr,
+    pub end: Expr,
+    pub brackets: (Token, Token),
+}
+
+impl Range {
+    pub fn wrapped(start: Expr, end: Expr, brackets: (Token, Token)) -> Expr {
+        Expr::Range(Rc::new(Self {
+            start,
+            end,
+            brackets,
         }))
     }
 }

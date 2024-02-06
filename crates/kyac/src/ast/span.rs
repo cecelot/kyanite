@@ -21,7 +21,8 @@ impl Combined for Stmt {
             Stmt::Return(ret) => ret.keyword.span.column,
             Stmt::Expr(expr) => expr.start(),
             Stmt::If(cond) => cond.condition.start(),
-            Stmt::While(cond) => cond.condition.start(),
+            Stmt::While(l) => l.condition.start(),
+            Stmt::For(l) => l.iter.start(),
         }
     }
 
@@ -32,7 +33,8 @@ impl Combined for Stmt {
             Stmt::Return(ret) => ret.expr.end(),
             Stmt::Expr(expr) => expr.end(),
             Stmt::If(cond) => cond.condition.end(),
-            Stmt::While(cond) => cond.condition.end(),
+            Stmt::While(l) => l.condition.end(),
+            Stmt::For(l) => l.iter.end(),
         }
     }
 
@@ -44,6 +46,7 @@ impl Combined for Stmt {
             Stmt::Expr(expr) => expr.line(),
             Stmt::If(cond) => cond.condition.line(),
             Stmt::While(cond) => cond.condition.line(),
+            Stmt::For(cond) => cond.iter.line(),
         }
     }
 }
@@ -54,6 +57,7 @@ impl Combined for Expr {
             Expr::Access(access) => access.chain.first().unwrap().start(),
             Expr::Call(call) => call.left.start(),
             Expr::Binary(binary) => binary.left.start(),
+            Expr::Range(range) => range.start.start(),
             Expr::Unary(unary) => unary.op.span.column,
             Expr::Ident(id) => id.name.span.column,
             Expr::Str(s) => s.token.span.column,
@@ -66,6 +70,7 @@ impl Combined for Expr {
 
     fn end(&self) -> usize {
         match self {
+            Expr::Range(range) => range.end.end(),
             Expr::Access(access) => access.chain.last().unwrap().end(),
             Expr::Call(call) => call.parens.1.span.column + 1,
             Expr::Binary(binary) => binary.right.end(),
@@ -82,6 +87,7 @@ impl Combined for Expr {
 
     fn line(&self) -> usize {
         match self {
+            Expr::Range(range) => range.start.line(),
             Expr::Access(access) => access.chain.first().unwrap().line(),
             Expr::Call(call) => call.left.line(),
             Expr::Binary(binary) => binary.left.line(),

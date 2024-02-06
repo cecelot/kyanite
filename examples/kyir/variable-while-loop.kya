@@ -1,0 +1,8 @@
+fun main() {
+    let b: int = 5;
+    let end: int = b + 5;
+    while b < end {
+        println_int(b);
+        b = b + 1;
+    }
+}

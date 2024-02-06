@@ -53,6 +53,7 @@ pub enum Stmt {
     Expr(Expr),
     If(Rc<node::If>),
     While(Rc<node::While>),
+    For(Rc<node::For>),
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +64,7 @@ pub enum Expr {
     Unary(Rc<node::Unary>),
     Ident(Rc<node::Ident>),
     Init(Rc<node::Init>),
+    Range(Rc<node::Range>),
     Str(Rc<node::Literal<&'static str>>),
     Int(Rc<node::Literal<i64>>),
     Float(Rc<node::Literal<f64>>),
@@ -83,6 +85,14 @@ impl Expr {
             init
         } else {
             panic!("called `Expr::init()` on a non-init")
+        }
+    }
+
+    pub fn range(&self) -> &node::Range {
+        if let Expr::Range(range) = self {
+            range
+        } else {
+            panic!("called `Expr::range()` on a non-range")
         }
     }
 }
@@ -152,6 +162,7 @@ impl Expr {
             Expr::Int(..) => Type::Int,
             Expr::Float(..) => Type::Float,
             Expr::Bool(..) => Type::Bool,
+            Expr::Range(r) => r.start.ty(),
             Expr::Binary(binary) => binary.left.ty(),
             Expr::Unary(unary) => unary.expr.ty(),
             Expr::Call(call) => call.left.ty(),

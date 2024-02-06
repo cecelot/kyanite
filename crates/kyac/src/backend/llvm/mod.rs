@@ -148,6 +148,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Stmt::Var(var) => self.var(var),
             Stmt::If(_) => todo!(),
             Stmt::While(_) => todo!(),
+            Stmt::For(_) => todo!(),
         }
     }
 
@@ -167,6 +168,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             Expr::Binary(binary) => self.binary(binary).map(Into::into),
             Expr::Unary(unary) => self.unary(unary).map(Into::into),
             Expr::Init(init) => self.init(init).map(Into::into),
+            Expr::Range(_) => todo!(),
         }
     }
 

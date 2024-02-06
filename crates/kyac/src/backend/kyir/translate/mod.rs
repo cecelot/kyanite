@@ -8,7 +8,7 @@ use crate::{
     ast::{self, Decl as AstDecl, Stmt as AstStmt},
     backend::kyir::{arch::Frame, ir::*},
     pass::{AccessMap, SymbolTable},
-    token::Kind,
+    token::{Kind, Span, Token},
 };
 use std::collections::HashMap;
 
@@ -64,6 +64,7 @@ impl Translate<Expr> for AstExpr {
             AstExpr::Int(i) => i.translate(translator),
             AstExpr::Float(f) => f.translate(translator),
             AstExpr::Bool(b) => b.translate(translator),
+            AstExpr::Range(_r) => todo!(),
             AstExpr::Str(..) => todo!(),
             AstExpr::Binary(binary) => binary.translate(translator),
             AstExpr::Call(call) => call.translate(translator),
@@ -79,11 +80,12 @@ impl Translate<Stmt> for AstStmt {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         match self {
             AstStmt::If(c) => c.translate(translator),
-            AstStmt::While(c) => c.translate(translator),
-            AstStmt::Assign(assign) => assign.translate(translator),
+            AstStmt::While(w) => w.translate(translator),
+            AstStmt::For(f) => f.translate(translator),
+            AstStmt::Assign(a) => a.translate(translator),
             AstStmt::Expr(e) => e.translate(translator),
-            AstStmt::Return(ret) => ret.translate(translator),
-            AstStmt::Var(var) => var.translate(translator),
+            AstStmt::Return(r) => r.translate(translator),
+            AstStmt::Var(v) => v.translate(translator),
         }
     }
 }
@@ -341,6 +343,43 @@ impl Translate<Stmt> for ast::node::While {
             ),
             Some(Label::wrapped(f)),
         )
+    }
+}
+
+impl Translate<Stmt> for ast::node::For {
+    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+        let range = self.iter.range();
+        let cur = ast::node::Ident::wrapped(self.index.clone());
+        let start = ast::node::VarDecl::wrapped(
+            cur.clone().ident().name.clone(),
+            Token::new(Kind::Literal, None, Span::default()),
+            range.start.clone(),
+        );
+        let w = ast::node::While {
+            condition: ast::node::Binary::wrapped(
+                cur.clone(),
+                Token::new(Kind::LessEqual, None, Span::default()),
+                range.end.clone(),
+            ),
+            body: self
+                .body
+                .clone()
+                .into_iter()
+                .chain(vec![ast::node::Assign::wrapped(
+                    cur.clone(),
+                    ast::node::Binary::wrapped(
+                        cur,
+                        Token::new(Kind::Plus, None, Span::default()),
+                        ast::node::Literal::<i64>::int(
+                            1,
+                            Token::new(Kind::Literal, Some("1"), Span::default()),
+                        ),
+                    ),
+                )])
+                .collect(),
+        };
+        let stmts: Vec<Stmt> = vec![start.translate(translator), w.translate(translator)];
+        Stmt::from(&stmts[..])
     }
 }
 

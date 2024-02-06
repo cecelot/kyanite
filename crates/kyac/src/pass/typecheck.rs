@@ -108,7 +108,8 @@ impl Check for Stmt {
             Stmt::Var(v) => pass.var(v),
             Stmt::Assign(a) => pass.assign(a),
             Stmt::If(c) => pass.condition(c),
-            Stmt::While(c) => pass.loops(c),
+            Stmt::While(c) => pass.r#while(c),
+            Stmt::For(f) => pass.r#for(f),
         }
     }
 }
@@ -122,6 +123,7 @@ impl Check for Expr {
             Expr::Ident(i) => pass.ident(i),
             Expr::Access(access) => pass.access(access),
             Expr::Init(init) => pass.init(init),
+            Expr::Range(r) => pass.range(r),
             Expr::Bool(..) => Ok(Type::Bool),
             Expr::Int(..) => Ok(Type::Int),
             Expr::Float(..) => Ok(Type::Float),
@@ -187,6 +189,21 @@ impl<'a> TypeCheckPass<'a> {
         self.errors.push(error);
     }
 
+    fn range(&mut self, range: &node::Range) -> Result<Type, TypeError> {
+        let start = range.start.check(self)?;
+        let end = range.end.check(self)?;
+        if start == end && start == Type::Int {
+            Ok(Type::Int)
+        } else {
+            self.error(
+                range.brackets.0.span,
+                "expected range to be of type [int, int]".into(),
+                format!("expression of [{start}, {end}]"),
+            );
+            Err(TypeError::Mismatch(Type::Int, start))
+        }
+    }
+
     fn unary(&mut self, unary: &node::Unary) -> Result<Type, TypeError> {
         let got = unary.expr.check(self)?;
         match unary.op.kind {
@@ -250,8 +267,26 @@ impl<'a> TypeCheckPass<'a> {
         self.blocks(&c.condition, &[&c.is, &c.otherwise])
     }
 
-    fn loops(&mut self, c: &node::While) -> Result<Type, TypeError> {
+    fn r#while(&mut self, c: &node::While) -> Result<Type, TypeError> {
         self.blocks(&c.condition, &[&c.body])
+    }
+
+    fn r#for(&mut self, f: &node::For) -> Result<Type, TypeError> {
+        f.iter.check(self)?;
+        self.begin_scope();
+        self.scope_mut().insert(
+            f.index.to_string(),
+            Symbol::Variable(Rc::new(node::VarDecl {
+                name: f.index.clone(),
+                ty: Token::new(Kind::Identifier, Some("int"), f.index.span),
+                expr: f.iter.clone(),
+            })),
+        );
+        for node in &f.body {
+            let _ = node.check(self);
+        }
+        self.end_scope();
+        Ok(Type::Void)
     }
 
     fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {

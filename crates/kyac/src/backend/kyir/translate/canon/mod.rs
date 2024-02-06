@@ -12,12 +12,12 @@ use crate::backend::kyir::{
 };
 use std::collections::VecDeque;
 
-pub fn canonicalize(mut ir: Vec<Stmt>) -> Vec<Stmt> {
-    ir = ir
+pub fn canonicalize(ir: Vec<Stmt>) -> Vec<Stmt> {
+    let ir: Vec<_> = ir
         .into_iter()
         .map(|item| item.rewrite(false, false))
+        .filter(|item| !matches!(item, Stmt::Noop))
         .collect();
-    ir.retain(|item| !matches!(item, Stmt::Noop));
     let mut new = vec![];
     let mut replacements = vec![];
     for item in ir {

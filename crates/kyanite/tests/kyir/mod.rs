@@ -209,3 +209,24 @@ fn nesting_hell() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "5\n4\n3\n");
     Ok(())
 }
+
+#[test]
+fn simple_for() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/simple-for.kya")?;
+    assert_eq!(res.output, "0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n");
+    Ok(())
+}
+
+#[test]
+fn for_loop() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/for-loop.kya")?;
+    assert_eq!(res.output, "5\n6\n7\n8\n9\n1\n10\n1\n10\n5\n");
+    Ok(())
+}
+
+#[test]
+fn variable_while_loop() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/variable-while-loop.kya")?;
+    assert_eq!(res.output, "5\n6\n7\n8\n9\n");
+    Ok(())
+}
