@@ -180,37 +180,34 @@ impl Translate<Expr> for ast::node::Unary {
 }
 
 impl Translate<Expr> for ast::node::Access {
+    // heh, this is basically the spiritual equivalent of LLVM's getelementptr
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let frame = translator.frame();
-        let aux = translator.accesses.get(&self.id).unwrap();
-        let child = aux.symbols.last().unwrap().record();
-        let mut name: Vec<String> = self
-            .chain
-            .iter()
-            .map(|expr| expr.ident().name.to_string())
-            .collect();
-        let index = child
-            .fields
-            .iter()
-            .position(|field| field.name.to_string() == *name.last().unwrap())
-            .unwrap();
-        name.pop().unwrap();
-        let delimited = name.join(".");
+        let meta = translator.accesses.get(&self.id).unwrap();
+        let ident = self.chain.first().unwrap().ident().name.to_string();
+        let base = frame.get(&ident);
         let temp = Temp::next();
-        let base = frame.get(&delimited);
-        let offset: i64 = (index * F::word_size()).try_into().unwrap();
-        let stmts = [
-            Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
-            Stmt::Expr(Box::new(Binary::wrapped(
-                BinOp::Plus,
-                Temp::wrapped(temp.clone()),
-                Const::<i64>::int(offset),
-            ))), // add offset to base pointer
-            Stmt::checked_move(
-                Temp::wrapped(temp.clone()),
-                Temp::dereferenced(temp.clone()),
-            ),
-        ];
+        let initial = [Stmt::checked_move(
+            Temp::wrapped(temp.clone()),
+            base.clone(),
+        )];
+        let stmts: Vec<_> = initial
+            .into_iter()
+            .chain(meta.indices.iter().flat_map(|&field| {
+                let offset: i64 = (field * F::word_size()).try_into().unwrap();
+                vec![
+                    Stmt::Expr(Box::new(Binary::wrapped(
+                        BinOp::Plus,
+                        Temp::wrapped(temp.clone()),
+                        Const::<i64>::int(offset),
+                    ))),
+                    Stmt::checked_move(
+                        Temp::wrapped(temp.clone()),
+                        Temp::dereferenced(temp.clone()),
+                    ),
+                ]
+            }))
+            .collect();
         ESeq::wrapped(Stmt::from(&stmts[..]), Temp::wrapped(temp))
     }
 }

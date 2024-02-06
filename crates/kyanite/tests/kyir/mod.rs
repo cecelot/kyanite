@@ -195,3 +195,17 @@ fn shadow() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "17\n17\n");
     Ok(())
 }
+
+#[test]
+fn more_records() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/more-records.kya")?;
+    assert_eq!(res.output, "1\n8\n16\n9\n");
+    Ok(())
+}
+
+#[test]
+fn nesting_hell() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nesting-hell.kya")?;
+    assert_eq!(res.output, "5\n4\n3\n");
+    Ok(())
+}

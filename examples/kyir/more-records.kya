@@ -1,0 +1,35 @@
+rec Foo {
+    w: Bar,
+    x: int,
+    y: int,
+    z: int
+}
+
+rec Bar {
+    a: int,
+    b: int,
+    c: int
+}
+
+fun called(f: Foo): int {
+    let bar: Bar = Bar:init(a: 10, b: 11, c: 12);
+    return f.y + bar.b;
+}
+
+fun main() {
+    let f: Foo = Foo:init(
+        w: Bar:init(a: 1, b: 2, c: 3),
+        x: 4,
+        y: 5,
+        z: 6
+    );
+    let foo: int = f.w.a;
+    println_int(foo);
+    let bar: Bar = Bar:init(a: 7, b: 8, c: 9);
+    let baz: int = bar.b;
+    println_int(baz);
+    let qux: int = called(f);
+    println_int(qux);
+    let qoo: int = bar.c;
+    println_int(qoo);
+}
