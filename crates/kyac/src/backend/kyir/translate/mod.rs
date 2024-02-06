@@ -5,7 +5,7 @@ pub use canon::canonicalize;
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::Expr as AstExpr,
-    ast::{self, Decl as AstDecl, Stmt as AstStmt, Type},
+    ast::{self, Decl as AstDecl, Stmt as AstStmt},
     backend::kyir::{arch::Frame, ir::*},
     pass::{AccessMap, SymbolTable},
     token::Kind,
@@ -22,6 +22,7 @@ pub struct Translator<'a, F: Frame> {
 
 struct Context {
     ret: bool,
+    name: Vec<String>,
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
@@ -29,7 +30,10 @@ impl<'a, F: Frame> Translator<'a, F> {
         Self {
             functions: HashMap::new(),
             function: None,
-            ctx: Context { ret: false },
+            ctx: Context {
+                ret: false,
+                name: vec![],
+            },
             accesses,
             symbols,
         }
@@ -177,22 +181,26 @@ impl Translate<Expr> for ast::node::Unary {
 
 impl Translate<Expr> for ast::node::Access {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
-        let temp = Temp::next();
         let frame = translator.frame();
         let aux = translator.accesses.get(&self.id).unwrap();
-        let rec = aux.symbols.first().unwrap().record();
-        let flat = rec.flatten(translator.symbols);
-        let parent = self.chain.first().unwrap().ident().name.to_string();
-        let last = self.chain.last().unwrap().ident().name.to_string();
-        let (index, _) = flat
+        let child = aux.symbols.last().unwrap().record();
+        let mut name: Vec<String> = self
+            .chain
             .iter()
-            .enumerate()
-            .find(|(_, (name, _))| name == &last)
-            .expect("field access for non-terminal fields is not yet supported");
-        let base = frame.get(&parent);
+            .map(|expr| expr.ident().name.to_string())
+            .collect();
+        let index = child
+            .fields
+            .iter()
+            .position(|field| field.name.to_string() == *name.last().unwrap())
+            .unwrap();
+        name.pop().unwrap();
+        let delimited = name.join(".");
+        let temp = Temp::next();
+        let base = frame.get(&delimited);
         let offset: i64 = (index * F::word_size()).try_into().unwrap();
         let stmts = [
-            Stmt::checked_move(Temp::wrapped(temp.clone()), base), // copy base pointer
+            Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
             Stmt::Expr(Box::new(Binary::wrapped(
                 BinOp::Plus,
                 Temp::wrapped(temp.clone()),
@@ -210,25 +218,32 @@ impl Translate<Expr> for ast::node::Access {
 impl Translate<Expr> for ast::node::Init {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
         let registers = F::registers();
-        let initializers = self.initializers.flatten(translator);
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         let temp = Temp::next();
-        // `temp` is guaranteed to be unique
-        let base = frame.allocate(translator.symbols, &format!("_alloc_{temp}"), None);
+        let name = translator.ctx.name.join(".");
+        let base = frame.allocate(translator.symbols, &name, None);
         let setup = [
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
                 vec![Const::<i64>::int(
-                    (initializers.len() * F::word_size()).try_into().unwrap(),
+                    (self.initializers.len() * F::word_size())
+                        .try_into()
+                        .unwrap(),
                 )],
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
         ];
         let stmts: Vec<_> = setup
             .into_iter()
-            .chain(initializers.into_iter().enumerate().flat_map(|(i, init)| {
+            .chain(self.initializers.iter().enumerate().flat_map(|(i, init)| {
+                translator.ctx.name.push(init.name.to_string());
+                let value = match &init.expr {
+                    AstExpr::Init(init) => init.translate(translator),
+                    _ => init.expr.translate(translator),
+                };
                 let offset: i64 = (i * F::word_size()).try_into().unwrap();
+                translator.ctx.name.pop();
                 vec![
                     Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
                     Stmt::Expr(Box::new(Binary::wrapped(
@@ -236,7 +251,7 @@ impl Translate<Expr> for ast::node::Init {
                         Temp::wrapped(temp.clone()),
                         Const::<i64>::int(offset),
                     ))), // add offset to base pointer
-                    Stmt::checked_move(Temp::dereferenced(temp.clone()), init), // store value at offset
+                    Stmt::checked_move(Temp::dereferenced(temp.clone()), value), // store value at offset
                 ]
             }))
             .collect();
@@ -363,9 +378,13 @@ impl Translate<Stmt> for ast::node::Return {
 
 impl Translate<Stmt> for ast::node::VarDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
-        let expr = self.expr.translate(translator);
-        let id = translator.function.unwrap();
         let name = self.name.to_string();
+        if matches!(self.expr, AstExpr::Init(_)) {
+            translator.ctx.name.push(name.clone());
+        }
+        let expr = self.expr.translate(translator);
+        translator.ctx.name.clear();
+        let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
         let target = frame.allocate(translator.symbols, &name, None);
@@ -389,39 +408,5 @@ impl Translate<Stmt> for ast::node::FuncDecl {
 impl Translate<Stmt> for ast::node::RecordDecl {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Stmt {
         Stmt::Noop
-    }
-}
-
-trait Flatten<R, A> {
-    fn flatten(&self, aux: A) -> R;
-}
-
-impl<F: Frame> Flatten<Vec<Expr>, &'_ mut Translator<'_, F>> for Vec<ast::node::Initializer> {
-    fn flatten(&self, translator: &'_ mut Translator<'_, F>) -> Vec<Expr> {
-        self.iter()
-            .flat_map(|init| match &init.expr {
-                AstExpr::Init(nested) => nested.initializers.flatten(translator),
-                _ => vec![init.expr.translate(translator)],
-            })
-            .collect()
-    }
-}
-
-impl Flatten<Vec<(String, Type)>, &'_ SymbolTable> for ast::node::RecordDecl {
-    fn flatten(&self, symbols: &'_ SymbolTable) -> Vec<(String, Type)> {
-        self.fields
-            .iter()
-            .flat_map(|field| {
-                let ty = Type::from(&field.ty);
-                match ty {
-                    Type::UserDefined(name) => symbols
-                        .get(&name.to_string())
-                        .unwrap()
-                        .record()
-                        .flatten(symbols),
-                    _ => vec![(field.name.to_string(), ty)],
-                }
-            })
-            .collect()
     }
 }

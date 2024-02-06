@@ -52,7 +52,10 @@ impl Frame for Amd64 {
     }
 
     fn get_offset(&self, ident: &str) -> i64 {
-        self.variables.get(ident).copied().unwrap()
+        self.variables.get(ident).copied().unwrap_or_else(|| {
+            println!("{:?}", self.variables);
+            panic!("variable {} not found in frame {}", ident, self.label);
+        })
     }
 
     fn get(&self, ident: &str) -> Expr {
@@ -65,26 +68,9 @@ impl Frame for Amd64 {
         ))
     }
 
-    fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr {
-        let rec = self.offset;
-        self.offset -= i64::try_from(match ty {
-            Some(Type::UserDefined(ty)) => {
-                let rec = symbols.get(ty).unwrap().record();
-                // The magic +1 is here because the first word is used to
-                // store the address of the record in the frame.
-                (rec.fields.len() + 1) * Self::word_size()
-            }
-            _ => 8,
-        })
-        .unwrap();
-        self.variables.insert(
-            ident.to_string(),
-            if matches!(ty, Some(Type::UserDefined(_))) {
-                rec
-            } else {
-                self.offset
-            },
-        );
+    fn allocate(&mut self, _symbols: &SymbolTable, ident: &str, _ty: Option<&Type>) -> Expr {
+        self.offset -= i64::try_from(Self::word_size()).unwrap();
+        self.variables.insert(ident.to_string(), self.offset);
         self.get(ident)
     }
 

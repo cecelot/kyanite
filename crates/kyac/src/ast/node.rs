@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Decl, Expr, Stmt},
+    ast::{Decl, Expr, Stmt, Type},
     token::Token,
 };
 use std::{
@@ -52,11 +52,24 @@ impl FuncDecl {
 pub struct RecordDecl {
     pub name: Token,
     pub fields: Vec<Field>,
+    pub descriptor: Vec<char>,
 }
 
 impl RecordDecl {
     pub fn wrapped(name: Token, fields: Vec<Field>) -> Decl {
-        Decl::Record(Rc::new(Self { name, fields }))
+        let descriptor: Vec<_> = fields
+            .iter()
+            .map(|f| match Type::from(&f.ty) {
+                Type::Int | Type::Float | Type::Bool => 'i',
+                Type::Str | Type::UserDefined(_) => 'p',
+                Type::Void => panic!("record cannot contain void field"),
+            })
+            .collect();
+        Decl::Record(Rc::new(Self {
+            name,
+            fields,
+            descriptor,
+        }))
     }
 }
 

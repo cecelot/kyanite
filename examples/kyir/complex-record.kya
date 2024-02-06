@@ -1,0 +1,64 @@
+rec Foo {
+    a: int,
+    b: int,
+    c: Bar
+}
+
+rec Bar {
+    d: Baz,
+    e: int
+}
+
+rec Baz {
+    f: int,
+    g: int
+}
+
+fun main() {
+    let foo: Foo = Foo:init(
+        a: 1,
+        b: 2,
+        c: Bar:init(
+            d: Baz:init(
+                f: 3,
+                g: 4
+            ),
+            e: 5
+        )
+    );
+    let a: int = foo.a;
+    let b: int = foo.b;
+    let c: Bar = foo.c;
+    let d: Baz = c.d;
+    let e: int = c.e;
+    let f: int = d.f;
+    let g: int = d.g;
+    println_int(a);
+    println_int(b);
+    println_int(f);
+    println_int(g);
+    println_int(e);
+    let foo: Foo = Foo:init(
+        a: 15,
+        b: 22,
+        c: Bar:init(
+            d: Baz:init(
+                f: 16,
+                g: 17
+            ),
+            e: 77
+        )
+    );
+    let a: int = foo.a;
+    let b: int = foo.b;
+    let c: Bar = foo.c;
+    let d: Baz = c.d;
+    let e: int = c.e;
+    let f: int = d.f;
+    let g: int = d.g;
+    println_int(a);
+    println_int(b);
+    println_int(f);
+    println_int(g);
+    println_int(e);
+}

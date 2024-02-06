@@ -77,6 +77,14 @@ impl Expr {
             panic!("called `Expr::ident()` on a non-ident")
         }
     }
+
+    pub fn init(&self) -> &node::Init {
+        if let Expr::Init(init) = self {
+            init
+        } else {
+            panic!("called `Expr::init()` on a non-init")
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -183,6 +183,13 @@ fn embedded_record_init() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn complex_record() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/complex-record.kya")?;
+    assert_eq!(res.output, "1\n2\n3\n4\n5\n15\n22\n16\n17\n77\n");
+    Ok(())
+}
+
+#[test]
 fn shadow() -> Result<(), Box<dyn std::error::Error>> {
     let res = run("kyir/shadow.kya")?;
     assert_eq!(res.output, "17\n17\n");
