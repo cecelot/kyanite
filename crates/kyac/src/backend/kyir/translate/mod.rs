@@ -187,10 +187,7 @@ impl Translate<Expr> for ast::node::Access {
         let ident = self.chain.first().unwrap().ident().name.to_string();
         let base = frame.get(&ident);
         let temp = Temp::next();
-        let initial = [Stmt::checked_move(
-            Temp::wrapped(temp.clone()),
-            base.clone(),
-        )];
+        let initial = [Stmt::checked_move(Temp::wrapped(temp.clone()), base)];
         let stmts: Vec<_> = initial
             .into_iter()
             .chain(meta.indices.iter().flat_map(|&field| {
