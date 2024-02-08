@@ -1,10 +1,11 @@
-use crate::backend::kyir::ir::{BinOp, RelOp};
+use crate::backend::kyir::ir::{AddressStrategy, BinOp, RelOp};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Opcode {
     Label(String),
-    Move,
+    String(String),
+    Move(AddressStrategy),
     Jump,
     Cmp(RelOp),
     CJump(RelOp),
@@ -33,9 +34,17 @@ impl From<BinOp> for Opcode {
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Opcode::String(s) => write!(f, ".asciz \"{s}\""),
             Opcode::Cmp(_) => write!(f, "cmpq"),
             Opcode::Label(label) => write!(f, "{label}:"),
-            Opcode::Move => write!(f, "movq"),
+            Opcode::Move(strategy) => write!(
+                f,
+                "{}",
+                match strategy {
+                    AddressStrategy::Immediate => "movq",
+                    AddressStrategy::Effective => "leaq",
+                }
+            ),
             Opcode::Jump => write!(f, "jmp"),
             Opcode::CJump(rel) => {
                 let cond = match rel {

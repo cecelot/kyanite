@@ -169,7 +169,7 @@ impl FlowGraphMeta for AsmInstr {
         match &self.inner {
             Instr::Oper {
                 dst,
-                opcode: Opcode::Move,
+                opcode: Opcode::Move(_),
                 ..
             } => vec![dst.clone()],
             _ => vec![],
@@ -180,7 +180,7 @@ impl FlowGraphMeta for AsmInstr {
         match &self.inner {
             Instr::Oper {
                 opcode:
-                    Opcode::Move
+                    Opcode::Move(_)
                     | Opcode::Cmp(_)
                     | Opcode::Add
                     | Opcode::Sub

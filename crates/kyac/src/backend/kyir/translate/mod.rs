@@ -23,6 +23,7 @@ pub struct Translator<'a, F: Frame> {
 struct Context {
     ret: bool,
     name: Vec<String>,
+    strings: Strings,
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
@@ -32,6 +33,7 @@ impl<'a, F: Frame> Translator<'a, F> {
             function: None,
             ctx: Context {
                 ret: false,
+                strings: Strings::new(),
                 name: vec![],
             },
             accesses,
@@ -44,13 +46,17 @@ impl<'a, F: Frame> Translator<'a, F> {
         ast.iter().map(|decl| decl.translate(self)).collect()
     }
 
+    pub fn strings(&self) -> &HashMap<String, String> {
+        &self.ctx.strings
+    }
+
     fn frame(&self) -> &F {
         let id: usize = self.function.unwrap();
         self.functions.get(&id).unwrap()
     }
 
-    pub fn functions(self) -> HashMap<usize, F> {
-        self.functions
+    pub fn functions(&self) -> &HashMap<usize, F> {
+        &self.functions
     }
 }
 
@@ -64,8 +70,8 @@ impl Translate<Expr> for AstExpr {
             AstExpr::Int(i) => i.translate(translator),
             AstExpr::Float(f) => f.translate(translator),
             AstExpr::Bool(b) => b.translate(translator),
-            AstExpr::Range(_r) => todo!(),
-            AstExpr::Str(..) => todo!(),
+            AstExpr::Range(_) => unimplemented!("ranges are not valid as standalone expressions"),
+            AstExpr::Str(s) => s.translate(translator),
             AstExpr::Binary(binary) => binary.translate(translator),
             AstExpr::Call(call) => call.translate(translator),
             AstExpr::Ident(ident) => ident.translate(translator),
@@ -97,6 +103,17 @@ impl Translate<Stmt> for AstDecl {
             AstDecl::Record(rec) => rec.translate(translator),
             AstDecl::Constant(_) => todo!(),
         }
+    }
+}
+
+impl Translate<Expr> for ast::node::Literal<&str> {
+    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+        Expr::ConstStr(
+            translator
+                .ctx
+                .strings
+                .add(self.value.to_string().replace('"', "")),
+        )
     }
 }
 
@@ -150,6 +167,7 @@ impl Translate<Expr> for ast::node::Call {
                 Some(Move::wrapped(
                     saved.clone(),
                     Temp::wrapped(F::registers().ret.value.into()),
+                    AddressStrategy::Immediate,
                 )),
             ),
             saved,
@@ -219,14 +237,18 @@ impl Translate<Expr> for ast::node::Init {
         let temp = Temp::next();
         let name = translator.ctx.name.join(".");
         let base = frame.allocate(translator.symbols, &name, None);
+        let descriptor = &translator
+            .symbols
+            .get(&self.name.to_string())
+            .unwrap()
+            .record()
+            .descriptor;
+        let descriptor: String = descriptor.iter().collect();
+        let ptr = translator.ctx.strings.add(descriptor);
         let setup = [
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
-                vec![Const::<i64>::int(
-                    (self.initializers.len() * F::word_size())
-                        .try_into()
-                        .unwrap(),
-                )],
+                vec![Expr::ConstStr(ptr)],
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
         ];
@@ -365,7 +387,7 @@ impl Translate<Stmt> for ast::node::For {
                 .body
                 .clone()
                 .into_iter()
-                .chain(vec![ast::node::Assign::wrapped(
+                .chain(std::iter::once(ast::node::Assign::wrapped(
                     cur.clone(),
                     ast::node::Binary::wrapped(
                         cur,
@@ -375,7 +397,7 @@ impl Translate<Stmt> for ast::node::For {
                             Token::new(Kind::Literal, Some("1"), Span::default()),
                         ),
                     ),
-                )])
+                )))
                 .collect(),
         };
         let stmts: Vec<Stmt> = vec![start.translate(translator), w.translate(translator)];
@@ -441,5 +463,20 @@ impl Translate<Stmt> for ast::node::FuncDecl {
 impl Translate<Stmt> for ast::node::RecordDecl {
     fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Stmt {
         Stmt::Noop
+    }
+}
+
+crate::newtype!(Strings: HashMap<String, String>);
+
+impl Strings {
+    fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    fn add(&mut self, value: String) -> String {
+        let id = self.0.len();
+        let name = format!(".str.{id}");
+        self.0.insert(name.clone(), value);
+        name
     }
 }

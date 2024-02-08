@@ -2,7 +2,7 @@ use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{RegisterMap, ReturnRegisters},
-        ir::{BinOp, Binary, Const, Expr, Mem, Temp},
+        ir::{AddressStrategy, BinOp, Binary, Const, Expr, Mem, Temp},
         Frame, Instr, Opcode,
     },
     pass::SymbolTable,
@@ -86,7 +86,7 @@ impl Frame for Amd64 {
         let saves = list(Opcode::Push);
         prologue.extend(saves);
         prologue.push(Instr::oper(
-            Opcode::Move,
+            Opcode::Move(AddressStrategy::Immediate),
             registers.frame.into(),
             registers.stack.into(),
             None,
@@ -99,7 +99,7 @@ impl Frame for Amd64 {
         )); // subq $(), %rsp
         for (i, formal) in self.formals.iter().enumerate() {
             prologue.push(Instr::oper(
-                Opcode::Move,
+                Opcode::Move(AddressStrategy::Immediate),
                 format!(
                     "{}(%{})",
                     -i64::try_from((i + 1) * Self::word_size()).unwrap(),
@@ -151,8 +151,8 @@ impl Frame for Amd64 {
     fn registers() -> RegisterMap {
         RegisterMap {
             caller: &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
-            callee: &["rbx", "r12", "r13", "r14", "r15", "rsp", "rbp"],
-            temporary: &["rax", "r10", "r11"],
+            callee: &["rbx", "r12", "r13", "r14", "r15"],
+            temporary: &["r10", "r11"],
             argument: &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
             ret: ReturnRegisters {
                 address: "rip",

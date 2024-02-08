@@ -22,9 +22,9 @@ impl<F: Frame> Color<F> {
         let temporaries: Vec<_> = ranges.keys().collect();
         let registers = F::registers();
         let registers: Vec<String> = registers
-            .temporary
+            .callee
             .iter()
-            .chain(registers.callee.iter())
+            .chain(registers.temporary.iter())
             .map(|&reg| String::from(reg))
             .collect();
         for (line, graph) in self.interferences.iter().enumerate() {

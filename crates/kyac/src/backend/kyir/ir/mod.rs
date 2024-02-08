@@ -9,6 +9,7 @@ mod node;
 pub enum Expr {
     ConstInt(Const<i64>),
     ConstFloat(Const<f64>),
+    ConstStr(String),
     Temp(Temp),
     Dereferenced(Temp),
     Binary(Binary),
@@ -42,10 +43,10 @@ impl From<&[Stmt]> for Stmt {
 /// and stores it in a temporary. This is required because (a) moves from memory address to memory
 /// address are unsupported and (b) binary operations require at least one of their operands to be
 /// in registers.
-fn wrap_memory_load(expr: Expr) -> Expr {
+fn wrap_memory_load(expr: Expr, strategy: AddressStrategy) -> Expr {
     let temp = Temp::next();
     ESeq::wrapped(
-        Move::wrapped(Temp::wrapped(temp.clone()), expr),
+        Move::wrapped(Temp::wrapped(temp.clone()), expr, strategy),
         Temp::wrapped(temp),
     )
 }
@@ -54,10 +55,12 @@ impl Expr {
     /// Returns a new `Expr` where `left` and `right` are not both memory addresses.
     pub fn checked_binary(op: BinOp, left: Expr, right: Expr) -> Self {
         let right = match (&left, right) {
-            (Expr::Mem(_), expr @ Expr::Mem(_)) => wrap_memory_load(expr),
+            (Expr::Mem(_), expr @ Expr::Mem(_)) => {
+                wrap_memory_load(expr, AddressStrategy::Immediate)
+            }
             (Expr::Mem(_), expr @ Expr::ESeq { .. }) => {
                 if matches!(expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr)
+                    wrap_memory_load(expr, AddressStrategy::Immediate)
                 } else {
                     expr
                 }
@@ -72,17 +75,20 @@ impl Stmt {
     /// Returns a new `Stmt` where `target` and `expr` are not both memory addresses.
     pub fn checked_move(target: Expr, expr: Expr) -> Self {
         let expr = match (&target, expr) {
-            (Expr::Mem(_), expr @ Expr::Mem(_)) => wrap_memory_load(expr),
+            (Expr::Mem(_), expr @ Expr::Mem(_)) => {
+                wrap_memory_load(expr, AddressStrategy::Immediate)
+            }
             (Expr::Mem(_), expr @ Expr::ESeq { .. }) => {
                 if matches!(expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr)
+                    wrap_memory_load(expr, AddressStrategy::Immediate)
                 } else {
                     expr
                 }
             }
+            (_, expr @ Expr::ConstStr(_)) => wrap_memory_load(expr, AddressStrategy::Effective),
             (_, expr) => expr,
         };
-        Move::wrapped(target, expr)
+        Move::wrapped(target, expr, AddressStrategy::Immediate)
     }
 }
 
@@ -176,4 +182,10 @@ impl From<BinOp> for RelOp {
             _ => panic!("Cannot convert {value:?} to RelOp"),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AddressStrategy {
+    Immediate,
+    Effective,
 }

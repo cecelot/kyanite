@@ -52,7 +52,11 @@ impl Extract for Stmt {
             }
             Stmt::Move(m) => {
                 update(&m.expr, ir, replacements);
-                ir.push(Move::wrapped(*m.target.clone(), *m.expr.clone()));
+                ir.push(Move::wrapped(
+                    *m.target.clone(),
+                    *m.expr.clone(),
+                    m.strategy,
+                ));
             }
             Stmt::Expr(e) => {
                 update(&e, ir, replacements);

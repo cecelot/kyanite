@@ -1,0 +1,14 @@
+rec Foo {
+    bar: str
+}
+
+fun main() {
+    let s: str = "Hello, world!";
+    let ss: str = s;
+    println_str(s);
+    println_str(ss);
+    println_str("baz");
+    let foo: Foo = Foo:init(bar: "foo");
+    let baz: str = foo.bar;
+    println_str(baz);
+}

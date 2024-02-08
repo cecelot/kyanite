@@ -9,7 +9,10 @@ use crate::{
     backend::kyir::{
         alloc::Registers,
         arch::Frame,
-        ir::{Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq, Stmt, Temp},
+        ir::{
+            AddressStrategy, Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq,
+            Stmt, Temp,
+        },
         opcode::Opcode,
         translate::Translator,
     },
@@ -25,21 +28,26 @@ pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) 
     let mut translator: Translator<F> = Translator::new(accesses, symbols);
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);
-    let mut codegen: Codegen<F> = Codegen::new(translator.functions(), ast);
+    let mut codegen: Codegen<F> = Codegen::new(translator.functions(), translator.strings(), ast);
     let instrs = codegen.assembly(ir);
     let registers = alloc::registers::<F>(instrs);
     codegen.format(&registers)
 }
 
 #[derive(Debug)]
-pub struct Codegen<F: Frame> {
+pub struct Codegen<'a, F: Frame> {
     asm: Vec<AsmInstr>,
-    functions: HashMap<usize, F>,
+    functions: &'a HashMap<usize, F>,
+    strings: &'a HashMap<String, String>,
     idents: HashMap<String, usize>,
 }
 
-impl<F: Frame> Codegen<F> {
-    fn new(functions: HashMap<usize, F>, ast: &[Decl]) -> Self {
+impl<'a, F: Frame> Codegen<'a, F> {
+    fn new(
+        functions: &'a HashMap<usize, F>,
+        strings: &'a HashMap<String, String>,
+        ast: &[Decl],
+    ) -> Self {
         Self {
             idents: ast
                 .iter()
@@ -53,6 +61,7 @@ impl<F: Frame> Codegen<F> {
                 .collect(),
             asm: Vec::new(),
             functions,
+            strings,
         }
     }
 
@@ -60,7 +69,28 @@ impl<F: Frame> Codegen<F> {
     fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
+        self.strings();
         &self.asm
+    }
+
+    fn strings(&mut self) {
+        let instrs = self.strings.iter().flat_map(|(addr, str)| {
+            vec![
+                AsmInstr::new(Instr::oper(
+                    Opcode::Label(addr.clone()),
+                    String::new(),
+                    String::new(),
+                    None,
+                )),
+                AsmInstr::new(Instr::oper(
+                    Opcode::String(str.clone()),
+                    String::new(),
+                    String::new(),
+                    None,
+                )),
+            ]
+        });
+        self.asm.extend(instrs);
     }
 
     fn epilogues(&mut self) {
@@ -77,7 +107,7 @@ impl<F: Frame> Codegen<F> {
                 instrs.push(AsmInstr::new(instr));
             }
         }
-        self.asm.append(&mut instrs);
+        self.asm.extend(instrs);
     }
 
     fn access(mem: &Expr) -> (String, i64) {
@@ -135,6 +165,7 @@ impl Assembly<String> for Expr {
             Self::Call(call) => call.assembly(codegen),
             Self::Temp(t) => t.name.clone(),
             Self::Dereferenced(t) => format!("({})", t.name),
+            Self::ConstStr(name) => format!("{name}(%{})", F::registers().ret.address),
             Self::ConstFloat(_) => todo!(),
             Self::ESeq { .. } => panic!("`Expr::ESeq` not removed by canonicalization"),
         }
@@ -145,7 +176,7 @@ impl Assembly<String> for Const<i64> {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
         let name = Temp::next();
         codegen.emit(Instr::Oper {
-            opcode: Opcode::Move,
+            opcode: Opcode::Move(AddressStrategy::Immediate),
             dst: name.clone(),
             src: format!("${}", self.value),
             jump: None,
@@ -174,7 +205,7 @@ impl Assembly<String> for Mem {
         let (rbp, offset) = Codegen::<F>::access(&self.expr);
         let src = format!("{offset}(%{rbp})");
         let oper = Instr::Oper {
-            opcode: Opcode::Move,
+            opcode: Opcode::Move(AddressStrategy::Immediate),
             dst: dst.clone(),
             src,
             jump: None,
@@ -191,11 +222,18 @@ impl Assembly<String> for Call {
             .iter()
             .map(|arg| arg.assembly(codegen))
             .enumerate()
-            .map(|(i, arg)| Instr::Oper {
-                opcode: Opcode::Move,
-                dst: F::registers().argument[i].into(),
-                src: arg,
-                jump: None,
+            .map(|(i, arg)| {
+                let strategy = if arg.starts_with(".str") {
+                    AddressStrategy::Effective
+                } else {
+                    AddressStrategy::Immediate
+                };
+                Instr::Oper {
+                    opcode: Opcode::Move(strategy),
+                    dst: F::registers().argument[i].into(),
+                    src: arg,
+                    jump: None,
+                }
             })
             .collect();
         args.into_iter().for_each(|arg| codegen.emit(arg));
@@ -245,7 +283,7 @@ impl Assembly<()> for Move {
             if bin.left.temp().is_some_and(|t| t == "rbp") {
                 let (rbp, offset) = Codegen::<F>::access(&self.expr);
                 codegen.emit(Instr::Oper {
-                    opcode: Opcode::Move,
+                    opcode: Opcode::Move(self.strategy),
                     dst: self.target.temp().unwrap(),
                     src: format!("{offset}(%{rbp})"),
                     jump: None,
@@ -258,7 +296,7 @@ impl Assembly<()> for Move {
                 let temp = Temp::next();
                 let (rbp, offset) = Codegen::<F>::access(&self.expr);
                 codegen.emit(Instr::Oper {
-                    opcode: Opcode::Move,
+                    opcode: Opcode::Move(self.strategy),
                     dst: temp.clone(),
                     src: format!("{offset}(%{rbp})"),
                     jump: None,
@@ -275,7 +313,7 @@ impl Assembly<()> for Move {
             _ => self.target.temp().unwrap(),
         };
         codegen.emit(Instr::Oper {
-            opcode: Opcode::Move,
+            opcode: Opcode::Move(self.strategy),
             dst,
             src,
             jump: None,
@@ -288,7 +326,12 @@ impl Assembly<()> for CJump {
         let tmp = self.condition.assembly(codegen);
         if let Expr::ConstInt(_) = *self.condition {
             let one = Temp::next();
-            codegen.emit(Instr::oper(Opcode::Move, one.clone(), "$1".into(), None));
+            codegen.emit(Instr::oper(
+                Opcode::Move(AddressStrategy::Immediate),
+                one.clone(),
+                "$1".into(),
+                None,
+            ));
             codegen.emit(Instr::oper(Opcode::Cmp(RelOp::Equal), tmp, one, None));
             codegen.emit(Instr::oper(
                 Opcode::CJump(self.op.into()),
@@ -357,7 +400,7 @@ impl AsmInstr {
         match &self.inner {
             Instr::Oper { opcode, .. } => match opcode {
                 Opcode::Jump | Opcode::CJump(_) | Opcode::Push | Opcode::Ret | Opcode::Pop => 1,
-                Opcode::Label(_) => 0,
+                Opcode::Label(_) | Opcode::String(_) => 0,
                 _ => 2,
             },
             Instr::Call { .. } => 0,

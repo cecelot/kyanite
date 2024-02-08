@@ -230,3 +230,17 @@ fn variable_while_loop() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "5\n6\n7\n8\n9\n");
     Ok(())
 }
+
+#[test]
+fn hello() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/hello.kya")?;
+    assert_eq!(res.output, "Hello, world!\n");
+    Ok(())
+}
+
+#[test]
+fn misc_strings() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/misc-strings.kya")?;
+    assert_eq!(res.output, "Hello, world!\nHello, world!\nbaz\nfoo\n");
+    Ok(())
+}

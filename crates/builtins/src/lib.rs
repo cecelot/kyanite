@@ -1,6 +1,8 @@
 use colored::Colorize;
 use std::ffi::CStr;
 
+const WORD_SIZE: usize = std::mem::size_of::<u64>();
+
 #[no_mangle]
 pub extern "C" fn max_int(a: i64, b: i64) -> i64 {
     a.max(b)
@@ -46,15 +48,37 @@ pub extern "C" fn println_str(s: *const u8) {
 
 #[no_mangle]
 /// # Panics
-/// This function will panic if the allocation fails.
-pub extern "C" fn alloc(size: usize) -> *const u8 {
-    let allocated = unsafe { libc::malloc(size) };
+/// This function will panic if the allocation fails or
+/// if the string is not valid UTF-8.
+pub extern "C" fn alloc(descriptor: *const u8) -> *const u64 {
+    let descriptor = {
+        let c_str = unsafe { CStr::from_ptr(descriptor.cast::<i8>()) };
+        c_str.to_str().unwrap()
+    };
+    let allocated = unsafe { libc::malloc((descriptor.len() + 1) * WORD_SIZE) };
     if allocated.is_null() {
         panic!(
             "{}: failed to allocate memory",
             "runtime error".red().bold()
         );
     } else {
-        allocated.cast()
+        let root = allocated.cast::<u64>();
+        #[allow(clippy::cast_ptr_alignment)]
+        unsafe {
+            std::ptr::copy(descriptor.as_ptr().cast::<u64>(), root, descriptor.len());
+            root.offset(1)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn allocate() {
+        let descriptor = "iipi";
+        let res = super::alloc(descriptor.as_ptr());
+        let offset: isize = super::WORD_SIZE.try_into().unwrap();
+        let back = unsafe { std::ffi::CStr::from_ptr(res.cast::<i8>().offset(-offset)) };
+        assert_eq!(back.to_str().unwrap(), descriptor);
     }
 }
