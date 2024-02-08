@@ -16,7 +16,7 @@ pub fn compile<F: Frame>(instrs: &str, filename: &str) -> Result<String, Pipelin
         &[
             "-c",
             &format!(
-                "zig cc {asm} -o {exe} -target x86_64-macos -L {} -lkyanite_builtins",
+                "zig cc {asm} -o {exe} -target x86_64-macos -L {} -lkyanite_runtime",
                 include_dir(&Backend::Kyir, Some("x86_64-apple-darwin"))
             ),
         ],

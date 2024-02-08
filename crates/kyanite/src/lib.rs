@@ -77,7 +77,7 @@ pub fn include_dir(backend: &Backend, target: Option<&str>) -> String {
         Backend::Kyir => "kyir-support",
         Backend::Llvm => "llvm-support",
     };
-    std::env::var("KYANITE_BUILTINS_LIB").map_or(default(), |s| format!("{s}/{subdir}"))
+    std::env::var("KYANITE_RUNTIME_LIB").map_or(default(), |s| format!("{s}/{subdir}"))
 }
 
 #[must_use]

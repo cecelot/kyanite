@@ -20,7 +20,7 @@ pub fn compile(ir: &str, filename: &str) -> Result<String, PipelineError> {
             exe,
             "-L",
             &include_dir(&Backend::Llvm, None),
-            "-lkyanite_builtins",
+            "-lkyanite_runtime",
         ],
     ))
     .map_err(PipelineError::CompileError)?;
