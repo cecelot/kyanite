@@ -6,7 +6,9 @@ Languages are cool! Compilers are cool! How do they work? That's why this projec
 
 ###### you probably don't actually want to do this
 
-As of now, the only programs confirmed to be working are those in the `examples/` directory. Experiment with other programs at your own peril, and expect panics to occur, particularly with the `kyir` backend. If you're using macOS on Apple Silicon, you can test out the compiler by running the following command, assuming Nix is installed:
+As of now, the only programs confirmed to be working are those in the `examples/` directory. Experiment with other programs at your own peril, and expect panics to occur, particularly with the `kyir` backend. If you're using macOS, you can test out the compiler by running the following command, assuming Nix is installed:
+
+> **Note:** Only macOS on Apple Silicon is actively tested, but macOS on Intel machines should work as well.
 
 ```
 nix run .# -- run examples/llvm/hello.kya
@@ -18,7 +20,7 @@ or, using the `kyir` backend:
 nix run .# -- run examples/kyir/simple.kya -k
 ```
 
-Other platforms are currently unsupported.
+Other operating systems are currently unsupported.
 
 ## Documentation
 

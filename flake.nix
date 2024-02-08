@@ -74,13 +74,14 @@
         '';
         LIBRARY_PATH = pkgs.lib.makeLibraryPath [pkgs.libiconv]; # -liconv *why* (https://github.com/nix-community/home-manager/issues/3482)
         CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
+        CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS = pkgs.lib.optional pkgs.stdenv.isx86_64 "-C link-arg=-lc++abi";
         LLVM_SYS_150_PREFIX = pkgs.llvmPackages_15.libllvm.dev;
         CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER = "${pkgs.pkgsx86_64Darwin.llvmPackages.clangUseLLVM}/bin/cc";
         meta = {
           description = "A toy compiled programming language to learn more about PLs";
           homepage = "https://github.com/alaidriel/kyanite";
           license = pkgs.lib.licenses.mit;
-          platforms = ["aarch64-darwin"];
+          platforms = pkgs.lib.platforms.darwin;
         };
       };
     });
