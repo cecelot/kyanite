@@ -64,7 +64,7 @@
           cp target/aarch64-apple-darwin/release/libkyanite_runtime.dylib $out/lib/llvm-support/libkyanite_runtime.dylib
           cp target/release/main $out/bin/kyanite
           wrapProgram $out/bin/kyanite \
-            --set KYANITE_BUILTINS_LIB $out/lib \
+            --set KYANITE_RUNTIME_LIB $out/lib \
             --prefix PATH : ${pkgs.lib.makeBinPath (
             with pkgs; [
               llvmPackages_15.libllvm
