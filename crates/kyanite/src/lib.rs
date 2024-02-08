@@ -92,8 +92,8 @@ pub fn filename(source: &Source) -> String {
 }
 
 pub fn dylib(dir: &str) {
-    let res = subprocess::exec("file", &[&format!("{dir}/libkyanite_builtins.dylib")]);
-    log::debug!("libkyanite_builtins.dylib: {}", res.output.trim());
+    let res = subprocess::exec("file", &[&format!("{dir}/libkyanite_runtime.dylib")]);
+    log::debug!("libkyanite_runtime.dylib: {}", res.output.trim());
 }
 
 pub fn init_logger(verbosity: u8) -> Result<(), fern::InitError> {

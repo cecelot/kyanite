@@ -52,16 +52,16 @@
           lockFile = ./Cargo.lock;
         };
         buildPhase = ''
-          cargo build --release --package builtins --target x86_64-apple-darwin
-          cargo build --release --package builtins --target aarch64-apple-darwin
+          cargo build --release --package runtime --target x86_64-apple-darwin
+          cargo build --release --package runtime --target aarch64-apple-darwin
           cargo build --release
         '';
         installPhase = ''
           mkdir -p $out/bin
           mkdir -p $out/lib/llvm-support
           mkdir -p $out/lib/kyir-support
-          cp target/x86_64-apple-darwin/release/libkyanite_builtins.dylib $out/lib/kyir-support/libkyanite_builtins.dylib
-          cp target/aarch64-apple-darwin/release/libkyanite_builtins.dylib $out/lib/llvm-support/libkyanite_builtins.dylib
+          cp target/x86_64-apple-darwin/release/libkyanite_runtime.dylib $out/lib/kyir-support/libkyanite_runtime.dylib
+          cp target/aarch64-apple-darwin/release/libkyanite_runtime.dylib $out/lib/llvm-support/libkyanite_runtime.dylib
           cp target/release/main $out/bin/kyanite
           wrapProgram $out/bin/kyanite \
             --set KYANITE_BUILTINS_LIB $out/lib \

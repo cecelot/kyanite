@@ -211,7 +211,7 @@ impl Translate<Expr> for ast::node::Access {
         let stmts: Vec<_> = initial
             .into_iter()
             .chain(meta.indices.iter().flat_map(|&field| {
-                let offset: i64 = (field * F::word_size()).try_into().unwrap();
+                let offset: i64 = ((field + 1) * F::word_size()).try_into().unwrap();
                 vec![
                     Stmt::Expr(Box::new(Binary::wrapped(
                         BinOp::Plus,
@@ -260,7 +260,7 @@ impl Translate<Expr> for ast::node::Init {
                     AstExpr::Init(init) => init.translate(translator),
                     _ => init.expr.translate(translator),
                 };
-                let offset: i64 = (i * F::word_size()).try_into().unwrap();
+                let offset: i64 = ((i + 1) * F::word_size()).try_into().unwrap();
                 translator.ctx.name.pop();
                 vec![
                     Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
