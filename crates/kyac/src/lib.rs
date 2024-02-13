@@ -1,5 +1,6 @@
 mod ast;
 mod backend;
+mod builtins;
 mod error;
 mod macros;
 mod parse;

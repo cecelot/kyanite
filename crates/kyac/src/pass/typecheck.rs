@@ -24,12 +24,8 @@ macro_rules! symbol {
                 return Err(TypeError::NotType($name.clone(), $s));
             }
             None => {
-                let name = $name.to_string();
-                if name != "println" && name != "max" && name == "min" {
-                    $self.error($name.span, format!("`{}` is not defined", $name), "".into());
-                    return Err(TypeError::Undefined);
-                }
-                return Ok(Type::Void);
+                $self.error($name.span, format!("`{}` is not defined", $name), "".into());
+                return Err(TypeError::Undefined);
             }
         }
     };

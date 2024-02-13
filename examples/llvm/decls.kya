@@ -1,4 +1,4 @@
 fun main() {
     let foo: int = 5;
-    println(foo);
+    println_int(foo);
 }

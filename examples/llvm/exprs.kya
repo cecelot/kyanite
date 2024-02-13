@@ -1,9 +1,9 @@
 fun main() {
-    println(12 * 17 - 7 + 4 / 2 >= 200);
-    println(12. * 17. - 7. + 4. / 2. < 200.);
+    println_bool(12 * 17 - 7 + 4 / 2 >= 200);
+    println_bool(12. * 17. - 7. + 4. / 2. < 200.);
 
-    println(7 > 12);
-    println(14 <= 14);
-    println(12 == 12);
-    println(12 != 12);
+    println_bool(7 > 12);
+    println_bool(14 <= 14);
+    println_bool(12 == 12);
+    println_bool(12 != 12);
 }

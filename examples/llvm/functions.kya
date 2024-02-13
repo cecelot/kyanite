@@ -6,7 +6,7 @@ rec Foo {
 
 fun foo(baz: bool): Foo {
     let bar: int = 5;
-    println(bar); % 5
+    println_int(bar); % 5
     return Foo:init(
         x: 17,
         y: 500,
@@ -16,10 +16,7 @@ fun foo(baz: bool): Foo {
 
 fun main() {
     let x: Foo = foo(true);
-    let a: int = x.y;
-    let b: int = x.x;
-    let c: int = x.z;
-    println(a); % 500
-    println(b); % 17
-    println(c); % 83
+    println_int(x.y); % 500
+    println_int(x.x); % 17
+    println_int(x.z); % 83
 }

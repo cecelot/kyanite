@@ -1,4 +1,7 @@
-use crate::ast::{node, Decl, Type};
+use crate::{
+    ast::{node, Decl, Type},
+    builtins,
+};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug, Clone)]
@@ -31,10 +34,20 @@ crate::newtype!(SymbolTable:HashMap<String, Symbol>);
 
 impl From<&Vec<Decl>> for SymbolTable {
     fn from(nodes: &Vec<Decl>) -> Self {
-        let mut table = Self(HashMap::new());
-        for node in nodes {
-            self::SymbolTableVisitor::visit(node, &mut table);
-        }
+        let mut table: Self = Self(
+            builtins::builtins()
+                .nodes
+                .iter()
+                .map(|decl| match decl {
+                    Decl::Function(fun) => (fun.name.to_string(), Symbol::Function(Rc::clone(fun))),
+                    Decl::Constant(c) => (c.name.to_string(), Symbol::Constant(Rc::clone(c))),
+                    Decl::Record(rec) => (rec.name.to_string(), Symbol::Record(Rc::clone(rec))),
+                })
+                .collect(),
+        );
+        nodes
+            .iter()
+            .for_each(|node| self::SymbolTableVisitor::visit(node, &mut table));
         table
     }
 }

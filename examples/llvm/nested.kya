@@ -32,18 +32,11 @@ fun main() {
             )
         ),
     );
-    let a: int = foo.z.x;
-    println(a); % 100
-    let b: int = foo.x;
-    println(b); % 500
-    let c: int = foo.y;
-    println(c); % 80
-    let d: str = foo.z.y.a;
-    println(d); % "Hello"
-    let e: str = foo.z.y.b;
-    println(e); % "World"
-    let f: str = foo.z.y.c;
-    println(f); % "!"
-    let g: str = stuff(foo);
-    println(g); % "World"
+    println_int(foo.z.x); % 100
+    println_int(foo.x); % 500
+    println_int(foo.y); % 80
+    println_str(foo.z.y.a); % "Hello"
+    println_str(foo.z.y.b); % "World"
+    println_str(foo.z.y.c); % "!"
+    println_str(stuff(foo)); % "World"
 }
