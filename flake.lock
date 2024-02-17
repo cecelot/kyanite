@@ -107,13 +107,13 @@
       "locked": {
         "lastModified": 1706985946,
         "narHash": "sha256-ToxIU4KUPwBs/r5VIvJgqfwaICgs2rNz0XB1xPTBc18=",
-        "owner": "alaidriel",
+        "owner": "alythical",
         "repo": "nix-packages",
         "rev": "cc6b277f57dca1afde334ad71882322a6c070159",
         "type": "github"
       },
       "original": {
-        "owner": "alaidriel",
+        "owner": "alythical",
         "repo": "nix-packages",
         "type": "github"
       }

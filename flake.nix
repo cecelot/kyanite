@@ -3,7 +3,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
-    personal.url = "github:alaidriel/nix-packages";
+    personal.url = "github:alythical/nix-packages";
   };
 
   outputs = {
@@ -79,7 +79,7 @@
         CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER = "${pkgs.pkgsx86_64Darwin.llvmPackages.clangUseLLVM}/bin/cc";
         meta = {
           description = "A toy compiled programming language to learn more about PLs";
-          homepage = "https://github.com/alaidriel/kyanite";
+          homepage = "https://github.com/alythical/kyanite";
           license = pkgs.lib.licenses.mit;
           platforms = pkgs.lib.platforms.darwin;
         };

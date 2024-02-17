@@ -17,10 +17,10 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "expected expression of type Person",
-        source: "    alaina = 5;",
+        source: "    p = 5;",
         span: Span {
             line: 25,
-            column: 14,
+            column: 9,
             length: 1,
         },
         text: "expression of type int",
@@ -28,10 +28,10 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "expected expression of type bool",
-        source: "    alaina.foo.bar.baz = Bar:init(baz: false);",
+        source: "    p.foo.bar.baz = Bar:init(baz: false);",
         span: Span {
             line: 28,
-            column: 26,
+            column: 21,
             length: 3,
         },
         text: "expression of type Bar",
@@ -39,21 +39,21 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "expected initializer to be of type int",
-        source: "    let name: int = alaina.name;",
+        source: "    let name: int = p.name;",
         span: Span {
             line: 30,
             column: 21,
-            length: 11,
+            length: 6,
         },
         text: "expression of type str",
     },
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "no field `faavorite` on type `Person`",
-        source: "    let favorite: int = alaina.faavorite;",
+        source: "    let favorite: int = p.faavorite;",
         span: Span {
             line: 31,
-            column: 32,
+            column: 27,
             length: 9,
         },
         text: "",
@@ -61,10 +61,10 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "no field `barr` on type `Foo`",
-        source: "    let bar: Bar = alaina.foo.barr;",
+        source: "    let bar: Bar = p.foo.barr;",
         span: Span {
             line: 33,
-            column: 31,
+            column: 26,
             length: 4,
         },
         text: "",
@@ -72,10 +72,10 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "no field `baaz` on type `Bar`",
-        source: "    let baz: Baz = alaina.foo.bar.baaz;",
+        source: "    let baz: Baz = p.foo.bar.baaz;",
         span: Span {
             line: 34,
-            column: 35,
+            column: 30,
             length: 4,
         },
         text: "",
@@ -83,22 +83,22 @@ expression: pass.errors
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "expected initializer to be of type Baz",
-        source: "    let baz: Baz = alaina.foo.bar;",
+        source: "    let baz: Baz = p.foo.bar;",
         span: Span {
             line: 37,
             column: 20,
-            length: 14,
+            length: 9,
         },
         text: "expression of type Bar",
     },
     PreciseError {
         filename: "test-cases/typecheck/records.kya",
         heading: "expected initializer to be of type Baz",
-        source: "    let baz: Baz = alaina.foo.bar.baz;",
+        source: "    let baz: Baz = p.foo.bar.baz;",
         span: Span {
             line: 38,
             column: 20,
-            length: 18,
+            length: 13,
         },
         text: "expression of type bool",
     },

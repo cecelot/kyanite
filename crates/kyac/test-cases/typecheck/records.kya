@@ -13,8 +13,8 @@ rec Bar {
 }
 
 fun main() {
-    let alaina: Person = Person:init(
-        name: "Alaina",
+    let p: Person = Person:init(
+        name: "Alice",
         favorite: 7,
         foo: Foo:init(
             bar: Bar:init(baz: true)
@@ -22,20 +22,20 @@ fun main() {
         hello: "world"
     );
 
-    alaina = 5;
+    p = 5;
 
-    alaina.name = "Eloise";
-    alaina.foo.bar.baz = Bar:init(baz: false);
+    p.name = "someone else";
+    p.foo.bar.baz = Bar:init(baz: false);
 
-    let name: int = alaina.name;
-    let favorite: int = alaina.faavorite;
+    let name: int = p.name;
+    let favorite: int = p.faavorite;
 
-    let bar: Bar = alaina.foo.barr;
-    let baz: Baz = alaina.foo.bar.baaz;
+    let bar: Bar = p.foo.barr;
+    let baz: Baz = p.foo.bar.baaz;
 
-    let bar: Bar = alaina.foo.bar;
-    let baz: Baz = alaina.foo.bar;
-    let baz: Baz = alaina.foo.bar.baz;
+    let bar: Bar = p.foo.bar;
+    let baz: Baz = p.foo.bar;
+    let baz: Baz = p.foo.bar.baz;
 
     foo.baz;
 }
