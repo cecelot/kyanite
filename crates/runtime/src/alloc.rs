@@ -94,8 +94,8 @@ impl Allocator {
 #[derive(Debug)]
 struct PointerMap {
     _label: String,
-    mapping: Vec<u32>,
     _previous: Option<Box<PointerMap>>,
+    mapping: Vec<u32>,
 }
 
 impl PointerMap {
