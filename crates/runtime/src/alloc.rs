@@ -57,9 +57,9 @@ impl Allocator {
     }
 
     pub fn collect_garbage(&mut self, frame: &str, ptr: *const u8) {
-        let pm = PointerMap::new(ptr);
-        // println!("frame: {frame}, pm: {pm:?}");
         unsafe {
+            let pm = PointerMap::new(ptr);
+            // println!("frame: {frame}, pm: {pm:?}");
             let fp = self.get_frame_ptr(frame);
             for chunk in pm.mapping.chunks_exact(2) {
                 let offset = chunk[0];
@@ -82,10 +82,8 @@ impl Allocator {
     }
 
     pub fn register_frame_ptr(&mut self, frame: *const u8, ptr: *const u8) {
-        unsafe {
-            let label = read_string(frame).0;
-            self.frames.insert(label, ptr as u64);
-        }
+        let label = unsafe { read_string(frame).0 };
+        self.frames.insert(label, ptr as u64);
     }
 
     pub fn get_frame_ptr(&self, frame: &str) -> *const u8 {
@@ -101,23 +99,21 @@ struct PointerMap {
 }
 
 impl PointerMap {
-    fn new(ptr: *const u8) -> Self {
-        unsafe {
-            let (label, ptr) = read_string(ptr);
-            let (previous, ptr) = read_string(ptr);
-            let n: usize = read_u32(ptr, 0).try_into().unwrap();
-            let bound = (n + 1) * ALIGN;
-            let mapping: Vec<_> = (0..bound)
-                .step_by(ALIGN)
-                .skip(1)
-                .map(|i| read_u32(ptr, i))
-                .collect();
-            let ptr = ptr.add(bound);
-            Self {
-                _label: label,
-                _previous: (previous != "nil").then(|| Box::new(Self::new(ptr))),
-                mapping,
-            }
+    unsafe fn new(ptr: *const u8) -> Self {
+        let (label, ptr) = read_string(ptr);
+        let (previous, ptr) = read_string(ptr);
+        let n: usize = read_u32(ptr, 0).try_into().unwrap();
+        let bound = (n + 1) * ALIGN;
+        let mapping: Vec<_> = (0..bound)
+            .step_by(ALIGN)
+            .skip(1)
+            .map(|i| read_u32(ptr, i))
+            .collect();
+        let ptr = ptr.add(bound);
+        Self {
+            _label: label,
+            _previous: (previous != "nil").then(|| Box::new(Self::new(ptr))),
+            mapping,
         }
     }
 }
