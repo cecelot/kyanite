@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Opcode {
     Label(String),
-    String(String),
+    Data { kind: String, value: String },
     Move(AddressStrategy),
     Jump,
     Cmp(RelOp),
@@ -34,7 +34,7 @@ impl From<BinOp> for Opcode {
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Opcode::String(s) => write!(f, ".asciz \"{s}\""),
+            Opcode::Data { kind, value } => write!(f, ".{kind} {value}"),
             Opcode::Cmp(_) => write!(f, "cmpq"),
             Opcode::Label(label) => write!(f, "{label}:"),
             Opcode::Move(strategy) => write!(

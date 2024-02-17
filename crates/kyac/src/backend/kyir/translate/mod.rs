@@ -4,9 +4,11 @@ pub use canon::canonicalize;
 
 #[allow(clippy::wildcard_imports)]
 use crate::{
-    ast::Expr as AstExpr,
-    ast::{self, Decl as AstDecl, Stmt as AstStmt},
-    backend::kyir::{arch::Frame, ir::*},
+    ast::{self, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
+    backend::kyir::{
+        arch::{Frame, Location},
+        ir::*,
+    },
     pass::{AccessMap, SymbolTable},
     token::{Kind, Span, Token},
 };
@@ -24,6 +26,8 @@ struct Context {
     ret: bool,
     name: Vec<String>,
     strings: Strings,
+    tracing: Vec<ObjectTrace>,
+    trace: Option<ObjectTrace>,
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
@@ -35,6 +39,8 @@ impl<'a, F: Frame> Translator<'a, F> {
                 ret: false,
                 strings: Strings::new(),
                 name: vec![],
+                tracing: vec![],
+                trace: None,
             },
             accesses,
             symbols,
@@ -46,10 +52,6 @@ impl<'a, F: Frame> Translator<'a, F> {
         ast.iter().map(|decl| decl.translate(self)).collect()
     }
 
-    pub fn strings(&self) -> &HashMap<String, String> {
-        &self.ctx.strings
-    }
-
     fn frame(&self) -> &F {
         let id: usize = self.function.unwrap();
         self.functions.get(&id).unwrap()
@@ -57,6 +59,14 @@ impl<'a, F: Frame> Translator<'a, F> {
 
     pub fn functions(&self) -> &HashMap<usize, F> {
         &self.functions
+    }
+
+    pub fn strings(&self) -> &HashMap<String, String> {
+        &self.ctx.strings
+    }
+
+    pub fn tracing(&self) -> &[ObjectTrace] {
+        &self.ctx.tracing
     }
 }
 
@@ -160,7 +170,10 @@ impl Translate<Expr> for ast::node::Call {
         let temp = Temp::next();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        let saved = frame.allocate(translator.symbols, &temp, None);
+        let saved = frame.allocate(
+            &temp,
+            matches!(translator.symbols[&name].ty(), Type::UserDefined(_)),
+        );
         ESeq::wrapped(
             Seq::wrapped(
                 Stmt::Expr(Box::new(Call::wrapped(name, args))),
@@ -234,21 +247,33 @@ impl Translate<Expr> for ast::node::Init {
         let registers = F::registers();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
+        // Ensure that we only try to garbage collect after a record has been fully initialized, otherwise
+        // we run into segfaults trying to access uninitialized memory.
+        if translator.ctx.trace.is_none() {
+            let trace = ObjectTrace::new(&frame.map(), translator.ctx.tracing.len());
+            translator.ctx.tracing.push(trace.clone());
+            translator.ctx.trace = Some(trace.clone());
+        }
         let temp = Temp::next();
         let name = translator.ctx.name.join(".");
-        let base = frame.allocate(translator.symbols, &name, None);
+        let base = frame.allocate(&name, true);
         let descriptor = &translator
             .symbols
             .get(&self.name.to_string())
             .unwrap()
             .record()
             .descriptor;
-        let descriptor: String = descriptor.iter().collect();
+        let descriptor = descriptor.iter().collect();
         let ptr = translator.ctx.strings.add(descriptor);
+        let label = translator.ctx.strings.add(frame.label().to_string());
         let setup = [
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
-                vec![Expr::ConstStr(ptr)],
+                vec![
+                    Expr::ConstStr(ptr),
+                    Expr::ConstStr(label),
+                    Expr::ConstStr(translator.ctx.trace.as_ref().unwrap().label.clone()),
+                ],
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
         ];
@@ -273,6 +298,10 @@ impl Translate<Expr> for ast::node::Init {
                 ]
             }))
             .collect();
+        // We've finished initializing the record, so reset the trace
+        if translator.ctx.name.len() == 1 {
+            translator.ctx.trace = None;
+        }
         ESeq::wrapped(Stmt::from(&stmts[..]), base)
     }
 }
@@ -374,7 +403,7 @@ impl Translate<Stmt> for ast::node::For {
         let cur = ast::node::Ident::wrapped(self.index.clone());
         let start = ast::node::VarDecl::wrapped(
             cur.clone().ident().name.clone(),
-            Token::new(Kind::Literal, None, Span::default()),
+            Token::new(Kind::Literal, Some("int"), Span::default()),
             range.start.clone(),
         );
         let w = ast::node::While {
@@ -442,7 +471,7 @@ impl Translate<Stmt> for ast::node::VarDecl {
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
-        let target = frame.allocate(translator.symbols, &name, None);
+        let target = frame.allocate(&name, matches!(Type::from(&self.ty), Type::UserDefined(_)));
         Stmt::checked_move(target, expr)
     }
 }
@@ -450,12 +479,22 @@ impl Translate<Stmt> for ast::node::VarDecl {
 impl Translate<Stmt> for ast::node::FuncDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let frame = F::new(self);
+        let label = translator.ctx.strings.add(frame.label().to_string());
         translator.functions.insert(self.id, frame);
         translator.function = Some(self.id);
-        let stmts: Vec<Stmt> = vec![Label::wrapped(self.name.to_string())]
-            .into_iter()
-            .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
-            .collect();
+        let stmts: Vec<Stmt> = vec![
+            Label::wrapped(self.name.to_string()),
+            Stmt::Expr(Box::new(Call::wrapped(
+                "register_frame_ptr".into(),
+                vec![
+                    Expr::ConstStr(label),
+                    Temp::wrapped(F::registers().frame.into()),
+                ],
+            ))),
+        ]
+        .into_iter()
+        .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
+        .collect();
         Stmt::from(&stmts[..])
     }
 }
@@ -478,5 +517,36 @@ impl Strings {
         let name = format!(".str.{id}");
         self.0.insert(name.clone(), value);
         name
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectTrace {
+    pub id: usize,
+    pub label: String,
+    pub count: usize,
+    pub mapping: Vec<u32>,
+}
+
+impl ObjectTrace {
+    fn new(map: &HashMap<Location, bool>, id: usize) -> Self {
+        let label = format!(".trace.{id}");
+        let mapping: Vec<_> = map
+            .iter()
+            .flat_map(|(loc, &ptr)| {
+                [
+                    match loc {
+                        Location::Frame(offset) => offset.abs().try_into().unwrap(),
+                    },
+                    u32::from(ptr),
+                ]
+            })
+            .collect();
+        Self {
+            id,
+            label,
+            count: mapping.len(),
+            mapping,
+        }
     }
 }

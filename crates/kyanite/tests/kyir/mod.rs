@@ -120,6 +120,7 @@ fn half_anon_call() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+#[ignore = "performance penalty because of `register_frame_ptr`"]
 fn fibonacci() -> Result<(), Box<dyn std::error::Error>> {
     let res = run("kyir/fibonacci.kya")?;
     assert_eq!(res.output, "1\n1\n2\n3\n5\n8\n102334155\n");

@@ -21,8 +21,8 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
     let mut ast = ast::Ast::try_from(source)?;
     let symbols = SymbolTable::from(&ast.nodes);
     let mut accesses = HashMap::new();
-    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
-    pass.run().map_err(PipelineError::TypeError)?;
+    let mut tc = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+    tc.run().map_err(PipelineError::TypeError)?;
     match backend {
         Backend::Llvm => Ok(Output::Llvm(
             llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,

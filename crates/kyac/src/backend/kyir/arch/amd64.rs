@@ -1,17 +1,16 @@
 use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
-        arch::{RegisterMap, ReturnRegisters},
+        arch::{Location, RegisterMap, ReturnRegisters},
         ir::{AddressStrategy, BinOp, Binary, Const, Expr, Mem, Temp},
         Frame, Instr, Opcode,
     },
-    pass::SymbolTable,
 };
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Amd64 {
-    variables: HashMap<String, i64>,
+    variables: HashMap<String, Variable>,
     formals: Vec<Formal>,
     label: String,
     offset: i64,
@@ -27,7 +26,13 @@ impl Frame for Amd64 {
             if i == 0 {
                 offset -= i64::try_from(Self::word_size()).unwrap();
             }
-            variables.insert(param.name.to_string(), offset);
+            variables.insert(
+                param.name.to_string(),
+                Variable::new(
+                    offset,
+                    matches!(Type::from(&param.ty), Type::UserDefined(_)),
+                ),
+            );
             offset -= i64::try_from(Self::word_size()).unwrap();
         }
         Self {
@@ -51,15 +56,14 @@ impl Frame for Amd64 {
         format!("_{call}")
     }
 
-    fn get_offset(&self, ident: &str) -> i64 {
-        self.variables.get(ident).copied().unwrap_or_else(|| {
-            println!("{:?}", self.variables);
-            panic!("variable {} not found in frame {}", ident, self.label);
-        })
-    }
-
     fn get(&self, ident: &str) -> Expr {
-        let offset = self.get_offset(ident);
+        let offset = {
+            let variable = self.variables.get(ident).unwrap_or_else(|| {
+                println!("{:?}", self.variables);
+                panic!("variable {} not found in frame {}", ident, self.label);
+            });
+            variable.offset
+        };
         let registers = Self::registers();
         Mem::wrapped(Binary::wrapped(
             BinOp::Plus,
@@ -68,10 +72,18 @@ impl Frame for Amd64 {
         ))
     }
 
-    fn allocate(&mut self, _symbols: &SymbolTable, ident: &str, _ty: Option<&Type>) -> Expr {
+    fn allocate(&mut self, ident: &str, ptr: bool) -> Expr {
         self.offset -= i64::try_from(Self::word_size()).unwrap();
-        self.variables.insert(ident.to_string(), self.offset);
+        self.variables
+            .insert(ident.to_string(), Variable::new(self.offset, ptr));
         self.get(ident)
+    }
+
+    fn map(&self) -> HashMap<Location, bool> {
+        self.variables
+            .values()
+            .map(|variable| (Location::Frame(variable.offset), variable.ptr))
+            .collect()
     }
 
     fn prologue(&self) -> Vec<Instr> {
@@ -183,6 +195,18 @@ fn list(opcode: Opcode) -> Vec<Instr> {
             jump: None,
         })
         .collect()
+}
+
+#[derive(Debug)]
+struct Variable {
+    offset: i64,
+    ptr: bool,
+}
+
+impl Variable {
+    fn new(offset: i64, ptr: bool) -> Variable {
+        Self { offset, ptr }
+    }
 }
 
 #[derive(Debug)]

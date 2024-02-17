@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 bumpalo = "3.14.0"
-colored = "2.1.0"
 lazy_static = "1.4.0"
 
 [lib]

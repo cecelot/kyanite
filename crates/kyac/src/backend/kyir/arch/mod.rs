@@ -1,24 +1,25 @@
 pub mod amd64;
 
+use std::collections::HashMap;
+
 use crate::{
-    ast::{node::FuncDecl, Type},
+    ast::node::FuncDecl,
     backend::kyir::{Expr, Instr},
-    pass::SymbolTable,
 };
 
 pub trait Frame {
     fn new(function: &FuncDecl) -> Self
     where
         Self: Sized;
-    fn allocate(&mut self, symbols: &SymbolTable, ident: &str, ty: Option<&Type>) -> Expr;
+    fn allocate(&mut self, ident: &str, ptr: bool) -> Expr;
     fn get(&self, ident: &str) -> Expr;
-    fn get_offset(&self, ident: &str) -> i64;
+    fn map(&self) -> HashMap<Location, bool>;
     fn prologue(&self) -> Vec<Instr>;
-    fn label(&self) -> &String;
-    fn prefixed(call: &str) -> String;
     fn epilogue(&self) -> Vec<Instr>;
-    fn header() -> &'static str;
+    fn prefixed(call: &str) -> String;
     fn registers() -> RegisterMap;
+    fn header() -> &'static str;
+    fn label(&self) -> &String;
     fn word_size() -> usize;
 }
 
@@ -48,4 +49,10 @@ impl RegisterMap {
             .copied()
             .collect()
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Location {
+    Frame(i64),
 }
