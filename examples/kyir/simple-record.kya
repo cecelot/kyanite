@@ -4,10 +4,6 @@ rec Coordinate {
 }
 
 fun main() {
-    let c: Coordinate = Coordinate:init(
-        x: 3,
-        y: 4
-    );
-    let z: int = c.x;
-    println_int(z);
+    let c: Coordinate = Coordinate:init(x: 3, y: 4);
+    println_int(c.x);
 }

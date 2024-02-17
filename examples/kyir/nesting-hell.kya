@@ -24,11 +24,8 @@ rec E {
 
 fun main() {
     let a: A = A:init(a: 1, b: B:init(c: 2, d: C:init(e: 3, f: D:init(g: 4, h: E:init(i: 5)))));
-    let foo: int = a.b.d.f.h.i;
     let c: C = a.b.d;
-    let bar: int = c.f.g;
-    let baz: int = c.e;
-    println_int(foo); % 5
-    println_int(bar); % 4
-    println_int(baz); % 3
+    println_int(a.b.d.f.h.i); % 5
+    println_int(c.f.g); % 4
+    println_int(c.e); % 3
 }
