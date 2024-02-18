@@ -513,10 +513,14 @@ impl Strings {
     }
 
     fn add(&mut self, value: String) -> String {
-        let id = self.0.len();
-        let name = format!(".str.{id}");
-        self.0.insert(name.clone(), value);
-        name
+        if let Some((key, _)) = self.0.iter().find(|&(_, v)| v == &value) {
+            key.to_owned()
+        } else {
+            let id = self.0.len();
+            let name = format!(".str.{id}");
+            self.0.insert(name.clone(), value);
+            name
+        }
     }
 }
 
