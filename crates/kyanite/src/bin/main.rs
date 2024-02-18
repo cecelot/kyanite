@@ -60,7 +60,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
 fn exit<E: fmt::Display, R>(e: E) -> R {
     log::error!("{}", e);
     std::process::exit(1);
