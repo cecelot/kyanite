@@ -44,8 +44,10 @@
           ncurses # -ltinfo
           libffi # -lffi
           libxml2 # -lxml2
-          # misc
+          # auxillary utilities
           mdbook
+          just
+          # nix build tools
           makeWrapper
         ];
         cargoLock = {
