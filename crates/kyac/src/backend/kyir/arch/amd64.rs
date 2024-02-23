@@ -48,6 +48,10 @@ impl Frame for Amd64 {
         }
     }
 
+    fn offset(&self) -> i64 {
+        self.offset
+    }
+
     fn label(&self) -> &String {
         &self.label
     }
@@ -151,10 +155,14 @@ impl Frame for Amd64 {
     }
 
     fn header() -> &'static str {
+        // _set_stack_base is an internal runtime function that sets the
+        // base stack pointer used for garbage collection scanning.
         indoc::indoc! {"
                     .text
                     .global _main
             _main:
+                    movq %rbp, %rdi
+                    callq _set_stack_base
                     callq main
                     ret
         "}

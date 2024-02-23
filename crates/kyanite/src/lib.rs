@@ -120,5 +120,9 @@ pub fn init_logger(verbosity: u8) -> Result<(), fern::InitError> {
         .level(level)
         .chain(std::io::stdout())
         .apply()?;
+    // Enable GC logging if verbosity is at trace level
+    if verbosity > 2 {
+        std::env::set_var("KYANITE_LOG_GC", "1");
+    }
     Ok(())
 }

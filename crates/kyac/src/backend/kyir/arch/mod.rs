@@ -20,6 +20,7 @@ pub trait Frame {
     fn registers() -> RegisterMap;
     fn header() -> &'static str;
     fn label(&self) -> &String;
+    fn offset(&self) -> i64;
     fn word_size() -> usize;
 }
 

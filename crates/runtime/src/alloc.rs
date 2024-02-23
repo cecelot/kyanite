@@ -1,120 +1,187 @@
-use std::{alloc::Layout, collections::HashMap, ffi::CStr, sync::Mutex};
-
 use bumpalo::Bump;
+use std::{alloc::Layout, collections::HashMap, ffi::CStr, ptr::NonNull, sync::Mutex};
 
 /// The maximum number of bytes that can be allocated before
 /// running the garbage collector.
 const LIMIT: usize = 4_000_000;
-const ALIGN: usize = 16;
 
 lazy_static::lazy_static! {
     static ref GLOBAL: Mutex<Allocator> = Mutex::new(Allocator::new());
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Allocator {
-    arena: Bump,
-    frames: HashMap<String, u64>,
+    /// from-space
+    current: Bump,
+    allocations: Mutex<Vec<*const u8>>,
+    sp: Mutex<*const u8>,
+}
+
+// SAFETY: the raw pointers are behind a `Mutex`
+unsafe impl Send for Allocator {}
+
+fn init() -> Bump {
+    let bump = Bump::new();
+    bump.set_allocation_limit(Some(LIMIT));
+    bump
 }
 
 impl Allocator {
     pub fn new() -> Self {
         Self {
-            arena: {
-                let bump = Bump::new();
-                bump.set_allocation_limit(Some(LIMIT));
-                bump
-            },
-            frames: HashMap::new(),
+            current: init(),
+            allocations: Mutex::new(Vec::new()),
+            sp: Mutex::new(std::ptr::null()),
         }
     }
 
     pub fn alloc(
         &mut self,
         descriptor: *const u8,
+        frame: FrameInfo,
         count: usize,
-        frame: &str,
-        ptr: *const u8,
         tries: usize,
-    ) -> *const u64 {
-        if tries == 0 {
+    ) -> Result<*const u8, &'static str> {
+        // `KYANITE_GC_ALWAYS` is set during tests. If we're running tests, we want to force a garbage collection
+        // at every allocation to ensure it is functioning correctly.
+        if std::env::var("KYANITE_GC_ALWAYS").is_ok() {
+            self.gc(&frame);
+        }
+        // tries == 0: first attempt
+        // tries == 1: we've garbage collected, try again
+        // tries == 2: we've garbage collected again, give up
+        if tries < 2 {
             let space = self
-                .arena
+                .current
                 .try_alloc_layout(Layout::array::<u64>(count).unwrap());
             if let Ok(ptr) = space {
                 let dst = ptr.as_ptr().cast();
                 unsafe {
+                    // Copy the descriptor string to the allocated memory
                     std::ptr::copy(descriptor, dst, count - 1);
                 }
-                dst.cast()
+                // keep track of this allocation so the garbage collector knows what values to scan for
+                self.allocations.lock().unwrap().push(dst);
+                Ok(dst.cast())
             } else {
-                self.collect_garbage(frame, ptr);
-                self.alloc(descriptor, count, frame, ptr, tries + 1)
+                self.gc(&frame);
+                self.alloc(descriptor, frame, count, tries + 1)
             }
         } else {
-            std::process::exit(1);
+            Err("runtime: alloc: failed to allocate memory")
         }
     }
 
-    pub fn collect_garbage(&mut self, frame: &str, ptr: *const u8) {
-        unsafe {
-            let pm = PointerMap::new(ptr);
-            // println!("frame: {frame}, pm: {pm:?}");
-            let fp = self.get_frame_ptr(frame);
-            for chunk in pm.mapping.chunks_exact(2) {
-                let offset = chunk[0];
-                let rec = chunk[1] != 0;
-                if rec {
-                    let ptr = fp.sub(offset.try_into().unwrap()).cast();
-                    let ptr = std::ptr::read::<u64>(ptr);
-                    let (descriptor, _) = read_string(ptr as *const u8);
-                    // println!("descriptor: {descriptor}");
-                    let _fields: Vec<_> = descriptor
-                        .chars()
-                        .enumerate()
-                        .filter(|(_, c)| *c == 'p')
-                        .collect();
-                    // TODO: implement copying algorithm
-                    // println!("fields: {fields:?}");
+    fn reachable(&mut self, fp: *const u8, sp: *const u8) -> Vec<(*const u8, *const u8)> {
+        log(&format!("runtime: gc: scanning range [{fp:?}, {sp:?}]"));
+        (0..)
+            .step_by(8)
+            .skip(1)
+            .map_while(|offset| {
+                let src = unsafe { fp.add(offset) };
+                (src <= sp).then_some(src)
+            })
+            .filter(|src| {
+                let record = unsafe { std::ptr::read(src.cast()) };
+                log(&format!(
+                    "runtime: gc: scanning {src:?} -> {}",
+                    record as u64
+                ));
+                let forward = {
+                    let allocations = self.allocations.lock().unwrap();
+                    allocations.contains(&record)
+                };
+                forward
+            })
+            .map(|src| (src, unsafe { std::ptr::read(src.cast()) }))
+            .collect()
+    }
+
+    fn forward_child_fields(
+        reachable: &[(*const u8, *const u8)],
+        children: &HashMap<u64, *mut u8>,
+        forwarded: &HashMap<*const u8, *const u8>,
+    ) {
+        for &record in reachable.iter().map(|(_, record)| record) {
+            if let Some(&new_value_ptr) = children.get(&(record as u64)) {
+                let &ars = forwarded.get(&record).unwrap();
+                log(&format!(
+                    "runtime: gc: updating child pointer at {new_value_ptr:?} to {ars:?}"
+                ));
+                unsafe {
+                    std::ptr::write::<*mut u8>(new_value_ptr.cast(), ars.cast_mut());
                 }
             }
         }
     }
 
-    pub fn register_frame_ptr(&mut self, frame: *const u8, ptr: *const u8) {
-        let label = unsafe { read_string(frame).0 };
-        self.frames.insert(label, ptr as u64);
-    }
-
-    pub fn get_frame_ptr(&self, frame: &str) -> *const u8 {
-        (*self.frames.get(frame).unwrap()) as *const u8
-    }
-}
-
-#[derive(Debug)]
-struct PointerMap {
-    _label: String,
-    _previous: Option<Box<PointerMap>>,
-    mapping: Vec<u32>,
-}
-
-impl PointerMap {
-    unsafe fn new(ptr: *const u8) -> Self {
-        let (label, ptr) = read_string(ptr);
-        let (previous, ptr) = read_string(ptr);
-        let n: usize = read_u32(ptr, 0).try_into().unwrap();
-        let bound = (n + 1) * ALIGN;
-        let mapping: Vec<_> = (0..bound)
-            .step_by(ALIGN)
-            .skip(1)
-            .map(|i| read_u32(ptr, i))
-            .collect();
-        let ptr = ptr.add(bound);
-        Self {
-            _label: label,
-            _previous: (previous != "nil").then(|| Box::new(Self::new(ptr))),
-            mapping,
+    fn copy_fields(
+        count: usize,
+        descriptor: &str,
+        record: *const u8,
+        new_region: NonNull<u8>,
+        children: &mut HashMap<u64, *mut u8>,
+    ) {
+        for (n, offset) in (0..count).map(|i| i * 8).enumerate() {
+            unsafe {
+                let new_value_ptr = new_region.as_ptr().add(offset);
+                let current_value_ptr = record.add(offset);
+                let current_value: u64 = std::ptr::read(current_value_ptr.cast());
+                log(&format!("[{offset}]: copying {current_value} from {current_value_ptr:?} to {new_value_ptr:?}"));
+                std::ptr::copy::<u64>(current_value_ptr.cast(), new_value_ptr.cast(), 1);
+                if n != 0 {
+                    let pointer = descriptor.as_bytes()[n - 1] == b'p';
+                    if pointer {
+                        // we need to move *into* new_value_ptr the forwarded ptr for current_value
+                        children.insert(current_value, new_value_ptr);
+                    }
+                }
+            }
         }
+    }
+
+    /// A garbage collector using breadth-first copying which traverses the currently reachable stack
+    /// and forwards all valid records it finds from `self.current` (from-space) to a new region of memory
+    /// using the `Bump` allocator (to-space).
+    pub fn gc(&mut self, frame: &FrameInfo) {
+        let fp = unsafe { frame.ptr.sub(frame.size.abs().try_into().unwrap()) };
+        let sp = *self.sp.lock().unwrap();
+        let reachable = self.reachable(fp, sp);
+        log(&format!("runtime: gc: forward: {reachable:#?}"));
+        log(&format!(
+            "runtime: gc: current: {:#?}",
+            self.allocations.lock().unwrap()
+        ));
+        let mut scratch = init();
+        let mut allocations: Vec<*const u8> = Vec::new();
+        let mut forwarded: HashMap<*const u8, *const u8> = HashMap::new();
+        let mut children: HashMap<_, *mut u8> = HashMap::new();
+        for &(loc, record) in &reachable {
+            let forwarded = forwarded.get(&record).copied().unwrap_or_else(|| {
+                let descriptor = unsafe { read_string(record).0 };
+                log(&format!("runtime: gc: stack({loc:?}): (descriptor: {descriptor}), forwarding {record:?}"));
+                let count = descriptor.len() + 1;
+                let new_region =
+                    scratch.alloc_layout(Layout::array::<u64>(count).unwrap());
+                allocations.push(new_region.as_ptr().cast());
+                Self::copy_fields(count, &descriptor, record, new_region, &mut children);
+                forwarded.insert(record, new_region.as_ptr());
+                new_region.as_ptr()
+            });
+            log(&format!(
+                "runtime: gc: stack({loc:?}): forwarding {record:?} to {forwarded:?}"
+            ));
+            unsafe {
+                std::ptr::write::<u64>(loc.cast_mut().cast(), forwarded as u64);
+            }
+        }
+        // Forward all child fields after we finish forwarding everything else, otherwise we might
+        // miss some fields that need to be forwarded.
+        Self::forward_child_fields(&reachable, &children, &forwarded);
+        log(&format!("runtime: gc: forwarding table: {forwarded:#?}"));
+        std::mem::swap(&mut self.current, &mut scratch);
+        self.allocations = Mutex::new(allocations);
+        scratch.reset();
     }
 }
 
@@ -125,29 +192,40 @@ unsafe fn read_string(ptr: *const u8) -> (String, *const u8) {
     (label.to_string_lossy().into_owned(), ptr)
 }
 
-unsafe fn read_u32(ptr: *const u8, offset: usize) -> u32 {
-    let count: isize = offset.try_into().unwrap();
-    let src = ptr.offset(count).cast();
-    std::ptr::read(src)
+pub struct FrameInfo {
+    ptr: *const u8,
+    size: i64,
+}
+
+impl FrameInfo {
+    fn new(ptr: *const u8, size: i64) -> Self {
+        Self { ptr, size }
+    }
 }
 
 #[no_mangle]
 /// # Panics
 /// This function will panic if the allocation fails or
 /// if the string is not valid UTF-8.
-pub extern "C" fn alloc(descriptor: *const u8, frame: *const u8, ptr: *const u8) -> *const u64 {
-    let frame = unsafe { read_string(frame).0 };
+pub extern "C" fn alloc(descriptor: *const u8, fp: *const u8, size: i64) -> *const u64 {
+    let frame = FrameInfo::new(fp, size);
     let count = unsafe { CStr::from_ptr(descriptor.cast()) }
         .to_bytes()
         .len()
         + 1;
-    GLOBAL
-        .lock()
-        .unwrap()
-        .alloc(descriptor, count, &frame, ptr, 0)
+    match GLOBAL.lock().unwrap().alloc(descriptor, frame, count, 0) {
+        Ok(ptr) => ptr.cast(),
+        Err(msg) => panic!("{msg}"),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn register_frame_ptr(frame: *const u8, ptr: *const u8) {
-    GLOBAL.lock().unwrap().register_frame_ptr(frame, ptr);
+pub extern "C" fn set_stack_base(sp: *const u8) {
+    *GLOBAL.lock().unwrap().sp.lock().unwrap() = sp;
+}
+
+fn log(msg: &str) {
+    if std::env::var("KYANITE_LOG_GC").is_ok() {
+        println!("{msg}");
+    }
 }

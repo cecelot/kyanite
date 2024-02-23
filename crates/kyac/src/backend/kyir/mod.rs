@@ -14,7 +14,7 @@ use crate::{
             Stmt, Temp,
         },
         opcode::Opcode,
-        translate::{ObjectTrace, Translator},
+        translate::Translator,
     },
     pass::{AccessMap, SymbolTable},
 };
@@ -28,12 +28,7 @@ pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) 
     let mut translator: Translator<F> = Translator::new(accesses, symbols);
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);
-    let mut codegen: Codegen<F> = Codegen::new(
-        translator.functions(),
-        translator.strings(),
-        translator.tracing(),
-        ast,
-    );
+    let mut codegen: Codegen<F> = Codegen::new(translator.functions(), translator.strings(), ast);
     let instrs = codegen.assembly(ir);
     let registers = alloc::registers::<F>(instrs);
     codegen.format(&registers)
@@ -44,7 +39,6 @@ pub struct Codegen<'a, F: Frame> {
     asm: Vec<AsmInstr>,
     functions: &'a HashMap<usize, F>,
     strings: &'a HashMap<String, String>,
-    tracing: &'a [ObjectTrace],
     idents: HashMap<String, usize>,
 }
 
@@ -52,7 +46,6 @@ impl<'a, F: Frame> Codegen<'a, F> {
     fn new(
         functions: &'a HashMap<usize, F>,
         strings: &'a HashMap<String, String>,
-        tracing: &'a [ObjectTrace],
         ast: &[Decl],
     ) -> Self {
         Self {
@@ -69,7 +62,6 @@ impl<'a, F: Frame> Codegen<'a, F> {
             asm: Vec::new(),
             functions,
             strings,
-            tracing,
         }
     }
 
@@ -78,62 +70,7 @@ impl<'a, F: Frame> Codegen<'a, F> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
         self.strings();
-        self.tracing();
         &self.asm
-    }
-
-    fn tracing(&mut self) {
-        let instrs = self.tracing.iter().rev().flat_map(|trace| {
-            vec![
-                AsmInstr::new(Instr::oper(
-                    Opcode::Label(trace.label.clone()),
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-                AsmInstr::new(Instr::oper(
-                    Opcode::Data {
-                        kind: "asciz".into(),
-                        value: format!("\"{}\"", trace.label),
-                    },
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-                AsmInstr::new(Instr::oper(
-                    Opcode::Data {
-                        kind: "asciz".into(),
-                        // TODO: devise an algorithm to accurately determine parent pointer maps
-                        value: format!("\"{}\"", "nil"),
-                    },
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-                AsmInstr::new(Instr::oper(
-                    Opcode::Data {
-                        kind: "octa".into(),
-                        value: trace.mapping.len().to_string(),
-                    },
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-                AsmInstr::new(Instr::oper(
-                    Opcode::Data {
-                        kind: "octa".into(),
-                        value: trace.mapping.iter().skip(1).fold(
-                            trace.mapping.first().unwrap_or(&0).to_string(),
-                            |acc, &i| acc + &format!(", {i}"),
-                        ),
-                    },
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-            ]
-        });
-        self.asm.extend(instrs);
     }
 
     fn strings(&mut self) {
@@ -545,5 +482,4 @@ const BUILTINS: &[&str] = &[
     "println_str",
     // internal
     "alloc",
-    "register_frame_ptr",
 ];

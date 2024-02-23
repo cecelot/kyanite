@@ -5,14 +5,11 @@ pub use canon::canonicalize;
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::{self, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
-    backend::kyir::{
-        arch::{Frame, Location},
-        ir::*,
-    },
+    backend::kyir::{arch::Frame, ir::*},
     pass::{AccessMap, SymbolTable},
     token::{Kind, Span, Token},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Sub};
 
 pub struct Translator<'a, F: Frame> {
     functions: HashMap<usize, F>,
@@ -26,8 +23,6 @@ struct Context {
     ret: bool,
     name: Vec<String>,
     strings: Strings,
-    tracing: Vec<ObjectTrace>,
-    trace: Option<ObjectTrace>,
 }
 
 impl<'a, F: Frame> Translator<'a, F> {
@@ -39,8 +34,6 @@ impl<'a, F: Frame> Translator<'a, F> {
                 ret: false,
                 strings: Strings::new(),
                 name: vec![],
-                tracing: vec![],
-                trace: None,
             },
             accesses,
             symbols,
@@ -63,10 +56,6 @@ impl<'a, F: Frame> Translator<'a, F> {
 
     pub fn strings(&self) -> &HashMap<String, String> {
         &self.ctx.strings
-    }
-
-    pub fn tracing(&self) -> &[ObjectTrace] {
-        &self.ctx.tracing
     }
 }
 
@@ -247,13 +236,6 @@ impl Translate<Expr> for ast::node::Init {
         let registers = F::registers();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        // Ensure that we only try to garbage collect after a record has been fully initialized, otherwise
-        // we run into segfaults trying to access uninitialized memory.
-        if translator.ctx.trace.is_none() {
-            let trace = ObjectTrace::new(&frame.map(), translator.ctx.tracing.len());
-            translator.ctx.tracing.push(trace.clone());
-            translator.ctx.trace = Some(trace.clone());
-        }
         let temp = Temp::next();
         let name = translator.ctx.name.join(".");
         let base = frame.allocate(&name, true);
@@ -265,14 +247,18 @@ impl Translate<Expr> for ast::node::Init {
             .descriptor;
         let descriptor = descriptor.iter().collect();
         let ptr = translator.ctx.strings.add(descriptor);
-        let label = translator.ctx.strings.add(frame.label().to_string());
         let setup = [
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
                 vec![
                     Expr::ConstStr(ptr),
-                    Expr::ConstStr(label),
-                    Expr::ConstStr(translator.ctx.trace.as_ref().unwrap().label.clone()),
+                    Temp::wrapped(registers.frame.to_string()),
+                    Const::<u64>::int(frame.offset().sub(
+                        // This is an odd offset to require, but any less than this causes the GC to miss
+                        // some reachable pointers on the stack. Something to do with field initialization order
+                        // perhaps?
+                        i64::try_from((self.initializers.len() * 2 + 1) * F::word_size()).unwrap(),
+                    )),
                 ],
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
@@ -298,10 +284,6 @@ impl Translate<Expr> for ast::node::Init {
                 ]
             }))
             .collect();
-        // We've finished initializing the record, so reset the trace
-        if translator.ctx.name.len() == 1 {
-            translator.ctx.trace = None;
-        }
         ESeq::wrapped(Stmt::from(&stmts[..]), base)
     }
 }
@@ -479,22 +461,23 @@ impl Translate<Stmt> for ast::node::VarDecl {
 impl Translate<Stmt> for ast::node::FuncDecl {
     fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
         let frame = F::new(self);
-        let label = translator.ctx.strings.add(frame.label().to_string());
         translator.functions.insert(self.id, frame);
         translator.function = Some(self.id);
-        let stmts: Vec<Stmt> = vec![
-            Label::wrapped(self.name.to_string()),
-            Stmt::Expr(Box::new(Call::wrapped(
-                "register_frame_ptr".into(),
-                vec![
-                    Expr::ConstStr(label),
-                    Temp::wrapped(F::registers().frame.into()),
-                ],
-            ))),
-        ]
-        .into_iter()
-        .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
-        .collect();
+        let mut stmts: Vec<Stmt> = vec![Label::wrapped(self.name.to_string())]
+            .into_iter()
+            .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
+            .collect();
+        if self.ty == Type::Void {
+            // If the function returns void, explicitly zero out the return register. This can
+            // cause unwanted behavior in the garbage collector because if the last call is an
+            // allocation: that pointer will be copied to the parent frame and be considered
+            // live by the garbage collector.
+            stmts.push(Move::wrapped(
+                Temp::wrapped(F::registers().ret.value.to_string()),
+                Const::<i64>::int(0),
+                AddressStrategy::Immediate,
+            ));
+        }
         Stmt::from(&stmts[..])
     }
 }
@@ -520,37 +503,6 @@ impl Strings {
             let name = format!(".str.{id}");
             self.0.insert(name.clone(), value);
             name
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ObjectTrace {
-    pub id: usize,
-    pub label: String,
-    pub count: usize,
-    pub mapping: Vec<u32>,
-}
-
-impl ObjectTrace {
-    fn new(map: &HashMap<Location, bool>, id: usize) -> Self {
-        let label = format!(".trace.{id}");
-        let mapping: Vec<_> = map
-            .iter()
-            .flat_map(|(loc, &ptr)| {
-                [
-                    match loc {
-                        Location::Frame(offset) => offset.abs().try_into().unwrap(),
-                    },
-                    u32::from(ptr),
-                ]
-            })
-            .collect();
-        Self {
-            id,
-            label,
-            count: mapping.len(),
-            mapping,
         }
     }
 }
