@@ -99,17 +99,19 @@ impl Allocator {
 
     fn forward_child_fields(
         reachable: &[(*const u8, *const u8)],
-        children: &HashMap<u64, *mut u8>,
+        children: &HashMap<u64, Vec<*mut u8>>,
         forwarded: &HashMap<*const u8, *const u8>,
     ) {
         for &record in reachable.iter().map(|(_, record)| record) {
-            if let Some(&new_value_ptr) = children.get(&(record as u64)) {
+            if let Some(fields) = children.get(&(record as u64)) {
                 let &ars = forwarded.get(&record).unwrap();
-                log(&format!(
-                    "runtime: gc: updating child pointer at {new_value_ptr:?} to {ars:?}"
-                ));
-                unsafe {
-                    std::ptr::write::<*mut u8>(new_value_ptr.cast(), ars.cast_mut());
+                for &new_value_ptr in fields {
+                    log(&format!(
+                        "runtime: gc: updating child pointer at {new_value_ptr:?} to {ars:?}"
+                    ));
+                    unsafe {
+                        std::ptr::write::<*mut u8>(new_value_ptr.cast(), ars.cast_mut());
+                    }
                 }
             }
         }
@@ -120,20 +122,23 @@ impl Allocator {
         descriptor: &str,
         record: *const u8,
         new_region: NonNull<u8>,
-        children: &mut HashMap<u64, *mut u8>,
+        children: &mut HashMap<u64, Vec<*mut u8>>,
     ) {
         for (n, offset) in (0..count).map(|i| i * 8).enumerate() {
             unsafe {
                 let new_value_ptr = new_region.as_ptr().add(offset);
                 let current_value_ptr = record.add(offset);
                 let current_value: u64 = std::ptr::read(current_value_ptr.cast());
-                log(&format!("[{offset}]: copying {current_value} from {current_value_ptr:?} to {new_value_ptr:?}"));
+                log(&format!("runtime: gc: [{offset}]: copying {current_value} from {current_value_ptr:?} to {new_value_ptr:?}"));
                 std::ptr::copy::<u64>(current_value_ptr.cast(), new_value_ptr.cast(), 1);
                 if n != 0 {
                     let pointer = descriptor.as_bytes()[n - 1] == b'p';
                     if pointer {
                         // we need to move *into* new_value_ptr the forwarded ptr for current_value
-                        children.insert(current_value, new_value_ptr);
+                        children
+                            .entry(current_value)
+                            .or_default()
+                            .push(new_value_ptr);
                     }
                 }
             }
@@ -155,7 +160,7 @@ impl Allocator {
         let mut scratch = init();
         let mut allocations: Vec<*const u8> = Vec::new();
         let mut forwarded: HashMap<*const u8, *const u8> = HashMap::new();
-        let mut children: HashMap<_, *mut u8> = HashMap::new();
+        let mut children: HashMap<_, Vec<*mut u8>> = HashMap::new();
         for &(loc, record) in &reachable {
             let forwarded = forwarded.get(&record).copied().unwrap_or_else(|| {
                 let descriptor = unsafe { read_string(record).0 };

@@ -205,8 +205,8 @@ fn more_records() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn nesting_hell() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/nesting-hell.kya")?;
+fn deeply_nested_records() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/deeply-nested-records.kya")?;
     assert_eq!(res.output, "5\n4\n3\n");
     Ok(())
 }
@@ -243,5 +243,12 @@ fn hello() -> Result<(), Box<dyn std::error::Error>> {
 fn misc_strings() -> Result<(), Box<dyn std::error::Error>> {
     let res = run("kyir/misc-strings.kya")?;
     assert_eq!(res.output, "Hello, world!\nHello, world!\nbaz\nfoo\n");
+    Ok(())
+}
+
+#[test]
+fn gc_shared_child_field() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/gc-shared-child-field.kya")?;
+    assert_eq!(res.output, "5\n5\n");
     Ok(())
 }

@@ -1,0 +1,32 @@
+rec A {
+    a: int,
+    b: B
+}
+
+rec B {
+    c: int,
+    d: C
+}
+
+rec C {
+    e: int,
+    f: D
+}
+
+rec D {
+    g: int,
+    h: E
+}
+
+rec E {
+    i: int
+}
+
+fun main() {
+    let e: E = E:init(i: 5);
+    let a: A = A:init(a: 1, b: B:init(c: 2, d: C:init(e: 3, f: D:init(g: 4, h: e))));
+    let d: D = D:init(g: 7, h: e);
+    let o: E = E:init(i: 6);
+    println_int(a.b.d.f.h.i); % 5
+    println_int(d.h.i); % 5
+}
