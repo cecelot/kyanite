@@ -3,19 +3,17 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
-    personal.url = "github:alythical/nix-packages";
   };
 
   outputs = {
     nixpkgs,
     rust-overlay,
     flake-utils,
-    personal,
     ...
   }:
     flake-utils.lib.eachDefaultSystem
     (system: let
-      overlays = [(import rust-overlay) personal.overlays.default];
+      overlays = [(import rust-overlay)];
       pkgs = import nixpkgs {inherit overlays system;};
       rust-stable = pkgs.rust-bin.stable.latest.default.override {
         extensions = ["rust-src"];
