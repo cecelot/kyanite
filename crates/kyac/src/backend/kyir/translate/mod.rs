@@ -252,7 +252,7 @@ impl Translate<Expr> for ast::node::Init {
                 "alloc".into(),
                 vec![
                     Expr::ConstStr(ptr),
-                    Temp::wrapped(registers.frame.to_string()),
+                    Temp::wrapped(registers.stack.to_string()),
                     Const::<u64>::int(frame.offset().sub(
                         // This is an odd offset to require, but any less than this causes the GC to miss
                         // some reachable pointers on the stack. Something to do with field initialization order

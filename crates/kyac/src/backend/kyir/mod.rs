@@ -119,16 +119,30 @@ impl<'a, F: Frame> Codegen<'a, F> {
             Expr::Binary(bin) => bin,
             _ => panic!("Expected `Expr::Mem` or `Expr::Binary`"),
         };
-        (bin.left.temp().unwrap(), bin.right.int().unwrap())
+        (String::from("x29"), bin.right.int().unwrap().abs())
     }
 
     fn format(self, registers: &Registers) -> String {
         let mut asm = String::new();
         for mut instr in self.asm {
-            if let Instr::Oper { dst, src, .. } = &mut instr.inner {
-                *dst = registers.get::<F>(dst);
-                *src = registers.get::<F>(src);
-            };
+            match &mut instr.inner {
+                Instr::Oper {
+                    opcode: Opcode::LoadEffective((tmp, _)),
+                    ..
+                } => {
+                    *tmp = registers.get::<F>(tmp);
+                }
+                Instr::Oper {
+                    opcode: Opcode::AddTriple((dst, src, _)),
+                    ..
+                }
+                | Instr::Oper { dst, src, .. } => {
+                    *dst = registers.get::<F>(dst);
+                    *src = registers.get::<F>(src);
+                }
+                Instr::Call { .. } => {}
+            }
+
             writeln!(asm, "{instr}").unwrap();
         }
         asm
@@ -167,8 +181,17 @@ impl Assembly<String> for Expr {
             Self::Mem(mem) => mem.assembly(codegen),
             Self::Call(call) => call.assembly(codegen),
             Self::Temp(t) => t.name.clone(),
-            Self::Dereferenced(t) => format!("({})", t.name),
-            Self::ConstStr(name) => format!("{name}(%{})", F::registers().ret.address),
+            Self::Dereferenced(t) => format!("[{}]", t.name),
+            Self::ConstStr(name) => {
+                let tmp = Temp::next();
+                codegen.emit(Instr::oper(
+                    Opcode::LoadEffective((tmp.clone(), name.clone())),
+                    String::new(),
+                    String::new(),
+                    None,
+                ));
+                tmp
+            }
             Self::ConstFloat(_) => todo!(),
             Self::ESeq { .. } => panic!("`Expr::ESeq` not removed by canonicalization"),
         }
@@ -181,7 +204,7 @@ impl Assembly<String> for Const<i64> {
         codegen.emit(Instr::Oper {
             opcode: Opcode::Move(AddressStrategy::Immediate),
             dst: name.clone(),
-            src: format!("${}", self.value),
+            src: format!("#{}", self.value),
             jump: None,
         });
         name
@@ -206,9 +229,9 @@ impl Assembly<String> for Mem {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
         let dst = Temp::next();
         let (rbp, offset) = Codegen::<F>::access(&self.expr);
-        let src = format!("{offset}(%{rbp})");
+        let src = format!("[{rbp}, #{offset}]");
         let oper = Instr::Oper {
-            opcode: Opcode::Move(AddressStrategy::Immediate),
+            opcode: Opcode::LoadImmediate,
             dst: dst.clone(),
             src,
             jump: None,
@@ -225,18 +248,11 @@ impl Assembly<String> for Call {
             .iter()
             .map(|arg| arg.assembly(codegen))
             .enumerate()
-            .map(|(i, arg)| {
-                let strategy = if arg.starts_with('.') {
-                    AddressStrategy::Effective
-                } else {
-                    AddressStrategy::Immediate
-                };
-                Instr::Oper {
-                    opcode: Opcode::Move(strategy),
-                    dst: F::registers().argument[i].into(),
-                    src: arg,
-                    jump: None,
-                }
+            .map(|(i, arg)| Instr::Oper {
+                opcode: Opcode::Move(AddressStrategy::Immediate),
+                dst: F::registers().argument[i].to_owned(),
+                src: arg,
+                jump: None,
             })
             .collect();
         args.into_iter().for_each(|arg| codegen.emit(arg));
@@ -247,7 +263,7 @@ impl Assembly<String> for Call {
                 self.name.clone()
             },
         });
-        format!("%{}", F::registers().ret.value)
+        F::registers().ret.value.to_owned()
     }
 }
 
@@ -283,40 +299,51 @@ impl Assembly<()> for Label {
 impl Assembly<()> for Move {
     fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
         if let Expr::Binary(ref bin) = *self.expr {
-            if bin.left.temp().is_some_and(|t| t == "rbp") {
+            if bin.left.temp().is_some_and(|t| t == "sp") {
                 let (rbp, offset) = Codegen::<F>::access(&self.expr);
                 codegen.emit(Instr::Oper {
-                    opcode: Opcode::Move(self.strategy),
+                    opcode: Opcode::LoadImmediate,
                     dst: self.target.temp().unwrap(),
-                    src: format!("{offset}(%{rbp})"),
+                    src: format!("[{rbp}, #{offset}]"),
                     jump: None,
                 });
                 return;
             }
         }
-        let src = match *self.expr {
+        let mut src = match *self.expr {
             Expr::Mem(_) => {
                 let temp = Temp::next();
                 let (rbp, offset) = Codegen::<F>::access(&self.expr);
                 codegen.emit(Instr::Oper {
-                    opcode: Opcode::Move(self.strategy),
+                    opcode: Opcode::LoadImmediate,
                     dst: temp.clone(),
-                    src: format!("{offset}(%{rbp})"),
+                    src: format!("[{rbp}, #{offset}]"),
                     jump: None,
                 });
                 temp
             }
             _ => self.expr.assembly(codegen),
         };
-        let dst = match *self.target {
+        let mut dst = match *self.target {
             Expr::Mem(_) | Expr::Binary { .. } => {
                 let (rbp, offset) = Codegen::<F>::access(&self.target);
-                format!("{offset}(%{rbp})")
+                format!("[{rbp}, #{offset}]")
             }
             _ => self.target.temp().unwrap(),
         };
+        if dst.starts_with('[') {
+            std::mem::swap(&mut dst, &mut src);
+        }
         codegen.emit(Instr::Oper {
-            opcode: Opcode::Move(self.strategy),
+            opcode: if src.starts_with('[') {
+                if matches!(*self.expr, Expr::Dereferenced(_)) {
+                    Opcode::LoadImmediate
+                } else {
+                    Opcode::StoreImmediate
+                }
+            } else {
+                Opcode::Move(self.strategy)
+            },
             dst,
             src,
             jump: None,
@@ -332,7 +359,7 @@ impl Assembly<()> for CJump {
             codegen.emit(Instr::oper(
                 Opcode::Move(AddressStrategy::Immediate),
                 one.clone(),
-                "$1".into(),
+                "#1".into(),
                 None,
             ));
             codegen.emit(Instr::oper(Opcode::Cmp(RelOp::Equal), tmp, one, None));
@@ -403,7 +430,12 @@ impl AsmInstr {
         match &self.inner {
             Instr::Oper { opcode, .. } => match opcode {
                 Opcode::Jump | Opcode::CJump(_) | Opcode::Push | Opcode::Ret | Opcode::Pop => 1,
-                Opcode::Label(_) | Opcode::Data { .. } => 0,
+                Opcode::Label(_)
+                | Opcode::Data { .. }
+                | Opcode::StorePair(_)
+                | Opcode::LoadPair(_)
+                | Opcode::AddTriple(_)
+                | Opcode::LoadEffective(_) => 0,
                 _ => 2,
             },
             Instr::Call { .. } => 0,
@@ -455,16 +487,19 @@ impl Display for AsmInstr {
                 match opcode {
                     Opcode::Jump => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
                     Opcode::CJump(_) => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
+                    Opcode::Add | Opcode::Sub | Opcode::Mul | Opcode::Div => {
+                        write!(f, "{pad}{opcode} {dst}, {dst}, {src}")?;
+                    }
                     _ => write!(
                         f,
-                        "{pad}{opcode} {src}{} {dst}",
+                        "{pad}{opcode} {dst}{} {src}",
                         if self.operands() == 2 { "," } else { "" }
                     )?,
                 }
                 Ok(())
             }
             Instr::Call { name } => {
-                write!(f, "{pad}callq {name}")?;
+                write!(f, "{pad}bl {name}")?;
                 Ok(())
             }
         }

@@ -6,7 +6,7 @@ pub extern "C" fn println_bool(b: bool) {
 }
 
 #[no_mangle]
-pub extern "C" fn println_int(i: i32) {
+pub extern "C" fn println_int(i: i64) {
     println!("{i}");
 }
 

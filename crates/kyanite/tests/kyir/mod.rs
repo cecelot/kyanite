@@ -1,4 +1,4 @@
-use kyac::{Amd64, Backend, Output, Source};
+use kyac::{Armv8a, Backend, Output, Source};
 use subprocess::ProcessResult;
 
 fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
@@ -6,7 +6,7 @@ fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     let Output::Asm(asm) = kyac::compile(&source, &Backend::Kyir)? else {
         unreachable!()
     };
-    let exe = kyanite::asm::compile::<Amd64>(&asm, &kyanite::filename(&source))?;
+    let exe = kyanite::asm::compile::<Armv8a>(&asm, &kyanite::filename(&source))?;
     std::env::set_var("KYANITE_GC_ALWAYS", "1");
     let res = subprocess::exec(&exe, &[]);
     Ok(res)

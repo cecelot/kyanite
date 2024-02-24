@@ -1,4 +1,4 @@
-pub mod amd64;
+pub mod armv8a;
 
 use std::collections::HashMap;
 
@@ -26,11 +26,9 @@ pub trait Frame {
 
 pub struct RegisterMap {
     pub callee: &'static [&'static str],
-    pub caller: &'static [&'static str],
     pub temporary: &'static [&'static str],
     pub argument: &'static [&'static str],
     pub ret: ReturnRegisters,
-    pub frame: &'static str,
     pub stack: &'static str,
 }
 
@@ -43,10 +41,9 @@ impl RegisterMap {
     pub fn all(&self) -> Vec<&str> {
         self.callee
             .iter()
-            .chain(self.caller.iter())
             .chain(self.temporary.iter())
             .chain(self.argument.iter())
-            .chain([self.ret.address, self.ret.value, self.frame, self.stack].iter())
+            .chain([self.ret.address, self.ret.value, self.stack].iter())
             .copied()
             .collect()
     }

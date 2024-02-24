@@ -4,7 +4,7 @@ pub mod llvm;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use fern::colors::{Color, ColoredLevelConfig};
-use kyac::{Backend, Source};
+use kyac::Source;
 use std::path::PathBuf;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -57,27 +57,19 @@ pub fn installed(s: &str, msg: &str) -> bool {
 }
 
 #[must_use]
-pub fn include_dir(backend: &Backend, target: Option<&str>) -> String {
+pub fn include_dir() -> String {
     let default = || -> String {
-        let target = match target {
-            Some(target) => format!("/{target}"),
-            None => String::new(),
-        };
         let build = if cfg!(debug_assertions) {
-            format!("target{target}/debug")
+            "target/debug"
         } else {
-            format!("target{target}/release")
+            "target/release"
         };
         let dir = env!("CARGO_MANIFEST_DIR");
         let dir = &dir[0..dir.len() - 14];
         let include = &format!("{dir}{build}");
         include.into()
     };
-    let subdir = match backend {
-        Backend::Kyir => "kyir-support",
-        Backend::Llvm => "llvm-support",
-    };
-    std::env::var("KYANITE_RUNTIME_LIB").map_or(default(), |s| format!("{s}/{subdir}"))
+    std::env::var("KYANITE_RUNTIME_LIB").unwrap_or(default())
 }
 
 #[must_use]
@@ -100,13 +92,15 @@ pub fn init_logger(verbosity: u8) -> Result<(), fern::InitError> {
     let level = match verbosity {
         0 => log::LevelFilter::Warn,
         1 => log::LevelFilter::Info,
-        2.. => log::LevelFilter::Debug,
+        2 => log::LevelFilter::Debug,
+        3.. => log::LevelFilter::Trace,
     };
     let colors = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
         .info(Color::Green)
-        .debug(Color::Magenta);
+        .debug(Color::Magenta)
+        .trace(Color::Cyan);
     fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(

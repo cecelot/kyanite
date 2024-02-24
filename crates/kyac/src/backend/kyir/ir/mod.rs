@@ -85,7 +85,6 @@ impl Stmt {
                     expr
                 }
             }
-            (_, expr @ Expr::ConstStr(_)) => wrap_memory_load(expr, AddressStrategy::Effective),
             (_, expr) => expr,
         };
         Move::wrapped(target, expr, AddressStrategy::Immediate)
@@ -107,7 +106,7 @@ impl Expr {
     pub fn temp(&self) -> Option<String> {
         match self {
             Self::Temp(t) => Some(t.name.clone()),
-            Self::Dereferenced(t) => Some(format!("({})", t.name)),
+            Self::Dereferenced(t) => Some(format!("[{}]", t.name)),
             _ => None,
         }
     }

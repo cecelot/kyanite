@@ -1,5 +1,5 @@
 use crate::include_dir;
-use kyac::{Backend, Frame, PipelineError};
+use kyac::{Frame, PipelineError};
 use std::{fs::File, io::Write};
 
 pub fn compile<F: Frame>(instrs: &str, filename: &str) -> Result<String, PipelineError> {
@@ -8,18 +8,10 @@ pub fn compile<F: Frame>(instrs: &str, filename: &str) -> Result<String, Pipelin
     let exe = &format!("kya-dist/{filename}");
     let mut file = File::create(asm).expect("well-formed file structure");
     write!(file, "{}{}", F::header(), instrs).unwrap();
-    crate::dylib(&include_dir(&Backend::Kyir, Some("x86_64-apple-darwin")));
-    // We need to run a bash shell because otherwise Zig complains that -target is an unknown Clang option
-    // for some reason.
+    crate::dylib(&include_dir());
     subprocess::handle(subprocess::exec(
-        "bash",
-        &[
-            "-c",
-            &format!(
-                "zig cc {asm} -o {exe} -target x86_64-macos -L {} -lkyanite_runtime",
-                include_dir(&Backend::Kyir, Some("x86_64-apple-darwin"))
-            ),
-        ],
+        "clang",
+        &[asm, "-o", exe, "-L", &include_dir(), "-lkyanite_runtime"],
     ))
     .map_err(PipelineError::CompileError)?;
     Ok(exe.into())

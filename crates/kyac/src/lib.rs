@@ -7,7 +7,7 @@ mod parse;
 mod pass;
 mod token;
 
-pub use crate::backend::kyir::arch::{amd64::Amd64, Frame};
+pub use crate::backend::kyir::arch::{armv8a::Armv8a, Frame};
 
 use crate::{
     backend::{kyir, llvm},
@@ -27,7 +27,7 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
         Backend::Llvm => Ok(Output::Llvm(
             llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
         )),
-        Backend::Kyir => Ok(Output::Asm(kyir::asm::<Amd64>(
+        Backend::Kyir => Ok(Output::Asm(kyir::asm::<Armv8a>(
             &ast.nodes, &symbols, &accesses,
         ))),
     }

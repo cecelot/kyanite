@@ -22,9 +22,8 @@ impl<F: Frame> Color<F> {
         let temporaries: Vec<_> = ranges.keys().collect();
         let registers = F::registers();
         let registers: Vec<String> = registers
-            .callee
+            .temporary
             .iter()
-            .chain(registers.temporary.iter())
             .map(|&reg| String::from(reg))
             .collect();
         for (line, graph) in self.interferences.iter().enumerate() {
@@ -51,6 +50,7 @@ impl<F: Frame> Color<F> {
                 }
             }
         }
+        log::trace!("register mapping: {colors:#?}");
         colors
     }
 }

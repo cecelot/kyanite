@@ -169,7 +169,11 @@ impl FlowGraphMeta for AsmInstr {
         match &self.inner {
             Instr::Oper {
                 dst,
-                opcode: Opcode::Move(_),
+                opcode: Opcode::Move(_) | Opcode::LoadImmediate,
+                ..
+            }
+            | Instr::Oper {
+                opcode: Opcode::LoadEffective((dst, _)),
                 ..
             } => vec![dst.clone()],
             _ => vec![],
@@ -185,12 +189,18 @@ impl FlowGraphMeta for AsmInstr {
                     | Opcode::Add
                     | Opcode::Sub
                     | Opcode::Mul
-                    | Opcode::Div,
+                    | Opcode::Div
+                    | Opcode::LoadImmediate
+                    | Opcode::StoreImmediate,
                 src,
                 dst,
                 ..
             } => vec![src.clone(), dst.clone()],
-            Instr::Oper { src, .. } => vec![src.clone()],
+            Instr::Oper {
+                opcode: Opcode::AddTriple((src, _, _)),
+                ..
+            }
+            | Instr::Oper { src, .. } => vec![src.clone()],
             Instr::Call { .. } => vec![],
         }
     }

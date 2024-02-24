@@ -1,4 +1,4 @@
-use kyac::{Amd64, Backend, Output, Source};
+use kyac::{Armv8a, Backend, Output, Source};
 use kyanite::{asm, include_dir, installed, llvm, Commands};
 use std::{
     fmt,
@@ -21,8 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     log::debug!("using backend: {:?}", backend);
     let cli = kyanite::cli();
-    log::debug!("DYLD_LIBRARY_PATH: `{}`", include_dir(&backend, None));
-    std::env::set_var("DYLD_LIBRARY_PATH", include_dir(&backend, None));
+    log::debug!("DYLD_LIBRARY_PATH: `{}`", include_dir());
+    std::env::set_var("DYLD_LIBRARY_PATH", include_dir());
     match cli.command {
         Commands::Run { path } => {
             let source = Source::new(path).unwrap_or_else(exit);
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let filename = kyanite::filename(&source);
             let exe = match &output {
                 Output::Llvm(ir) => llvm::compile(ir, &filename).unwrap_or_else(exit),
-                Output::Asm(asm) => asm::compile::<Amd64>(asm, &filename).unwrap_or_else(exit),
+                Output::Asm(asm) => asm::compile::<Armv8a>(asm, &filename).unwrap_or_else(exit),
             };
             log::info!("running `./{}`", exe);
             let child = std::process::Command::new(exe)
