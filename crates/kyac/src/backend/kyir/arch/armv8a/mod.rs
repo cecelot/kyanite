@@ -3,7 +3,7 @@ pub mod isa;
 use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
-        arch::{Location, RegisterMap, ReturnRegisters},
+        arch::{Location, RegisterMap},
         ir::{BinOp, Binary, Const, Expr, Mem, Temp},
         Frame,
     },
@@ -20,7 +20,7 @@ pub struct Armv8a {
 
 impl Frame<isa::A64> for Armv8a {
     fn new(func: &FuncDecl) -> Self {
-        let registers = Self::registers();
+        let r = Self::registers();
         assert!(func.params.len() <= 6);
         let mut variables = HashMap::new();
         let mut offset = 0;
@@ -42,7 +42,7 @@ impl Frame<isa::A64> for Armv8a {
                 .params
                 .iter()
                 .enumerate()
-                .map(|(i, _)| Formal::new(registers.argument[i]))
+                .map(|(i, _)| Formal::new(r.argument[i]))
                 .collect(),
             label: func.name.to_string(),
             variables,
@@ -70,10 +70,10 @@ impl Frame<isa::A64> for Armv8a {
             });
             variable.offset
         };
-        let registers = Self::registers();
+        let r = Self::registers();
         Mem::wrapped(Binary::wrapped(
             BinOp::Plus,
-            Temp::wrapped(registers.stack.into()),
+            Temp::wrapped(r.stack.into()),
             Const::<i64>::int(offset),
         ))
     }
@@ -93,13 +93,13 @@ impl Frame<isa::A64> for Armv8a {
     }
 
     fn prologue(&self) -> Vec<isa::A64> {
-        let registers = Self::registers();
+        let r = Self::registers();
         let mut prologue = vec![];
         // let saves = list(&Opcode::Push);
         // prologue.extend(saves);
         prologue.push(isa::A64::Sub(
-            registers.stack.into(),
-            registers.stack.into(),
+            r.stack.into(),
+            r.stack.into(),
             format!(
                 "#{}",
                 next_multiple_of(
@@ -114,7 +114,7 @@ impl Frame<isa::A64> for Armv8a {
         ));
         prologue.push(isa::A64::Add(
             String::from("x29"),
-            registers.stack.into(),
+            r.stack.into(),
             String::from("#16"),
         ));
         for (i, formal) in self.formals.iter().enumerate() {
@@ -169,10 +169,8 @@ impl Frame<isa::A64> for Armv8a {
             ],
             temporary: &["x9", "x10", "x11", "x12", "x13", "x14", "x15"],
             argument: &["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7"],
-            ret: ReturnRegisters {
-                address: "rip",
-                value: "x0",
-            },
+            ret: "x0",
+            frame: "x29",
             stack: "sp",
         }
     }

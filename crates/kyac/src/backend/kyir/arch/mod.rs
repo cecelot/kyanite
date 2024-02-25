@@ -27,13 +27,9 @@ pub struct RegisterMap {
     pub callee: &'static [&'static str],
     pub temporary: &'static [&'static str],
     pub argument: &'static [&'static str],
-    pub ret: ReturnRegisters,
+    pub ret: &'static str,
     pub stack: &'static str,
-}
-
-pub struct ReturnRegisters {
-    pub address: &'static str,
-    pub value: &'static str,
+    pub frame: &'static str,
 }
 
 impl RegisterMap {
@@ -42,7 +38,7 @@ impl RegisterMap {
             .iter()
             .chain(self.temporary.iter())
             .chain(self.argument.iter())
-            .chain([self.ret.address, self.ret.value, self.stack].iter())
+            .chain([self.ret, self.frame, self.stack].iter())
             .copied()
             .collect()
     }
@@ -52,10 +48,8 @@ pub trait ArchInstr: FlowGraphMeta + Format + fmt::Debug + fmt::Display {
     fn create_label(address: String) -> Self;
     fn data_fragment(kind: String, value: String) -> Self;
     fn load_fragment(dst: String, label: String) -> Self;
-    fn load_from_frame(dst: String, offset: i64) -> Self;
-    fn store_to_frame(src: String, offset: i64) -> Self;
-    fn store_to_address(src: String, addr: String) -> Self;
-    fn load_from_address(dst: String, addr: String) -> Self;
+    fn load(dst: String, src: String, offset: i64) -> Self;
+    fn store(src: String, addr: String, offset: i64) -> Self;
     /// `move` is a reserved keyword in Rust so we use an analogous term instead
     fn copy(dst: String, src: String) -> Self;
     fn copy_int(dst: String, value: i64) -> Self;

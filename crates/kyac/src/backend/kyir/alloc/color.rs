@@ -20,8 +20,7 @@ impl<I: ArchInstr, F: Frame<I>> Color<I, F> {
     pub fn color(&self, ranges: &LiveRanges) -> HashMap<String, String> {
         let mut colors = HashMap::new();
         let temporaries: Vec<_> = ranges.keys().collect();
-        let registers = F::registers();
-        let registers: Vec<String> = registers
+        let registers: Vec<String> = F::registers()
             .temporary
             .iter()
             .map(|&reg| String::from(reg))

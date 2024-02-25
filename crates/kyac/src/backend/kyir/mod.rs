@@ -99,14 +99,12 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
     }
 
     fn access(mem: &Expr) -> Option<i64> {
+        let r = F::registers();
         let bin = match mem {
             Expr::Mem(mem) => Some(mem.expr.binary().unwrap()),
             Expr::Binary(bin)
                 if matches!(*bin.right, Expr::ConstInt(_))
-                    && bin
-                        .left
-                        .temp()
-                        .is_some_and(|temp| temp == F::registers().stack) =>
+                    && bin.left.temp().is_some_and(|temp| temp == r.stack) =>
             {
                 Some(bin)
             }
@@ -193,9 +191,10 @@ impl Assembly<String> for Binary {
 
 impl Assembly<String> for Mem {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
+        let r = F::registers();
         let dst = Temp::next();
         let offset = Codegen::<I, F>::access(&self.expr).unwrap();
-        codegen.emit(I::load_from_frame(dst.clone(), offset));
+        codegen.emit(I::load(dst.clone(), r.frame.into(), offset));
         dst
     }
 }
@@ -217,7 +216,7 @@ impl Assembly<String> for Call {
             I::call(self.name.clone())
         };
         codegen.emit(instr);
-        r.ret.value.to_owned()
+        r.ret.to_owned()
     }
 }
 
@@ -242,6 +241,7 @@ impl Assembly<()> for Label {
 
 impl Assembly<()> for Move {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
+        let r = F::registers();
         let store = matches!(
             *self.target,
             Expr::Mem(_) | Expr::Binary(_) | Expr::Dereferenced(_)
@@ -249,10 +249,10 @@ impl Assembly<()> for Move {
         if store {
             let instr = if let Expr::Dereferenced(ref addr) = *self.target {
                 let src = self.expr.assembly(codegen);
-                I::store_to_address(src, addr.name.to_string())
+                I::store(src, addr.name.to_string(), 0)
             } else if let Some(offset) = Codegen::<I, F>::access(&self.target) {
                 let src = self.expr.assembly(codegen);
-                I::store_to_frame(src, offset)
+                I::store(src, r.frame.into(), offset)
             } else {
                 unimplemented!()
             };
@@ -260,10 +260,10 @@ impl Assembly<()> for Move {
         } else {
             let instr = if let Expr::Dereferenced(ref addr) = *self.expr {
                 let dst = self.target.assembly(codegen);
-                I::load_from_address(dst, addr.name.to_string())
+                I::load(dst, addr.name.to_string(), 0)
             } else if let Some(offset) = Codegen::<I, F>::access(&self.expr) {
                 let dst = self.target.assembly(codegen);
-                I::load_from_frame(dst, offset)
+                I::load(dst, r.frame.into(), offset)
             } else if let Expr::ConstInt(ref i) = *self.expr {
                 I::copy_int(self.target.assembly(codegen), i.value)
             } else {

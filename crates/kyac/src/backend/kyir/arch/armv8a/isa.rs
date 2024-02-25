@@ -83,20 +83,12 @@ impl ArchInstr for A64 {
         A64::Compare(lhs, rhs)
     }
 
-    fn load_from_frame(dst: String, offset: i64) -> Self {
-        A64::LoadImmediate(dst, String::from("x29"), offset)
+    fn load(dst: String, src: String, offset: i64) -> Self {
+        A64::LoadImmediate(dst, src, offset)
     }
 
-    fn load_from_address(dst: String, addr: String) -> Self {
-        A64::LoadImmediate(dst, addr, 0)
-    }
-
-    fn store_to_address(src: String, addr: String) -> Self {
-        A64::StoreImmediate(src, addr, 0)
-    }
-
-    fn store_to_frame(src: String, offset: i64) -> Self {
-        A64::StoreImmediate(src, String::from("x29"), offset)
+    fn store(src: String, addr: String, offset: i64) -> Self {
+        A64::StoreImmediate(src, addr, offset)
     }
 
     fn create_jump(label: String) -> Self {
@@ -169,26 +161,24 @@ impl FlowGraphMeta for A64 {
 
 impl Format for A64 {
     fn format<I: ArchInstr, F: Frame<I>>(self, registers: &Registers) -> Self {
-        let get = |temp: &String| match &temp[..] {
+        let get = |temp: String| match &temp[..] {
             "x29" => temp.to_string(),
-            _ => registers.get::<I, F>(temp),
+            _ => registers.get(temp),
         };
         match self {
-            A64::LoadImmediate(dst, src, offset) => {
-                A64::LoadImmediate(get(&dst), get(&src), offset)
-            }
+            A64::LoadImmediate(dst, src, offset) => A64::LoadImmediate(get(dst), get(src), offset),
             A64::StoreImmediate(src, dst, offset) => {
-                A64::StoreImmediate(get(&src), get(&dst), offset)
+                A64::StoreImmediate(get(src), get(dst), offset)
             }
-            A64::LoadEffective(dst, addr) => A64::LoadEffective(get(&dst), addr),
-            A64::StorePair(r1, r2) => A64::StorePair(get(&r1), get(&r2)),
-            A64::LoadPair(r1, r2) => A64::LoadPair(get(&r1), get(&r2)),
-            A64::Add(dst, r1, r2) => A64::Add(get(&dst), get(&r1), get(&r2)),
-            A64::Sub(dst, r1, r2) => A64::Sub(get(&dst), get(&r1), get(&r2)),
-            A64::Mul(dst, r1, r2) => A64::Mul(get(&dst), get(&r1), get(&r2)),
-            A64::Div(dst, r1, r2) => A64::Div(get(&dst), get(&r1), get(&r2)),
-            A64::Move(dst, src) => A64::Move(get(&dst), get(&src)),
-            A64::Compare(lhs, rhs) => A64::Compare(get(&lhs), get(&rhs)),
+            A64::LoadEffective(dst, addr) => A64::LoadEffective(get(dst), addr),
+            A64::StorePair(r1, r2) => A64::StorePair(get(r1), get(r2)),
+            A64::LoadPair(r1, r2) => A64::LoadPair(get(r1), get(r2)),
+            A64::Add(dst, r1, r2) => A64::Add(get(dst), get(r1), get(r2)),
+            A64::Sub(dst, r1, r2) => A64::Sub(get(dst), get(r1), get(r2)),
+            A64::Mul(dst, r1, r2) => A64::Mul(get(dst), get(r1), get(r2)),
+            A64::Div(dst, r1, r2) => A64::Div(get(dst), get(r1), get(r2)),
+            A64::Move(dst, src) => A64::Move(get(dst), get(src)),
+            A64::Compare(lhs, rhs) => A64::Compare(get(lhs), get(rhs)),
             _ => self,
         }
     }

@@ -151,6 +151,7 @@ impl Translate<Expr> for ast::node::Binary {
 
 impl Translate<Expr> for ast::node::Call {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
+        let r = F::registers();
         let args: Vec<_> = self
             .args
             .iter()
@@ -171,10 +172,7 @@ impl Translate<Expr> for ast::node::Call {
         ESeq::wrapped(
             Seq::wrapped(
                 Stmt::Expr(Box::new(Call::wrapped(name, args))),
-                Some(Move::wrapped(
-                    saved.clone(),
-                    Temp::wrapped(F::registers().ret.value.into()),
-                )),
+                Some(Move::wrapped(saved.clone(), Temp::wrapped(r.ret.into()))),
             ),
             saved,
         )
@@ -237,7 +235,7 @@ impl Translate<Expr> for ast::node::Access {
 
 impl Translate<Expr> for ast::node::Init {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
-        let registers = F::registers();
+        let r = F::registers();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         let temp = Temp::next();
@@ -256,7 +254,7 @@ impl Translate<Expr> for ast::node::Init {
                 "alloc".into(),
                 vec![
                     Expr::ConstStr(ptr),
-                    Temp::wrapped(registers.stack.to_string()),
+                    Temp::wrapped(r.stack.to_string()),
                     Const::<u64>::int(frame.offset().sub(
                         // This is an odd offset to require, but any less than this causes the GC to miss
                         // some reachable pointers on the stack. Something to do with field initialization order
@@ -265,7 +263,7 @@ impl Translate<Expr> for ast::node::Init {
                     )),
                 ],
             ))),
-            Stmt::checked_move(base.clone(), Temp::wrapped(registers.ret.value.to_string())),
+            Stmt::checked_move(base.clone(), Temp::wrapped(r.ret.to_string())),
         ];
         let stmts: Vec<_> = setup
             .into_iter()
@@ -437,10 +435,10 @@ impl Translate<Stmt> for AstExpr {
 
 impl Translate<Stmt> for ast::node::Return {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
-        let registers = F::registers();
+        let r = F::registers();
         translator.ctx.ret = true;
         Stmt::checked_move(
-            Temp::wrapped(registers.ret.value.to_string()),
+            Temp::wrapped(r.ret.to_string()),
             self.expr.translate(translator),
         )
     }
@@ -465,6 +463,7 @@ impl Translate<Stmt> for ast::node::VarDecl {
 impl Translate<Stmt> for ast::node::FuncDecl {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let frame = F::new(self);
+        let r = F::registers();
         translator.functions.insert(self.id, frame);
         translator.function = Some(self.id);
         let mut stmts: Vec<Stmt> = vec![Label::wrapped(self.name.to_string())]
@@ -477,7 +476,7 @@ impl Translate<Stmt> for ast::node::FuncDecl {
             // allocation: that pointer will be copied to the parent frame and be considered
             // live by the garbage collector.
             stmts.push(Move::wrapped(
-                Temp::wrapped(F::registers().ret.value.to_string()),
+                Temp::wrapped(r.ret.to_string()),
                 Const::<i64>::int(0),
             ));
         }
