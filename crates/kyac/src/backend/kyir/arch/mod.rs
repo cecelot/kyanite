@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::node::FuncDecl,
-    backend::kyir::{Expr, Instr},
+    backend::kyir::{AsmInstr, Expr, Instr},
 };
 
 pub trait Frame {
@@ -46,6 +46,36 @@ impl RegisterMap {
             .chain([self.ret.address, self.ret.value, self.stack].iter())
             .copied()
             .collect()
+    }
+}
+
+pub trait ArchInstr {
+    fn defines(&self) -> Vec<String>;
+    fn uses(&self) -> Vec<String>;
+    fn to(&self) -> Option<String>;
+    fn jump(&self) -> bool;
+    fn label(&self) -> Option<String>;
+}
+
+impl<I: ArchInstr> ArchInstr for AsmInstr<I> {
+    fn defines(&self) -> Vec<String> {
+        self.inner.defines()
+    }
+
+    fn uses(&self) -> Vec<String> {
+        self.inner.uses()
+    }
+
+    fn jump(&self) -> bool {
+        self.inner.jump()
+    }
+
+    fn to(&self) -> Option<String> {
+        self.inner.to()
+    }
+
+    fn label(&self) -> Option<String> {
+        self.inner.label()
     }
 }
 

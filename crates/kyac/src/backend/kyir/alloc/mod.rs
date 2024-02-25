@@ -6,12 +6,12 @@ use crate::backend::kyir::{
         color::Color,
         liveness::{Graph, LiveRanges},
     },
-    arch::Frame,
+    arch::{ArchInstr, Frame},
     AsmInstr,
 };
 use std::collections::HashMap;
 
-pub fn registers<F: Frame>(instrs: &Vec<AsmInstr>) -> Registers {
+pub fn registers<F: Frame, I: ArchInstr>(instrs: &Vec<AsmInstr<I>>) -> Registers {
     let graph = Graph::from(instrs);
     let ranges = LiveRanges::from(graph);
     let ig = ranges.interference_graphs(instrs.len());

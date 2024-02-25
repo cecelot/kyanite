@@ -1,17 +1,17 @@
-use crate::backend::kyir::{AsmInstr, Instr, Opcode};
+use crate::backend::kyir::{arch::ArchInstr, AsmInstr};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Default)]
-pub struct Graph<'a> {
+pub struct Graph<'a, I: ArchInstr> {
     adj: HashMap<usize, Vec<usize>>,
-    instrs: &'a [AsmInstr],
+    instrs: &'a [AsmInstr<I>],
 }
 
-impl<'a> Graph<'a> {
-    pub fn new(instrs: &'a [AsmInstr]) -> Self {
+impl<'a, I: ArchInstr> Graph<'a, I> {
+    pub fn new(instrs: &'a [AsmInstr<I>]) -> Self {
         Self {
             instrs,
-            ..Self::default()
+            adj: HashMap::new(),
         }
     }
 
@@ -104,8 +104,8 @@ impl LiveRanges {
     }
 }
 
-impl From<Graph<'_>> for LiveRanges {
-    fn from(graph: Graph<'_>) -> Self {
+impl<I: ArchInstr> From<Graph<'_, I>> for LiveRanges {
+    fn from(graph: Graph<'_, I>) -> Self {
         let ranges = graph
             .temporaries()
             .iter()
@@ -115,8 +115,8 @@ impl From<Graph<'_>> for LiveRanges {
     }
 }
 
-impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
-    fn from(instrs: &'a Vec<AsmInstr>) -> Self {
+impl<'a, I: ArchInstr> From<&'a Vec<AsmInstr<I>>> for Graph<'a, I> {
+    fn from(instrs: &'a Vec<AsmInstr<I>>) -> Self {
         let mut graph = Self::new(instrs);
         let mut worklist = VecDeque::from(vec![0]);
         let mut visited: HashSet<usize> = HashSet::new();
@@ -145,7 +145,7 @@ impl<'a> From<&'a Vec<AsmInstr>> for Graph<'a> {
     }
 }
 
-fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
+fn restore<I: ArchInstr>(instrs: &[AsmInstr<I>], graph: &mut Graph<I>) {
     for (&from, to) in &mut graph.adj {
         if instrs[from].jump() {
             let next = &instrs[from + 1];
@@ -155,53 +155,6 @@ fn restore(instrs: &[AsmInstr], graph: &mut Graph) {
                 .then(|| {
                     to.push(from + 1);
                 });
-        }
-    }
-}
-
-trait FlowGraphMeta {
-    fn defines(&self) -> Vec<String>;
-    fn uses(&self) -> Vec<String>;
-}
-
-impl FlowGraphMeta for AsmInstr {
-    fn defines(&self) -> Vec<String> {
-        match &self.inner {
-            Instr::Oper {
-                dst,
-                opcode: Opcode::Move(_) | Opcode::LoadImmediate,
-                ..
-            }
-            | Instr::Oper {
-                opcode: Opcode::LoadEffective((dst, _)),
-                ..
-            } => vec![dst.clone()],
-            _ => vec![],
-        }
-    }
-
-    fn uses(&self) -> Vec<String> {
-        match &self.inner {
-            Instr::Oper {
-                opcode:
-                    Opcode::Move(_)
-                    | Opcode::Cmp(_)
-                    | Opcode::Add
-                    | Opcode::Sub
-                    | Opcode::Mul
-                    | Opcode::Div
-                    | Opcode::LoadImmediate
-                    | Opcode::StoreImmediate,
-                src,
-                dst,
-                ..
-            } => vec![src.clone(), dst.clone()],
-            Instr::Oper {
-                opcode: Opcode::AddTriple((src, _, _)),
-                ..
-            }
-            | Instr::Oper { src, .. } => vec![src.clone()],
-            Instr::Call { .. } => vec![],
         }
     }
 }

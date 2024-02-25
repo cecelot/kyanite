@@ -8,7 +8,7 @@ use crate::{
     ast::Decl,
     backend::kyir::{
         alloc::Registers,
-        arch::Frame,
+        arch::{ArchInstr, Frame},
         ir::{
             AddressStrategy, Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq,
             Stmt, Temp,
@@ -30,13 +30,13 @@ pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) 
     let ir = translate::canonicalize(naive);
     let mut codegen: Codegen<F> = Codegen::new(translator.functions(), translator.strings(), ast);
     let instrs = codegen.assembly(ir);
-    let registers = alloc::registers::<F>(instrs);
+    let registers = alloc::registers::<F, Instr>(instrs);
     codegen.format(&registers)
 }
 
 #[derive(Debug)]
 pub struct Codegen<'a, F: Frame> {
-    asm: Vec<AsmInstr>,
+    asm: Vec<AsmInstr<Instr>>,
     functions: &'a HashMap<usize, F>,
     strings: &'a HashMap<String, String>,
     idents: HashMap<String, usize>,
@@ -66,7 +66,7 @@ impl<'a, F: Frame> Codegen<'a, F> {
     }
 
     #[must_use]
-    fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr> {
+    fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr<Instr>> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
         self.strings();
@@ -413,13 +413,82 @@ impl Instr {
     }
 }
 
+impl ArchInstr for Instr {
+    fn defines(&self) -> Vec<String> {
+        match &self {
+            Instr::Oper {
+                dst,
+                opcode: Opcode::Move(_) | Opcode::LoadImmediate,
+                ..
+            }
+            | Instr::Oper {
+                opcode: Opcode::LoadEffective((dst, _)),
+                ..
+            } => vec![dst.clone()],
+            _ => vec![],
+        }
+    }
+
+    fn uses(&self) -> Vec<String> {
+        match &self {
+            Instr::Oper {
+                opcode:
+                    Opcode::Move(_)
+                    | Opcode::Cmp(_)
+                    | Opcode::Add
+                    | Opcode::Sub
+                    | Opcode::Mul
+                    | Opcode::Div
+                    | Opcode::LoadImmediate
+                    | Opcode::StoreImmediate,
+                src,
+                dst,
+                ..
+            } => vec![src.clone(), dst.clone()],
+            Instr::Oper {
+                opcode: Opcode::AddTriple((src, _, _)),
+                ..
+            }
+            | Instr::Oper { src, .. } => vec![src.clone()],
+            Instr::Call { .. } => vec![],
+        }
+    }
+
+    fn to(&self) -> Option<String> {
+        match &self {
+            Instr::Oper { jump, .. } => jump.clone(),
+            Instr::Call { .. } => None,
+        }
+    }
+
+    fn jump(&self) -> bool {
+        matches!(
+            self,
+            Instr::Oper {
+                opcode: Opcode::Jump,
+                ..
+            }
+        )
+    }
+
+    fn label(&self) -> Option<String> {
+        match &self {
+            Instr::Oper {
+                opcode: Opcode::Label(label),
+                ..
+            } => Some(label.clone()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct AsmInstr {
-    inner: Instr,
+pub struct AsmInstr<I> {
+    inner: I,
     id: usize,
 }
 
-impl AsmInstr {
+impl AsmInstr<Instr> {
     fn new(instr: Instr) -> Self {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
@@ -441,36 +510,9 @@ impl AsmInstr {
             Instr::Call { .. } => 0,
         }
     }
-
-    fn to(&self) -> Option<String> {
-        match &self.inner {
-            Instr::Oper { jump, .. } => jump.clone(),
-            Instr::Call { .. } => None,
-        }
-    }
-
-    fn jump(&self) -> bool {
-        matches!(
-            self.inner,
-            Instr::Oper {
-                opcode: Opcode::Jump,
-                ..
-            }
-        )
-    }
-
-    fn label(&self) -> Option<String> {
-        match &self.inner {
-            Instr::Oper {
-                opcode: Opcode::Label(label),
-                ..
-            } => Some(label.clone()),
-            _ => None,
-        }
-    }
 }
 
-impl Display for AsmInstr {
+impl Display for AsmInstr<Instr> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pad = " ".repeat(8);
         match &self.inner {
