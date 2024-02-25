@@ -73,7 +73,7 @@ impl Frame<isa::A64> for Armv8a {
         let r = Self::registers();
         Mem::wrapped(Binary::wrapped(
             BinOp::Plus,
-            Temp::wrapped(r.stack.into()),
+            Temp::wrapped(r.frame.into()),
             Const::<i64>::int(offset),
         ))
     }
@@ -108,19 +108,16 @@ impl Frame<isa::A64> for Armv8a {
                 )
             ),
         ));
-        prologue.push(isa::A64::StorePair(
-            String::from("x29"),
-            String::from("x30"),
-        ));
+        prologue.push(isa::A64::StorePair(r.frame.into(), String::from("x30")));
         prologue.push(isa::A64::Add(
-            String::from("x29"),
+            r.frame.into(),
             r.stack.into(),
             String::from("#16"),
         ));
         for (i, formal) in self.formals.iter().enumerate() {
             prologue.push(isa::A64::StoreImmediate(
                 formal.register.into(),
-                String::from("x29"),
+                r.frame.into(),
                 i64::try_from((i + 1) * Self::word_size()).unwrap(),
             ));
         }
@@ -128,11 +125,12 @@ impl Frame<isa::A64> for Armv8a {
     }
 
     fn epilogue(&self) -> Vec<isa::A64> {
+        let r = Self::registers();
         vec![
-            isa::A64::LoadPair(String::from("x29"), String::from("x30")),
+            isa::A64::LoadPair(r.frame.into(), String::from("x30")),
             isa::A64::Add(
-                String::from("sp"),
-                String::from("sp"),
+                r.stack.into(),
+                r.stack.into(),
                 format!(
                     "#{}",
                     next_multiple_of(
@@ -171,6 +169,7 @@ impl Frame<isa::A64> for Armv8a {
             argument: &["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7"],
             ret: "x0",
             frame: "x29",
+            link: "x30",
             stack: "sp",
         }
     }

@@ -214,19 +214,16 @@ impl Translate<Expr> for ast::node::Access {
         let initial = [Stmt::checked_move(Temp::wrapped(temp.clone()), base)];
         let stmts: Vec<_> = initial
             .into_iter()
-            .chain(meta.indices.iter().flat_map(|&field| {
+            .chain(meta.indices.iter().map(|&field| {
                 let offset: i64 = ((field + 1) * F::word_size()).try_into().unwrap();
-                vec![
-                    Stmt::Expr(Box::new(Binary::wrapped(
+                Stmt::checked_move(
+                    Temp::wrapped(temp.clone()),
+                    Mem::wrapped(Binary::wrapped(
                         BinOp::Plus,
                         Temp::wrapped(temp.clone()),
                         Const::<i64>::int(offset),
-                    ))),
-                    Stmt::checked_move(
-                        Temp::wrapped(temp.clone()),
-                        Temp::dereferenced(temp.clone()),
-                    ),
-                ]
+                    )),
+                )
             }))
             .collect();
         ESeq::wrapped(Stmt::from(&stmts[..]), Temp::wrapped(temp))
@@ -254,7 +251,7 @@ impl Translate<Expr> for ast::node::Init {
                 "alloc".into(),
                 vec![
                     Expr::ConstStr(ptr),
-                    Temp::wrapped(r.stack.to_string()),
+                    Temp::wrapped(r.frame.to_string()),
                     Const::<u64>::int(frame.offset().sub(
                         // This is an odd offset to require, but any less than this causes the GC to miss
                         // some reachable pointers on the stack. Something to do with field initialization order
@@ -276,13 +273,15 @@ impl Translate<Expr> for ast::node::Init {
                 let offset: i64 = ((i + 1) * F::word_size()).try_into().unwrap();
                 translator.ctx.name.pop();
                 vec![
-                    Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()), // copy base pointer
-                    Stmt::Expr(Box::new(Binary::wrapped(
-                        BinOp::Plus,
-                        Temp::wrapped(temp.clone()),
-                        Const::<i64>::int(offset),
-                    ))), // add offset to base pointer
-                    Stmt::checked_move(Temp::dereferenced(temp.clone()), value), // store value at offset
+                    Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()),
+                    Stmt::checked_move(
+                        Binary::wrapped(
+                            BinOp::Plus,
+                            Temp::wrapped(temp.clone()),
+                            Const::<i64>::int(offset),
+                        ),
+                        value,
+                    ),
                 ]
             }))
             .collect();

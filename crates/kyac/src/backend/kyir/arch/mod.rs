@@ -30,22 +30,11 @@ pub struct RegisterMap {
     pub ret: &'static str,
     pub stack: &'static str,
     pub frame: &'static str,
-}
-
-impl RegisterMap {
-    pub fn all(&self) -> Vec<&str> {
-        self.callee
-            .iter()
-            .chain(self.temporary.iter())
-            .chain(self.argument.iter())
-            .chain([self.ret, self.frame, self.stack].iter())
-            .copied()
-            .collect()
-    }
+    pub link: &'static str,
 }
 
 pub trait ArchInstr: FlowGraphMeta + Format + fmt::Debug + fmt::Display {
-    fn create_label(address: String) -> Self;
+    fn proc(address: String) -> Self;
     fn data_fragment(kind: String, value: String) -> Self;
     fn load_fragment(dst: String, label: String) -> Self;
     fn load(dst: String, src: String, offset: i64) -> Self;
@@ -58,8 +47,8 @@ pub trait ArchInstr: FlowGraphMeta + Format + fmt::Debug + fmt::Display {
     fn mul(dst: String, src: String) -> Self;
     fn div(dst: String, src: String) -> Self;
     fn compare(lhs: String, rhs: String) -> Self;
-    fn create_jump(label: String) -> Self;
-    fn conditional_jump(label: String, rel: RelOp) -> Self;
+    fn branch(label: String) -> Self;
+    fn cbranch(label: String, rel: RelOp) -> Self;
     fn call(ext: String) -> Self;
 }
 

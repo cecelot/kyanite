@@ -80,7 +80,7 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
             .iter()
             .flat_map(|(addr, s)| {
                 vec![
-                    I::create_label(addr.clone()),
+                    I::proc(addr.clone()),
                     I::data_fragment(String::from("asciz"), format!("\"{s}\"")),
                 ]
             })
@@ -92,25 +92,23 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
         let mut instrs = vec![];
         for (name, id) in &self.idents {
             let function = self.functions.get(id).unwrap();
-            instrs.push(I::create_label(format!("{name}.epilogue")));
+            instrs.push(I::proc(format!("{name}.epilogue")));
             instrs.extend(function.epilogue());
         }
         self.asm.extend(instrs.into_iter().map(AsmInstr::new));
     }
 
-    fn access(mem: &Expr) -> Option<i64> {
-        let r = F::registers();
+    fn access(mem: &Expr) -> Option<(String, i64)> {
         let bin = match mem {
             Expr::Mem(mem) => Some(mem.expr.binary().unwrap()),
             Expr::Binary(bin)
-                if matches!(*bin.right, Expr::ConstInt(_))
-                    && bin.left.temp().is_some_and(|temp| temp == r.stack) =>
+                if matches!(*bin.right, Expr::ConstInt(_)) && bin.left.temp().is_some() =>
             {
                 Some(bin)
             }
             _ => None,
         };
-        bin.map(|bin| bin.right.int().unwrap().abs())
+        bin.map(|bin| (bin.left.temp().unwrap(), bin.right.int().unwrap().abs()))
     }
 
     fn format(self, registers: &Registers) -> String {
@@ -191,10 +189,9 @@ impl Assembly<String> for Binary {
 
 impl Assembly<String> for Mem {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
-        let r = F::registers();
         let dst = Temp::next();
-        let offset = Codegen::<I, F>::access(&self.expr).unwrap();
-        codegen.emit(I::load(dst.clone(), r.frame.into(), offset));
+        let (src, offset) = Codegen::<I, F>::access(&self.expr).unwrap();
+        codegen.emit(I::load(dst.clone(), src, offset));
         dst
     }
 }
@@ -222,14 +219,14 @@ impl Assembly<String> for Call {
 
 impl Assembly<()> for Jump {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
-        codegen.emit(I::create_jump(self.target.clone()));
+        codegen.emit(I::branch(self.target.clone()));
     }
 }
 
 impl Assembly<()> for Label {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
         let id = codegen.idents.get(&self.name).copied();
-        codegen.emit(I::create_label(self.name.clone()));
+        codegen.emit(I::proc(self.name.clone()));
         if let Some(id) = id {
             let function = codegen.functions.get(&id).unwrap();
             for instr in function.prologue() {
@@ -241,7 +238,6 @@ impl Assembly<()> for Label {
 
 impl Assembly<()> for Move {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
-        let r = F::registers();
         let store = matches!(
             *self.target,
             Expr::Mem(_) | Expr::Binary(_) | Expr::Dereferenced(_)
@@ -250,10 +246,11 @@ impl Assembly<()> for Move {
             let instr = if let Expr::Dereferenced(ref addr) = *self.target {
                 let src = self.expr.assembly(codegen);
                 I::store(src, addr.name.to_string(), 0)
-            } else if let Some(offset) = Codegen::<I, F>::access(&self.target) {
+            } else if let Some((addr, offset)) = Codegen::<I, F>::access(&self.target) {
                 let src = self.expr.assembly(codegen);
-                I::store(src, r.frame.into(), offset)
+                I::store(src, addr, offset)
             } else {
+                dbg!(&self);
                 unimplemented!()
             };
             codegen.emit(instr);
@@ -261,9 +258,9 @@ impl Assembly<()> for Move {
             let instr = if let Expr::Dereferenced(ref addr) = *self.expr {
                 let dst = self.target.assembly(codegen);
                 I::load(dst, addr.name.to_string(), 0)
-            } else if let Some(offset) = Codegen::<I, F>::access(&self.expr) {
+            } else if let Some((src, offset)) = Codegen::<I, F>::access(&self.expr) {
                 let dst = self.target.assembly(codegen);
-                I::load(dst, r.frame.into(), offset)
+                I::load(dst, src, offset)
             } else if let Expr::ConstInt(ref i) = *self.expr {
                 I::copy_int(self.target.assembly(codegen), i.value)
             } else {
@@ -282,7 +279,7 @@ impl Assembly<()> for CJump {
             codegen.emit(I::copy_int(one.clone(), 1));
             codegen.emit(I::compare(tmp, one));
         }
-        codegen.emit(I::conditional_jump(self.t.clone(), self.op.into()));
+        codegen.emit(I::cbranch(self.t.clone(), self.op.into()));
     }
 }
 

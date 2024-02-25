@@ -43,7 +43,7 @@ pub enum A64 {
 }
 
 impl ArchInstr for A64 {
-    fn create_label(address: String) -> Self {
+    fn proc(address: String) -> Self {
         A64::Label(address)
     }
 
@@ -91,11 +91,11 @@ impl ArchInstr for A64 {
         A64::StoreImmediate(src, addr, offset)
     }
 
-    fn create_jump(label: String) -> Self {
+    fn branch(label: String) -> Self {
         A64::Branch(label, None)
     }
 
-    fn conditional_jump(label: String, rel: RelOp) -> Self {
+    fn cbranch(label: String, rel: RelOp) -> Self {
         A64::Branch(label, Some(rel))
     }
 
@@ -161,9 +161,13 @@ impl FlowGraphMeta for A64 {
 
 impl Format for A64 {
     fn format<I: ArchInstr, F: Frame<I>>(self, registers: &Registers) -> Self {
-        let get = |temp: String| match &temp[..] {
-            "x29" => temp.to_string(),
-            _ => registers.get(temp),
+        let r = F::registers();
+        let get = |temp: String| {
+            if temp == r.frame {
+                temp.to_string()
+            } else {
+                registers.get(temp)
+            }
         };
         match self {
             A64::LoadImmediate(dst, src, offset) => A64::LoadImmediate(get(dst), get(src), offset),
