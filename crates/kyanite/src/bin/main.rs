@@ -1,4 +1,4 @@
-use kyac::{Armv8a, Backend, Output, Source};
+use kyac::{arch::Armv8a, isa::A64, Backend, Output, Source};
 use kyanite::{asm, include_dir, installed, llvm, Commands};
 use std::{
     fmt,
@@ -30,7 +30,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let filename = kyanite::filename(&source);
             let exe = match &output {
                 Output::Llvm(ir) => llvm::compile(ir, &filename).unwrap_or_else(exit),
-                Output::Asm(asm) => asm::compile::<Armv8a>(asm, &filename).unwrap_or_else(exit),
+                Output::Asm(asm) => {
+                    asm::compile::<A64, Armv8a>(asm, &filename).unwrap_or_else(exit)
+                }
             };
             log::info!("running `./{}`", exe);
             let child = std::process::Command::new(exe)

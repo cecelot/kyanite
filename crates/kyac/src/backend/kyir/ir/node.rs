@@ -1,4 +1,4 @@
-use crate::backend::kyir::ir::{AddressStrategy, BinOp, Expr, Stmt};
+use crate::backend::kyir::ir::{BinOp, Expr, Stmt};
 use std::{
     ops::Deref,
     sync::atomic::{AtomicUsize, Ordering},
@@ -8,15 +8,13 @@ use std::{
 pub struct Move {
     pub target: Box<Expr>,
     pub expr: Box<Expr>,
-    pub strategy: AddressStrategy,
 }
 
 impl Move {
-    pub fn wrapped(target: Expr, expr: Expr, strategy: AddressStrategy) -> Stmt {
+    pub fn wrapped(target: Expr, expr: Expr) -> Stmt {
         Stmt::Move(Self {
             target: Box::new(target),
             expr: Box::new(expr),
-            strategy,
         })
     }
 }

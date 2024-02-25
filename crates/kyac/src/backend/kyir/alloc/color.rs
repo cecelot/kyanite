@@ -1,19 +1,19 @@
 use crate::backend::kyir::{
     alloc::liveness::{InterferenceGraph, LiveRanges},
-    arch::Frame,
+    arch::{ArchInstr, Frame},
 };
 use std::collections::{HashMap, HashSet};
 
-pub struct Color<F: Frame> {
+pub struct Color<I: ArchInstr, F: Frame<I>> {
     interferences: Vec<InterferenceGraph>,
-    _frame: std::marker::PhantomData<F>,
+    _phantom: std::marker::PhantomData<(F, I)>,
 }
 
-impl<F: Frame> Color<F> {
+impl<I: ArchInstr, F: Frame<I>> Color<I, F> {
     pub fn new(interferences: Vec<InterferenceGraph>) -> Self {
         Self {
             interferences,
-            _frame: std::marker::PhantomData,
+            _phantom: std::marker::PhantomData,
         }
     }
 

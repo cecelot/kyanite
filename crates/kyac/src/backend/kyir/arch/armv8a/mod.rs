@@ -1,9 +1,11 @@
+pub mod isa;
+
 use crate::{
     ast::{node::FuncDecl, Type},
     backend::kyir::{
         arch::{Location, RegisterMap, ReturnRegisters},
         ir::{BinOp, Binary, Const, Expr, Mem, Temp},
-        Frame, Instr, Opcode,
+        Frame,
     },
 };
 use std::collections::HashMap;
@@ -16,7 +18,7 @@ pub struct Armv8a {
     offset: i64,
 }
 
-impl Frame for Armv8a {
+impl Frame<isa::A64> for Armv8a {
     fn new(func: &FuncDecl) -> Self {
         let registers = Self::registers();
         assert!(func.params.len() <= 6);
@@ -90,14 +92,14 @@ impl Frame for Armv8a {
             .collect()
     }
 
-    fn prologue(&self) -> Vec<Instr> {
+    fn prologue(&self) -> Vec<isa::A64> {
         let registers = Self::registers();
         let mut prologue = vec![];
         // let saves = list(&Opcode::Push);
         // prologue.extend(saves);
-        prologue.push(Instr::oper(
-            Opcode::Sub,
-            "sp".into(),
+        prologue.push(isa::A64::Sub(
+            registers.stack.into(),
+            registers.stack.into(),
             format!(
                 "#{}",
                 next_multiple_of(
@@ -105,45 +107,32 @@ impl Frame for Armv8a {
                     16
                 )
             ),
-            None,
         ));
-        prologue.push(Instr::oper(
-            Opcode::StorePair(("x29".into(), "x30".into())),
-            String::new(),
-            String::new(),
-            None,
+        prologue.push(isa::A64::StorePair(
+            String::from("x29"),
+            String::from("x30"),
         ));
-        prologue.push(Instr::oper(
-            Opcode::AddTriple(("x29".into(), registers.stack.into(), "#16".into())),
-            String::new(),
-            String::new(),
-            None,
+        prologue.push(isa::A64::Add(
+            String::from("x29"),
+            registers.stack.into(),
+            String::from("#16"),
         ));
         for (i, formal) in self.formals.iter().enumerate() {
-            prologue.push(Instr::oper(
-                Opcode::StoreImmediate,
+            prologue.push(isa::A64::StoreImmediate(
                 formal.register.into(),
-                format!(
-                    "[x29, #{}]",
-                    i64::try_from((i + 1) * Self::word_size()).unwrap(),
-                ),
-                None,
+                String::from("x29"),
+                i64::try_from((i + 1) * Self::word_size()).unwrap(),
             ));
         }
         prologue
     }
 
-    fn epilogue(&self) -> Vec<Instr> {
+    fn epilogue(&self) -> Vec<isa::A64> {
         vec![
-            Instr::oper(
-                Opcode::LoadPair(("x29".into(), "x30".into())),
-                String::new(),
-                String::new(),
-                None,
-            ),
-            Instr::oper(
-                Opcode::Add,
-                "sp".into(),
+            isa::A64::LoadPair(String::from("x29"), String::from("x30")),
+            isa::A64::Add(
+                String::from("sp"),
+                String::from("sp"),
                 format!(
                     "#{}",
                     next_multiple_of(
@@ -151,14 +140,8 @@ impl Frame for Armv8a {
                         16
                     )
                 ),
-                None,
             ),
-            Instr::Oper {
-                opcode: Opcode::Ret,
-                src: String::new(),
-                dst: String::new(),
-                jump: None,
-            },
+            isa::A64::Ret,
         ]
     }
 
@@ -197,32 +180,6 @@ impl Frame for Armv8a {
     fn word_size() -> usize {
         8
     }
-}
-
-fn _list(opcode: &Opcode) -> Vec<Instr> {
-    // TODO: only push registers that are actually used.
-    // Currently, there's no way to know which registers are used
-    // in which function.
-    Armv8a::registers()
-        .callee
-        .iter()
-        .map(|&register| {
-            Instr::oper(
-                match opcode {
-                    Opcode::Push => Opcode::StoreImmediate,
-                    Opcode::Pop => Opcode::LoadImmediate,
-                    _ => unimplemented!(),
-                },
-                register.to_string(),
-                match opcode {
-                    Opcode::Push => format!("[sp, #-{}]!", Armv8a::word_size() / 2),
-                    Opcode::Pop => format!("[sp], #{}", Armv8a::word_size() / 2),
-                    _ => unimplemented!(),
-                },
-                None,
-            )
-        })
-        .collect()
 }
 
 #[derive(Debug)]

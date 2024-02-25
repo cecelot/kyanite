@@ -1,6 +1,6 @@
 use crate::backend::kyir::{
     ir::Move,
-    translate::{AddressStrategy, Binary, Call, ESeq, Seq},
+    translate::{Binary, Call, ESeq, Seq},
     Expr, Stmt, Temp,
 };
 
@@ -21,11 +21,7 @@ impl Rewrite<Vec<Expr>> for Vec<Expr> {
                 Expr::Call { .. } => {
                     let temp = Temp::next();
                     ESeq::wrapped(
-                        Move::wrapped(
-                            Temp::wrapped(temp.clone()),
-                            arg.rewrite(immediate, child),
-                            AddressStrategy::Immediate,
-                        ),
+                        Move::wrapped(Temp::wrapped(temp.clone()), arg.rewrite(immediate, child)),
                         Temp::wrapped(temp),
                     )
                 }
@@ -57,7 +53,6 @@ impl Rewrite<Expr> for Expr {
                             Move::wrapped(
                                 Temp::wrapped(temp.clone()),
                                 Call::wrapped(call.name, args),
-                                AddressStrategy::Immediate,
                             ),
                             None,
                         ),
@@ -72,14 +67,7 @@ impl Rewrite<Expr> for Expr {
                 if immediate && child {
                     let temp = Temp::next();
                     ESeq::wrapped(
-                        Seq::wrapped(
-                            Move::wrapped(
-                                Temp::wrapped(temp.clone()),
-                                bin,
-                                AddressStrategy::Immediate,
-                            ),
-                            None,
-                        ),
+                        Seq::wrapped(Move::wrapped(Temp::wrapped(temp.clone()), bin), None),
                         Temp::wrapped(temp),
                     )
                 } else {
@@ -107,7 +95,7 @@ impl Rewrite<Stmt> for Stmt {
                 seq.left.rewrite(false, false),
                 seq.right.map(|item| item.rewrite(false, false)),
             ),
-            Stmt::Move(m) => Move::wrapped(*m.target, m.expr.rewrite(true, true), m.strategy),
+            Stmt::Move(m) => Move::wrapped(*m.target, m.expr.rewrite(true, true)),
             Stmt::CJump(cjmp) => Stmt::CJump(cjmp),
             _ => self,
         }

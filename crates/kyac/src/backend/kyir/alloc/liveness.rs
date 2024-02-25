@@ -1,4 +1,7 @@
-use crate::backend::kyir::{arch::ArchInstr, AsmInstr};
+use crate::backend::kyir::{
+    arch::{ArchInstr, FlowGraphMeta},
+    AsmInstr,
+};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Default)]

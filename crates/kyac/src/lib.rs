@@ -7,10 +7,20 @@ mod parse;
 mod pass;
 mod token;
 
-pub use crate::backend::kyir::arch::{armv8a::Armv8a, Frame};
+pub use crate::backend::kyir::arch::{ArchInstr, Frame};
+
+pub mod arch {
+    pub use crate::backend::kyir::arch::armv8a::Armv8a;
+}
+
+pub mod isa {
+    pub use crate::backend::kyir::arch::armv8a::isa::A64;
+}
 
 use crate::{
+    arch::Armv8a,
     backend::{kyir, llvm},
+    isa::A64,
     pass::{SymbolTable, TypeCheckPass},
 };
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
@@ -27,7 +37,7 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
         Backend::Llvm => Ok(Output::Llvm(
             llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
         )),
-        Backend::Kyir => Ok(Output::Asm(kyir::asm::<Armv8a>(
+        Backend::Kyir => Ok(Output::Asm(kyir::asm::<A64, Armv8a>(
             &ast.nodes, &symbols, &accesses,
         ))),
     }

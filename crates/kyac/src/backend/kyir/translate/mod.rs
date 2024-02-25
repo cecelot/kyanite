@@ -5,18 +5,22 @@ pub use canon::canonicalize;
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::{self, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
-    backend::kyir::{arch::Frame, ir::*},
+    backend::kyir::{
+        arch::{ArchInstr, Frame},
+        ir::*,
+    },
     pass::{AccessMap, SymbolTable},
     token::{Kind, Span, Token},
 };
 use std::{collections::HashMap, ops::Sub};
 
-pub struct Translator<'a, F: Frame> {
+pub struct Translator<'a, I: ArchInstr, F: Frame<I>> {
     functions: HashMap<usize, F>,
     function: Option<usize>,
     accesses: &'a AccessMap,
     symbols: &'a SymbolTable,
     ctx: Context,
+    _isa: std::marker::PhantomData<I>,
 }
 
 struct Context {
@@ -25,9 +29,10 @@ struct Context {
     strings: Strings,
 }
 
-impl<'a, F: Frame> Translator<'a, F> {
+impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
     pub fn new(accesses: &'a AccessMap, symbols: &'a SymbolTable) -> Self {
         Self {
+            _isa: std::marker::PhantomData,
             functions: HashMap::new(),
             function: None,
             ctx: Context {
@@ -60,11 +65,11 @@ impl<'a, F: Frame> Translator<'a, F> {
 }
 
 trait Translate<R> {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> R;
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> R;
 }
 
 impl Translate<Expr> for AstExpr {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         match self {
             AstExpr::Int(i) => i.translate(translator),
             AstExpr::Float(f) => f.translate(translator),
@@ -82,7 +87,7 @@ impl Translate<Expr> for AstExpr {
 }
 
 impl Translate<Stmt> for AstStmt {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         match self {
             AstStmt::If(c) => c.translate(translator),
             AstStmt::While(w) => w.translate(translator),
@@ -96,7 +101,7 @@ impl Translate<Stmt> for AstStmt {
 }
 
 impl Translate<Stmt> for AstDecl {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         match self {
             AstDecl::Function(function) => function.translate(translator),
             AstDecl::Record(rec) => rec.translate(translator),
@@ -106,7 +111,7 @@ impl Translate<Stmt> for AstDecl {
 }
 
 impl Translate<Expr> for ast::node::Literal<&str> {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         Expr::ConstStr(
             translator
                 .ctx
@@ -117,25 +122,25 @@ impl Translate<Expr> for ast::node::Literal<&str> {
 }
 
 impl Translate<Expr> for ast::node::Literal<i64> {
-    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, _: &mut Translator<I, F>) -> Expr {
         Const::<i64>::int(self.value)
     }
 }
 
 impl Translate<Expr> for ast::node::Literal<f64> {
-    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, _: &mut Translator<I, F>) -> Expr {
         Const::<f64>::float(self.value)
     }
 }
 
 impl Translate<Expr> for ast::node::Literal<bool> {
-    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, _: &mut Translator<I, F>) -> Expr {
         Const::<i64>::int(self.value.into())
     }
 }
 
 impl Translate<Expr> for ast::node::Binary {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         Expr::checked_binary(
             self.op.kind.into(),
             self.left.translate(translator),
@@ -145,7 +150,7 @@ impl Translate<Expr> for ast::node::Binary {
 }
 
 impl Translate<Expr> for ast::node::Call {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         let args: Vec<_> = self
             .args
             .iter()
@@ -169,7 +174,6 @@ impl Translate<Expr> for ast::node::Call {
                 Some(Move::wrapped(
                     saved.clone(),
                     Temp::wrapped(F::registers().ret.value.into()),
-                    AddressStrategy::Immediate,
                 )),
             ),
             saved,
@@ -178,13 +182,13 @@ impl Translate<Expr> for ast::node::Call {
 }
 
 impl Translate<Expr> for ast::node::Ident {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         translator.frame().get(&self.name.to_string())
     }
 }
 
 impl Translate<Expr> for ast::node::Unary {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         match self.op.kind {
             Kind::Minus => Binary::wrapped(
                 BinOp::Minus,
@@ -203,7 +207,7 @@ impl Translate<Expr> for ast::node::Unary {
 
 impl Translate<Expr> for ast::node::Access {
     // heh, this is basically the spiritual equivalent of LLVM's getelementptr
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         let frame = translator.frame();
         let meta = translator.accesses.get(&self.id).unwrap();
         let ident = self.chain.first().unwrap().ident().name.to_string();
@@ -232,7 +236,7 @@ impl Translate<Expr> for ast::node::Access {
 }
 
 impl Translate<Expr> for ast::node::Init {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Expr {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
         let registers = F::registers();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
@@ -289,7 +293,7 @@ impl Translate<Expr> for ast::node::Init {
 }
 
 impl Translate<Stmt> for ast::node::If {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let condition = match &self.condition {
             AstExpr::Int(i) => Binary::wrapped(
                 BinOp::Cmp(RelOp::Equal),
@@ -342,7 +346,7 @@ impl Translate<Stmt> for ast::node::If {
 }
 
 impl Translate<Stmt> for ast::node::While {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let condition = match &self.condition {
             AstExpr::Int(i) => Binary::wrapped(
                 BinOp::Cmp(RelOp::Equal),
@@ -380,7 +384,7 @@ impl Translate<Stmt> for ast::node::While {
 }
 
 impl Translate<Stmt> for ast::node::For {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let range = self.iter.range();
         let cur = ast::node::Ident::wrapped(self.index.clone());
         let start = ast::node::VarDecl::wrapped(
@@ -417,7 +421,7 @@ impl Translate<Stmt> for ast::node::For {
 }
 
 impl Translate<Stmt> for ast::node::Assign {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         Stmt::checked_move(
             self.target.translate(translator),
             self.expr.translate(translator),
@@ -426,13 +430,13 @@ impl Translate<Stmt> for ast::node::Assign {
 }
 
 impl Translate<Stmt> for AstExpr {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         Stmt::Expr(Box::new(self.translate(translator)))
     }
 }
 
 impl Translate<Stmt> for ast::node::Return {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let registers = F::registers();
         translator.ctx.ret = true;
         Stmt::checked_move(
@@ -443,7 +447,7 @@ impl Translate<Stmt> for ast::node::Return {
 }
 
 impl Translate<Stmt> for ast::node::VarDecl {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let name = self.name.to_string();
         if matches!(self.expr, AstExpr::Init(_)) {
             translator.ctx.name.push(name.clone());
@@ -459,7 +463,7 @@ impl Translate<Stmt> for ast::node::VarDecl {
 }
 
 impl Translate<Stmt> for ast::node::FuncDecl {
-    fn translate<F: Frame>(&self, translator: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
         let frame = F::new(self);
         translator.functions.insert(self.id, frame);
         translator.function = Some(self.id);
@@ -475,7 +479,6 @@ impl Translate<Stmt> for ast::node::FuncDecl {
             stmts.push(Move::wrapped(
                 Temp::wrapped(F::registers().ret.value.to_string()),
                 Const::<i64>::int(0),
-                AddressStrategy::Immediate,
             ));
         }
         Stmt::from(&stmts[..])
@@ -483,7 +486,7 @@ impl Translate<Stmt> for ast::node::FuncDecl {
 }
 
 impl Translate<Stmt> for ast::node::RecordDecl {
-    fn translate<F: Frame>(&self, _: &mut Translator<F>) -> Stmt {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, _: &mut Translator<I, F>) -> Stmt {
         Stmt::Noop
     }
 }

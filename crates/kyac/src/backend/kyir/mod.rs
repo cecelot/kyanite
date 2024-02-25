@@ -1,7 +1,6 @@
 mod alloc;
 pub mod arch;
 mod ir;
-mod opcode;
 mod translate;
 
 use crate::{
@@ -10,39 +9,41 @@ use crate::{
         alloc::Registers,
         arch::{ArchInstr, Frame},
         ir::{
-            AddressStrategy, Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq,
-            Stmt, Temp,
+            BinOp, Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq, Stmt, Temp,
         },
-        opcode::Opcode,
         translate::Translator,
     },
     pass::{AccessMap, SymbolTable},
 };
 use std::{
     collections::HashMap,
-    fmt::{Display, Write},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub fn asm<F: Frame>(ast: &[Decl], symbols: &SymbolTable, accesses: &AccessMap) -> String {
-    let mut translator: Translator<F> = Translator::new(accesses, symbols);
+pub fn asm<I: ArchInstr, F: Frame<I>>(
+    ast: &[Decl],
+    symbols: &SymbolTable,
+    accesses: &AccessMap,
+) -> String {
+    let mut translator: Translator<I, F> = Translator::new(accesses, symbols);
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);
-    let mut codegen: Codegen<F> = Codegen::new(translator.functions(), translator.strings(), ast);
+    let mut codegen: Codegen<I, F> =
+        Codegen::new(translator.functions(), translator.strings(), ast);
     let instrs = codegen.assembly(ir);
-    let registers = alloc::registers::<F, Instr>(instrs);
+    let registers = alloc::registers::<I, F>(instrs);
     codegen.format(&registers)
 }
 
 #[derive(Debug)]
-pub struct Codegen<'a, F: Frame> {
-    asm: Vec<AsmInstr<Instr>>,
+pub struct Codegen<'a, I: ArchInstr, F: Frame<I>> {
+    asm: Vec<AsmInstr<I>>,
     functions: &'a HashMap<usize, F>,
     strings: &'a HashMap<String, String>,
     idents: HashMap<String, usize>,
 }
 
-impl<'a, F: Frame> Codegen<'a, F> {
+impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
     fn new(
         functions: &'a HashMap<usize, F>,
         strings: &'a HashMap<String, String>,
@@ -66,7 +67,7 @@ impl<'a, F: Frame> Codegen<'a, F> {
     }
 
     #[must_use]
-    fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr<Instr>> {
+    fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr<I>> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
         self.strings();
@@ -74,25 +75,16 @@ impl<'a, F: Frame> Codegen<'a, F> {
     }
 
     fn strings(&mut self) {
-        let instrs = self.strings.iter().flat_map(|(addr, s)| {
-            vec![
-                AsmInstr::new(Instr::oper(
-                    Opcode::Label(addr.clone()),
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-                AsmInstr::new(Instr::oper(
-                    Opcode::Data {
-                        kind: "asciz".into(),
-                        value: format!("\"{s}\""),
-                    },
-                    String::new(),
-                    String::new(),
-                    None,
-                )),
-            ]
-        });
+        let instrs = self
+            .strings
+            .iter()
+            .flat_map(|(addr, s)| {
+                vec![
+                    I::create_label(addr.clone()),
+                    I::data_fragment(String::from("asciz"), format!("\"{s}\"")),
+                ]
+            })
+            .map(AsmInstr::new);
         self.asm.extend(instrs);
     }
 
@@ -100,65 +92,46 @@ impl<'a, F: Frame> Codegen<'a, F> {
         let mut instrs = vec![];
         for (name, id) in &self.idents {
             let function = self.functions.get(id).unwrap();
-            instrs.push(AsmInstr::new(Instr::Oper {
-                opcode: Opcode::Label(format!("{name}.epilogue")),
-                src: String::new(),
-                dst: String::new(),
-                jump: None,
-            }));
-            for instr in function.epilogue() {
-                instrs.push(AsmInstr::new(instr));
-            }
+            instrs.push(I::create_label(format!("{name}.epilogue")));
+            instrs.extend(function.epilogue());
         }
-        self.asm.extend(instrs);
+        self.asm.extend(instrs.into_iter().map(AsmInstr::new));
     }
 
-    fn access(mem: &Expr) -> (String, i64) {
+    fn access(mem: &Expr) -> Option<i64> {
         let bin = match mem {
-            Expr::Mem(mem) => mem.expr.binary().unwrap(),
-            Expr::Binary(bin) => bin,
-            _ => panic!("Expected `Expr::Mem` or `Expr::Binary`"),
+            Expr::Mem(mem) => Some(mem.expr.binary().unwrap()),
+            Expr::Binary(bin)
+                if matches!(*bin.right, Expr::ConstInt(_))
+                    && bin
+                        .left
+                        .temp()
+                        .is_some_and(|temp| temp == F::registers().stack) =>
+            {
+                Some(bin)
+            }
+            _ => None,
         };
-        (String::from("x29"), bin.right.int().unwrap().abs())
+        bin.map(|bin| bin.right.int().unwrap().abs())
     }
 
     fn format(self, registers: &Registers) -> String {
-        let mut asm = String::new();
-        for mut instr in self.asm {
-            match &mut instr.inner {
-                Instr::Oper {
-                    opcode: Opcode::LoadEffective((tmp, _)),
-                    ..
-                } => {
-                    *tmp = registers.get::<F>(tmp);
-                }
-                Instr::Oper {
-                    opcode: Opcode::AddTriple((dst, src, _)),
-                    ..
-                }
-                | Instr::Oper { dst, src, .. } => {
-                    *dst = registers.get::<F>(dst);
-                    *src = registers.get::<F>(src);
-                }
-                Instr::Call { .. } => {}
-            }
-
-            writeln!(asm, "{instr}").unwrap();
-        }
-        asm
+        self.asm.into_iter().fold(String::new(), |s, instr| {
+            s + &format!("{}\n", instr.inner.format::<I, F>(registers))
+        })
     }
 
-    fn emit(&mut self, instr: Instr) {
+    fn emit(&mut self, instr: I) {
         self.asm.push(AsmInstr::new(instr));
     }
 }
 
 trait Assembly<R> {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> R;
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> R;
 }
 
 impl Assembly<()> for Stmt {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
         match self {
             Self::Jump(jmp) => jmp.assembly(codegen),
             Self::Label(label) => label.assembly(codegen),
@@ -174,7 +147,7 @@ impl Assembly<()> for Stmt {
 }
 
 impl Assembly<String> for Expr {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
         match self {
             Self::Binary(bin) => bin.assembly(codegen),
             Self::ConstInt(i) => i.assembly(codegen),
@@ -184,12 +157,7 @@ impl Assembly<String> for Expr {
             Self::Dereferenced(t) => format!("[{}]", t.name),
             Self::ConstStr(name) => {
                 let tmp = Temp::next();
-                codegen.emit(Instr::oper(
-                    Opcode::LoadEffective((tmp.clone(), name.clone())),
-                    String::new(),
-                    String::new(),
-                    None,
-                ));
+                codegen.emit(I::load_fragment(tmp.clone(), name.clone()));
                 tmp
             }
             Self::ConstFloat(_) => todo!(),
@@ -199,94 +167,70 @@ impl Assembly<String> for Expr {
 }
 
 impl Assembly<String> for Const<i64> {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
         let name = Temp::next();
-        codegen.emit(Instr::Oper {
-            opcode: Opcode::Move(AddressStrategy::Immediate),
-            dst: name.clone(),
-            src: format!("#{}", self.value),
-            jump: None,
-        });
+        codegen.emit(I::copy(name.clone(), format!("#{}", self.value)));
         name
     }
 }
 
 impl Assembly<String> for Binary {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
         let right = self.right.assembly(codegen);
         let left = self.left.assembly(codegen);
-        codegen.emit(Instr::Oper {
-            opcode: Opcode::from(self.op),
-            dst: left.clone(),
-            src: right,
-            jump: None,
-        });
+        let instr = match self.op {
+            BinOp::Plus => I::add(left.clone(), right.clone()),
+            BinOp::Minus => I::sub(left.clone(), right.clone()),
+            BinOp::Mul => I::mul(left.clone(), right.clone()),
+            BinOp::Div => I::div(left.clone(), right.clone()),
+            BinOp::Cmp(_) => I::compare(left.clone(), right.clone()),
+            BinOp::Xor => todo!(),
+        };
+        codegen.emit(instr);
         left
     }
 }
 
 impl Assembly<String> for Mem {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
         let dst = Temp::next();
-        let (rbp, offset) = Codegen::<F>::access(&self.expr);
-        let src = format!("[{rbp}, #{offset}]");
-        let oper = Instr::Oper {
-            opcode: Opcode::LoadImmediate,
-            dst: dst.clone(),
-            src,
-            jump: None,
-        };
-        codegen.emit(oper);
+        let offset = Codegen::<I, F>::access(&self.expr).unwrap();
+        codegen.emit(I::load_from_frame(dst.clone(), offset));
         dst
     }
 }
 
 impl Assembly<String> for Call {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) -> String {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) -> String {
+        let r = F::registers();
         let args: Vec<_> = self
             .args
             .iter()
             .map(|arg| arg.assembly(codegen))
             .enumerate()
-            .map(|(i, arg)| Instr::Oper {
-                opcode: Opcode::Move(AddressStrategy::Immediate),
-                dst: F::registers().argument[i].to_owned(),
-                src: arg,
-                jump: None,
-            })
+            .map(|(i, arg)| I::copy(r.argument[i].to_owned(), arg))
             .collect();
         args.into_iter().for_each(|arg| codegen.emit(arg));
-        codegen.emit(Instr::Call {
-            name: if BUILTINS.contains(&self.name.as_ref()) {
-                F::prefixed(&self.name)
-            } else {
-                self.name.clone()
-            },
-        });
-        F::registers().ret.value.to_owned()
+        let instr = if BUILTINS.contains(&self.name.as_ref()) {
+            I::call(F::prefixed(&self.name))
+        } else {
+            I::call(self.name.clone())
+        };
+        codegen.emit(instr);
+        r.ret.value.to_owned()
     }
 }
 
 impl Assembly<()> for Jump {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
-        codegen.emit(Instr::Oper {
-            opcode: Opcode::Jump,
-            dst: String::new(),
-            src: String::new(),
-            jump: Some(self.target.clone()),
-        });
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
+        codegen.emit(I::create_jump(self.target.clone()));
     }
 }
 
 impl Assembly<()> for Label {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
         let id = codegen.idents.get(&self.name).copied();
-        codegen.emit(Instr::Oper {
-            opcode: Opcode::Label(self.name.clone()),
-            dst: String::new(),
-            src: String::new(),
-            jump: None,
-        });
+        codegen.emit(I::create_label(self.name.clone()));
         if let Some(id) = id {
             let function = codegen.functions.get(&id).unwrap();
             for instr in function.prologue() {
@@ -297,91 +241,53 @@ impl Assembly<()> for Label {
 }
 
 impl Assembly<()> for Move {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
-        if let Expr::Binary(ref bin) = *self.expr {
-            if bin.left.temp().is_some_and(|t| t == "sp") {
-                let (rbp, offset) = Codegen::<F>::access(&self.expr);
-                codegen.emit(Instr::Oper {
-                    opcode: Opcode::LoadImmediate,
-                    dst: self.target.temp().unwrap(),
-                    src: format!("[{rbp}, #{offset}]"),
-                    jump: None,
-                });
-                return;
-            }
-        }
-        let mut src = match *self.expr {
-            Expr::Mem(_) => {
-                let temp = Temp::next();
-                let (rbp, offset) = Codegen::<F>::access(&self.expr);
-                codegen.emit(Instr::Oper {
-                    opcode: Opcode::LoadImmediate,
-                    dst: temp.clone(),
-                    src: format!("[{rbp}, #{offset}]"),
-                    jump: None,
-                });
-                temp
-            }
-            _ => self.expr.assembly(codegen),
-        };
-        let mut dst = match *self.target {
-            Expr::Mem(_) | Expr::Binary { .. } => {
-                let (rbp, offset) = Codegen::<F>::access(&self.target);
-                format!("[{rbp}, #{offset}]")
-            }
-            _ => self.target.temp().unwrap(),
-        };
-        if dst.starts_with('[') {
-            std::mem::swap(&mut dst, &mut src);
-        }
-        codegen.emit(Instr::Oper {
-            opcode: if src.starts_with('[') {
-                if matches!(*self.expr, Expr::Dereferenced(_)) {
-                    Opcode::LoadImmediate
-                } else {
-                    Opcode::StoreImmediate
-                }
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
+        let store = matches!(
+            *self.target,
+            Expr::Mem(_) | Expr::Binary(_) | Expr::Dereferenced(_)
+        );
+        if store {
+            let instr = if let Expr::Dereferenced(ref addr) = *self.target {
+                let src = self.expr.assembly(codegen);
+                I::store_to_address(src, addr.name.to_string())
+            } else if let Some(offset) = Codegen::<I, F>::access(&self.target) {
+                let src = self.expr.assembly(codegen);
+                I::store_to_frame(src, offset)
             } else {
-                Opcode::Move(self.strategy)
-            },
-            dst,
-            src,
-            jump: None,
-        });
+                unimplemented!()
+            };
+            codegen.emit(instr);
+        } else {
+            let instr = if let Expr::Dereferenced(ref addr) = *self.expr {
+                let dst = self.target.assembly(codegen);
+                I::load_from_address(dst, addr.name.to_string())
+            } else if let Some(offset) = Codegen::<I, F>::access(&self.expr) {
+                let dst = self.target.assembly(codegen);
+                I::load_from_frame(dst, offset)
+            } else if let Expr::ConstInt(ref i) = *self.expr {
+                I::copy_int(self.target.assembly(codegen), i.value)
+            } else {
+                I::copy(self.target.assembly(codegen), self.expr.assembly(codegen))
+            };
+            codegen.emit(instr);
+        }
     }
 }
 
 impl Assembly<()> for CJump {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
         let tmp = self.condition.assembly(codegen);
         if let Expr::ConstInt(_) = *self.condition {
             let one = Temp::next();
-            codegen.emit(Instr::oper(
-                Opcode::Move(AddressStrategy::Immediate),
-                one.clone(),
-                "#1".into(),
-                None,
-            ));
-            codegen.emit(Instr::oper(Opcode::Cmp(RelOp::Equal), tmp, one, None));
-            codegen.emit(Instr::oper(
-                Opcode::CJump(self.op.into()),
-                String::new(),
-                String::new(),
-                Some(self.t.clone()),
-            ));
-        } else {
-            codegen.emit(Instr::Oper {
-                opcode: Opcode::CJump(self.op.into()),
-                dst: String::new(),
-                src: String::new(),
-                jump: Some(self.t.clone()),
-            });
+            codegen.emit(I::copy_int(one.clone(), 1));
+            codegen.emit(I::compare(tmp, one));
         }
+        codegen.emit(I::conditional_jump(self.t.clone(), self.op.into()));
     }
 }
 
 impl Assembly<()> for Seq {
-    fn assembly<F: Frame>(&self, codegen: &mut Codegen<F>) {
+    fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
         self.left.assembly(codegen);
         if let Some(right) = &self.right {
             right.assembly(codegen);
@@ -389,162 +295,17 @@ impl Assembly<()> for Seq {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Instr {
-    Oper {
-        opcode: Opcode,
-        dst: String,
-        src: String,
-        jump: Option<String>,
-    },
-    Call {
-        name: String,
-    },
-}
-
-impl Instr {
-    fn oper(opcode: Opcode, dst: String, src: String, jump: Option<String>) -> Self {
-        Self::Oper {
-            opcode,
-            dst,
-            src,
-            jump,
-        }
-    }
-}
-
-impl ArchInstr for Instr {
-    fn defines(&self) -> Vec<String> {
-        match &self {
-            Instr::Oper {
-                dst,
-                opcode: Opcode::Move(_) | Opcode::LoadImmediate,
-                ..
-            }
-            | Instr::Oper {
-                opcode: Opcode::LoadEffective((dst, _)),
-                ..
-            } => vec![dst.clone()],
-            _ => vec![],
-        }
-    }
-
-    fn uses(&self) -> Vec<String> {
-        match &self {
-            Instr::Oper {
-                opcode:
-                    Opcode::Move(_)
-                    | Opcode::Cmp(_)
-                    | Opcode::Add
-                    | Opcode::Sub
-                    | Opcode::Mul
-                    | Opcode::Div
-                    | Opcode::LoadImmediate
-                    | Opcode::StoreImmediate,
-                src,
-                dst,
-                ..
-            } => vec![src.clone(), dst.clone()],
-            Instr::Oper {
-                opcode: Opcode::AddTriple((src, _, _)),
-                ..
-            }
-            | Instr::Oper { src, .. } => vec![src.clone()],
-            Instr::Call { .. } => vec![],
-        }
-    }
-
-    fn to(&self) -> Option<String> {
-        match &self {
-            Instr::Oper { jump, .. } => jump.clone(),
-            Instr::Call { .. } => None,
-        }
-    }
-
-    fn jump(&self) -> bool {
-        matches!(
-            self,
-            Instr::Oper {
-                opcode: Opcode::Jump,
-                ..
-            }
-        )
-    }
-
-    fn label(&self) -> Option<String> {
-        match &self {
-            Instr::Oper {
-                opcode: Opcode::Label(label),
-                ..
-            } => Some(label.clone()),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct AsmInstr<I> {
+pub struct AsmInstr<I: ArchInstr> {
     inner: I,
     id: usize,
 }
 
-impl AsmInstr<Instr> {
-    fn new(instr: Instr) -> Self {
+impl<I: ArchInstr> AsmInstr<I> {
+    fn new(inner: I) -> Self {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let id = ID.fetch_add(1, Ordering::SeqCst);
-        Self { inner: instr, id }
-    }
-
-    fn operands(&self) -> usize {
-        match &self.inner {
-            Instr::Oper { opcode, .. } => match opcode {
-                Opcode::Jump | Opcode::CJump(_) | Opcode::Push | Opcode::Ret | Opcode::Pop => 1,
-                Opcode::Label(_)
-                | Opcode::Data { .. }
-                | Opcode::StorePair(_)
-                | Opcode::LoadPair(_)
-                | Opcode::AddTriple(_)
-                | Opcode::LoadEffective(_) => 0,
-                _ => 2,
-            },
-            Instr::Call { .. } => 0,
-        }
-    }
-}
-
-impl Display for AsmInstr<Instr> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pad = " ".repeat(8);
-        match &self.inner {
-            Instr::Oper {
-                opcode,
-                dst,
-                src,
-                jump,
-            } => {
-                let pad = match opcode {
-                    Opcode::Label(_) => String::new(),
-                    _ => pad,
-                };
-                match opcode {
-                    Opcode::Jump => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
-                    Opcode::CJump(_) => write!(f, "{pad}{opcode} {}", jump.as_ref().unwrap())?,
-                    Opcode::Add | Opcode::Sub | Opcode::Mul | Opcode::Div => {
-                        write!(f, "{pad}{opcode} {dst}, {dst}, {src}")?;
-                    }
-                    _ => write!(
-                        f,
-                        "{pad}{opcode} {dst}{} {src}",
-                        if self.operands() == 2 { "," } else { "" }
-                    )?,
-                }
-                Ok(())
-            }
-            Instr::Call { name } => {
-                write!(f, "{pad}bl {name}")?;
-                Ok(())
-            }
-        }
+        Self { inner, id }
     }
 }
 

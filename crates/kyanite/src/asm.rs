@@ -1,8 +1,11 @@
 use crate::include_dir;
-use kyac::{Frame, PipelineError};
+use kyac::{ArchInstr, Frame, PipelineError};
 use std::{fs::File, io::Write};
 
-pub fn compile<F: Frame>(instrs: &str, filename: &str) -> Result<String, PipelineError> {
+pub fn compile<I: ArchInstr, F: Frame<I>>(
+    instrs: &str,
+    filename: &str,
+) -> Result<String, PipelineError> {
     let _ = std::fs::create_dir("kya-dist");
     let asm = &format!("kya-dist/{filename}.s");
     let exe = &format!("kya-dist/{filename}");

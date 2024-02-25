@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::token::Kind;
 
 #[allow(clippy::wildcard_imports)]
@@ -43,10 +45,10 @@ impl From<&[Stmt]> for Stmt {
 /// and stores it in a temporary. This is required because (a) moves from memory address to memory
 /// address are unsupported and (b) binary operations require at least one of their operands to be
 /// in registers.
-fn wrap_memory_load(expr: Expr, strategy: AddressStrategy) -> Expr {
+fn wrap_memory_load(expr: Expr) -> Expr {
     let temp = Temp::next();
     ESeq::wrapped(
-        Move::wrapped(Temp::wrapped(temp.clone()), expr, strategy),
+        Move::wrapped(Temp::wrapped(temp.clone()), expr),
         Temp::wrapped(temp),
     )
 }
@@ -55,12 +57,10 @@ impl Expr {
     /// Returns a new `Expr` where `left` and `right` are not both memory addresses.
     pub fn checked_binary(op: BinOp, left: Expr, right: Expr) -> Self {
         let right = match (&left, right) {
-            (Expr::Mem(_), expr @ Expr::Mem(_)) => {
-                wrap_memory_load(expr, AddressStrategy::Immediate)
-            }
+            (Expr::Mem(_), expr @ Expr::Mem(_)) => wrap_memory_load(expr),
             (Expr::Mem(_), expr @ Expr::ESeq { .. }) => {
                 if matches!(expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr, AddressStrategy::Immediate)
+                    wrap_memory_load(expr)
                 } else {
                     expr
                 }
@@ -75,19 +75,17 @@ impl Stmt {
     /// Returns a new `Stmt` where `target` and `expr` are not both memory addresses.
     pub fn checked_move(target: Expr, expr: Expr) -> Self {
         let expr = match (&target, expr) {
-            (Expr::Mem(_), expr @ Expr::Mem(_)) => {
-                wrap_memory_load(expr, AddressStrategy::Immediate)
-            }
+            (Expr::Mem(_), expr @ Expr::Mem(_)) => wrap_memory_load(expr),
             (Expr::Mem(_), expr @ Expr::ESeq { .. }) => {
                 if matches!(expr, Expr::Mem(_)) {
-                    wrap_memory_load(expr, AddressStrategy::Immediate)
+                    wrap_memory_load(expr)
                 } else {
                     expr
                 }
             }
             (_, expr) => expr,
         };
-        Move::wrapped(target, expr, AddressStrategy::Immediate)
+        Move::wrapped(target, expr)
     }
 }
 
@@ -183,8 +181,16 @@ impl From<BinOp> for RelOp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum AddressStrategy {
-    Immediate,
-    Effective,
+impl fmt::Display for RelOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Equal => "eq",
+            Self::NotEqual => "ne",
+            Self::Less => "lt",
+            Self::Greater => "gt",
+            Self::LessEqual => "le",
+            Self::GreaterEqual => "ge",
+        };
+        write!(f, "{s}")
+    }
 }

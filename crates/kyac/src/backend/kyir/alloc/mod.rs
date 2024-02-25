@@ -11,18 +11,18 @@ use crate::backend::kyir::{
 };
 use std::collections::HashMap;
 
-pub fn registers<F: Frame, I: ArchInstr>(instrs: &Vec<AsmInstr<I>>) -> Registers {
+pub fn registers<I: ArchInstr, F: Frame<I>>(instrs: &Vec<AsmInstr<I>>) -> Registers {
     let graph = Graph::from(instrs);
     let ranges = LiveRanges::from(graph);
     let ig = ranges.interference_graphs(instrs.len());
-    let color: Color<F> = Color::new(ig);
+    let color: Color<I, F> = Color::new(ig);
     Registers(color.color(&ranges))
 }
 
-pub struct Registers(HashMap<String, String>);
+crate::newtype!(Registers:HashMap<String, String>);
 
 impl Registers {
-    pub fn get<F: Frame>(&self, temp: &String) -> String {
+    pub fn get<I: ArchInstr, F: Frame<I>>(&self, temp: &String) -> String {
         match temp {
             _ if temp.starts_with('T') => {
                 let register = self.0.get(temp).cloned().unwrap_or_else(|| {
