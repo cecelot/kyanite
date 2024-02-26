@@ -1,0 +1,18 @@
+rec Foo {
+    x: int,
+    y: int
+}
+
+impl Foo {
+    fun show(self: Foo, i: int, h: str) {
+        println_int(self.x);
+        println_int(self.y);
+        println_int(i);
+        println_str(h);
+    }
+}
+
+fun main() {
+    let foo: Foo = Foo:init(x: 14, y: 77);
+    foo.show(999, "hello from `show()`");
+}

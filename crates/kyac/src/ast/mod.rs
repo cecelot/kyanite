@@ -42,6 +42,7 @@ impl TryFrom<&Source> for Ast {
 pub enum Decl {
     Function(Rc<node::FuncDecl>),
     Record(Rc<node::RecordDecl>),
+    Implementation(Rc<node::Implementation>),
     Constant(Rc<node::ConstantDecl>),
 }
 

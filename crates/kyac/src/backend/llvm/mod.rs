@@ -136,6 +136,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         match decl {
             Decl::Function(fun) => self.function(fun).map(Into::into),
             Decl::Constant(_) => todo!(),
+            Decl::Implementation(_) => todo!(),
             Decl::Record(rec) => Ok(self.record(rec).into()),
         }
     }

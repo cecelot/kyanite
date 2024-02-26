@@ -54,11 +54,19 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
                 .iter()
                 .filter_map(|decl| {
                     if let Decl::Function(decl) = decl {
-                        Some((decl.name.to_string(), decl.id))
+                        Some(vec![(decl.name.to_string(), decl.id)])
+                    } else if let Decl::Implementation(decl) = decl {
+                        Some(
+                            decl.methods
+                                .iter()
+                                .map(|m| (format!("{}.{}", decl.name, m.name), m.id))
+                                .collect(),
+                        )
                     } else {
                         None
                     }
                 })
+                .flatten()
                 .collect(),
             asm: Vec::new(),
             functions,
@@ -250,7 +258,6 @@ impl Assembly<()> for Move {
                 let src = self.expr.assembly(codegen);
                 I::store(src, addr, offset)
             } else {
-                dbg!(&self);
                 unimplemented!()
             };
             codegen.emit(instr);

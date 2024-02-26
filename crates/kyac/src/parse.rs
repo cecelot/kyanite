@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&'a mut self) -> Result<Vec<Decl>, &'a Vec<PreciseError<'a>>> {
+    pub fn parse(&mut self) -> Result<Vec<Decl>, &Vec<PreciseError<'a>>> {
         let mut nodes: Vec<Decl> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
@@ -44,6 +44,7 @@ impl<'a> Parser<'a> {
                 Kind::Fun => self.function(false),
                 Kind::Extern => self.function(true),
                 Kind::Const => self.constant(),
+                Kind::Impl => self.implementation(),
                 Kind::Eof => break,
                 _ => {
                     let token = self.advance().unwrap();
@@ -75,6 +76,21 @@ impl<'a> Parser<'a> {
         let fields = self.fields()?;
         self.consume(Kind::RightBrace)?;
         Ok(RecordDecl::wrapped(name, fields))
+    }
+
+    fn implementation(&mut self) -> Result<Decl, ParseError> {
+        self.consume(Kind::Impl)?;
+        let name = self.consume(Kind::Identifier)?;
+        self.consume(Kind::LeftBrace)?;
+        let mut methods = vec![];
+        while self.peek()?.kind != Kind::RightBrace {
+            methods.push(match self.function(false)? {
+                Decl::Function(fun) => fun,
+                _ => unreachable!(),
+            });
+        }
+        self.consume(Kind::RightBrace)?;
+        Ok(Implementation::wrapped(name, methods))
     }
 
     fn function(&mut self, external: bool) -> Result<Decl, ParseError> {
@@ -295,9 +311,23 @@ impl<'a> Parser<'a> {
         let mut chain: Vec<Expr> = vec![];
         while self.peek()?.kind == Kind::Dot {
             self.consume(Kind::Dot)?;
-            chain.push(self.call()?);
+            let el = self.call()?;
+            chain.push(el.clone());
             if self.peek()?.kind != Kind::Dot {
                 chain.insert(0, item);
+                if let Expr::Call(call) = el {
+                    let whole = chain.clone();
+                    chain.pop();
+                    return Ok(Call::wrapped(
+                        Access::wrapped(whole),
+                        vec![Access::wrapped(chain)]
+                            .into_iter()
+                            .chain(call.args.clone())
+                            .collect(),
+                        call.parens.clone(),
+                        call.delimiters.clone(),
+                    ));
+                }
                 return Ok(Access::wrapped(chain));
             }
         }

@@ -252,3 +252,24 @@ fn gc_shared_child_field() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "5\n5\n");
     Ok(())
 }
+
+#[test]
+fn basic_impl_block() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/basic-impl.kya")?;
+    assert_eq!(res.output, "14\n77\n999\nhello from `show()`\n");
+    Ok(())
+}
+
+#[test]
+fn nested_impl_call() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nested-impl-call.kya")?;
+    assert_eq!(res.output, "22\n");
+    Ok(())
+}
+
+#[test]
+fn anon_field_access() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/anon-field-access.kya")?;
+    assert_eq!(res.output, "5\n7\n12\n");
+    Ok(())
+}

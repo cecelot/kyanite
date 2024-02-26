@@ -74,6 +74,18 @@ impl RecordDecl {
 }
 
 #[derive(Debug)]
+pub struct Implementation {
+    pub name: Token,
+    pub methods: Vec<Rc<FuncDecl>>,
+}
+
+impl Implementation {
+    pub fn wrapped(name: Token, methods: Vec<Rc<FuncDecl>>) -> Decl {
+        Decl::Implementation(Rc::new(Self { name, methods }))
+    }
+}
+
+#[derive(Debug)]
 pub struct ConstantDecl {
     pub name: Token,
     pub ty: Token,

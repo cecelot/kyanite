@@ -2,6 +2,7 @@ mod canon;
 
 pub use canon::canonicalize;
 
+use crate::{ast::node::FuncDecl, pass::Symbol};
 #[allow(clippy::wildcard_imports)]
 use crate::{
     ast::{self, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
@@ -105,6 +106,7 @@ impl Translate<Stmt> for AstDecl {
         match self {
             AstDecl::Function(function) => function.translate(translator),
             AstDecl::Record(rec) => rec.translate(translator),
+            AstDecl::Implementation(ipl) => ipl.translate(translator),
             AstDecl::Constant(_) => todo!(),
         }
     }
@@ -159,16 +161,31 @@ impl Translate<Expr> for ast::node::Call {
             .collect();
         let name = match *self.left {
             AstExpr::Ident(ref ident) => ident.name.to_string(),
-            AstExpr::Access(_) => todo!(),
+            AstExpr::Access(ref access) => {
+                let meta = translator.accesses.get(&access.id).unwrap();
+                let name = meta.symbols.iter().rev().take(2).rev().map(|item| {
+                    match item {
+                        Symbol::Function(fun) => fun.name.to_string(),
+                        Symbol::Record(rec)=> rec.name.to_string(),
+                        _ => unimplemented!(),
+                    }
+                }).fold(String::new(), |acc, item| format!("{acc}{item}."));
+                name.trim_end_matches('.').to_string()
+            },
             _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
+        };
+        let ty = match *self.left {
+            AstExpr::Ident(_) => translator.symbols[&name].ty(),
+            AstExpr::Access(ref access) => {
+                let meta = translator.accesses.get(&access.id).unwrap();
+                meta.ty.clone()
+            }
+            _ => unimplemented!(),
         };
         let temp = Temp::next();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        let saved = frame.allocate(
-            &temp,
-            matches!(translator.symbols[&name].ty(), Type::UserDefined(_)),
-        );
+        let saved = frame.allocate(&temp, matches!(ty, Type::UserDefined(_)));
         ESeq::wrapped(
             Seq::wrapped(
                 Stmt::Expr(Box::new(Call::wrapped(name, args))),
@@ -240,7 +257,7 @@ impl Translate<Expr> for ast::node::Init {
         let base = frame.allocate(&name, true);
         let descriptor = &translator
             .symbols
-            .get(&self.name.to_string())
+            .get(&format!("{}.rec", self.name))
             .unwrap()
             .record()
             .descriptor;
@@ -480,6 +497,29 @@ impl Translate<Stmt> for ast::node::FuncDecl {
             ));
         }
         Stmt::from(&stmts[..])
+    }
+}
+
+impl Translate<Stmt> for ast::node::Implementation {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
+        let methods: Vec<_> = self
+            .methods
+            .iter()
+            .map(|method| {
+                let mut clone = FuncDecl::new(
+                    method.name.clone(),
+                    method.params.clone(),
+                    method.ty.clone(),
+                    method.body.clone(),
+                    false,
+                );
+                clone.id = method.id;
+                let lexeme = || -> &'static str { format!("{}.{}", self.name, clone.name).leak() };
+                clone.name = Token::new(Kind::Identifier, Some(lexeme()), Span::default());
+                clone.translate(translator)
+            })
+            .collect();
+        Stmt::from(&methods[..])
     }
 }
 

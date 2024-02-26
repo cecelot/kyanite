@@ -253,6 +253,7 @@ impl<'a> Lexer<'a> {
             "while" => Token::new(Kind::While, None, lexer.span),
             "for" => Token::new(Kind::For, None, lexer.span),
             "in" => Token::new(Kind::In, None, lexer.span),
+            "impl" => Token::new(Kind::Impl, None, lexer.span),
             _ => Token::new(Kind::Identifier, Some(lexeme.leak()), lexer.span),
         })
     }

@@ -7,6 +7,7 @@ use std::{collections::HashMap, rc::Rc};
 #[derive(Debug, Clone)]
 pub enum Symbol {
     Record(Rc<node::RecordDecl>),
+    Implementation(Rc<node::Implementation>),
     Function(Rc<node::FuncDecl>),
     Constant(Rc<node::ConstantDecl>),
     Variable(Rc<node::VarDecl>),
@@ -20,9 +21,17 @@ impl Symbol {
         }
     }
 
+    pub fn function(&self) -> &node::FuncDecl {
+        match self {
+            Symbol::Function(fun) => fun,
+            _ => panic!("called `Symbol::function()` on a non-function symbol"),
+        }
+    }
+
     pub fn ty(&self) -> Type {
         match self {
             Self::Record(rec) => Type::from(&rec.name),
+            Self::Implementation(ipl) => Type::from(&ipl.name),
             Self::Function(fun) => fun.ty.as_ref().into(),
             Self::Constant(c) => Type::from(&c.ty),
             Self::Variable(v) => Type::from(&v.ty),
@@ -41,7 +50,13 @@ impl From<&Vec<Decl>> for SymbolTable {
                 .map(|decl| match decl {
                     Decl::Function(fun) => (fun.name.to_string(), Symbol::Function(Rc::clone(fun))),
                     Decl::Constant(c) => (c.name.to_string(), Symbol::Constant(Rc::clone(c))),
-                    Decl::Record(rec) => (rec.name.to_string(), Symbol::Record(Rc::clone(rec))),
+                    Decl::Record(rec) => {
+                        (format!("{}.rec", rec.name), Symbol::Record(Rc::clone(rec)))
+                    }
+                    Decl::Implementation(ipl) => (
+                        format!("{}.impl", ipl.name),
+                        Symbol::Implementation(Rc::clone(ipl)),
+                    ),
                 })
                 .collect(),
         );
@@ -62,6 +77,7 @@ impl SymbolTableVisitor for Decl {
             Decl::Function(fun) => func(fun, table),
             Decl::Constant(c) => constant(c, table),
             Decl::Record(rec) => record(rec, table),
+            Decl::Implementation(ipl) => implementation(ipl, table),
         }
     }
 }
@@ -75,5 +91,12 @@ fn constant(c: &Rc<node::ConstantDecl>, table: &mut SymbolTable) {
 }
 
 fn record(rec: &Rc<node::RecordDecl>, table: &mut SymbolTable) {
-    table.insert(rec.name.to_string(), Symbol::Record(Rc::clone(rec)));
+    table.insert(format!("{}.rec", rec.name), Symbol::Record(Rc::clone(rec)));
+}
+
+fn implementation(ipl: &Rc<node::Implementation>, table: &mut SymbolTable) {
+    table.insert(
+        format!("{}.impl", ipl.name),
+        Symbol::Implementation(Rc::clone(ipl)),
+    );
 }

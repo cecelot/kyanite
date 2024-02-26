@@ -54,6 +54,7 @@ pub enum TypeError {
     NotProperty(Token, Type),
 }
 
+#[derive(Debug)]
 pub struct Access {
     pub symbols: Vec<Symbol>,
     pub indices: Vec<usize>,
@@ -91,6 +92,7 @@ impl Check for Decl {
         match self {
             Decl::Function(fun) => Ok(pass.function(fun)),
             Decl::Constant(c) => pass.constant(c),
+            Decl::Implementation(ipl) => Ok(pass.implementation(ipl)),
             Decl::Record(_) => Ok(Type::Void),
         }
     }
@@ -183,6 +185,13 @@ impl<'a> TypeCheckPass<'a> {
         let error = PreciseError::new(self.source, at, heading, text);
         println!("{error}");
         self.errors.push(error);
+    }
+
+    fn implementation(&mut self, ipl: &node::Implementation) -> Type {
+        for method in &ipl.methods {
+            let _ = Decl::Function(Rc::clone(method)).check(self);
+        }
+        Type::Void
     }
 
     fn range(&mut self, range: &node::Range) -> Result<Type, TypeError> {
@@ -286,7 +295,15 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {
-        let rec = symbol!(self, init.name, Record, "record");
+        let mut name = init.name.clone();
+        let lexeme = init.name.lexeme.map(|s| {
+            fn leak(s: String) -> &'static str {
+                s.leak()
+            }
+            leak(format!("{s}.rec"))
+        });
+        name.lexeme = lexeme;
+        let rec = symbol!(self, name, Record, "record");
         for initializer in &init.initializers {
             let got = initializer.expr.check(self)?;
             let expected =
@@ -313,10 +330,15 @@ impl<'a> TypeCheckPass<'a> {
 
     // TODO: make this prettier
     fn access(&mut self, access: &node::Access) -> Result<Type, TypeError> {
-        fn err(pass: &mut TypeCheckPass, ident: &Ident, ty: Type) -> Result<Type, TypeError> {
+        fn err(
+            pass: &mut TypeCheckPass,
+            kind: &str,
+            ident: &Ident,
+            ty: Type,
+        ) -> Result<Type, TypeError> {
             pass.error(
                 ident.name.span,
-                format!("no field `{}` on type `{}`", ident.name, ty),
+                format!("no {kind} `{}` on type `{}`", ident.name, ty),
                 String::new(),
             );
             Err(TypeError::NotProperty(ident.name.clone(), ty))
@@ -324,33 +346,50 @@ impl<'a> TypeCheckPass<'a> {
         let mut ty = access.chain[0].check(self)?;
         let mut symbols = vec![];
         let mut indices = vec![];
-        let Some(mut symbol) = self.symbol(&ty.to_string()).cloned() else {
+        let Some(mut symbol) = self.symbol(&format!("{ty}.rec")).cloned() else {
             return Err(TypeError::Undefined);
         };
         symbols.push(symbol.clone());
         for (i, pair) in access.chain.windows(2).enumerate() {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
-                // TODO: implement member functions
                 let rec = cast!(symbol, r, Symbol::Record(ref r));
-                let ident = cast!(left, i, Expr::Ident(i));
-                let field = rec.fields.iter().find(|f| f.name == ident.name);
-                if let Some(field) = field {
-                    symbol = self.symbol(&field.ty.to_string()).cloned().unwrap();
-                    symbols.push(symbol.clone());
+                if let Expr::Ident(ident) = left {
+                    let field = rec.fields.iter().find(|f| f.name == ident.name);
+                    if let Some(field) = field {
+                        symbol = self.symbol(&format!("{}.rec", field.ty)).cloned().unwrap();
+                        symbols.push(symbol.clone());
+                    } else {
+                        return err(self, "field", ident, ty);
+                    }
                 } else {
-                    return err(self, ident, ty);
+                    todo!("support accesses after method calls")
                 }
             }
-            // TODO: implement member functions (same as above)
             let rec = cast!(symbol, r, Symbol::Record(ref r));
-            let ident = cast!(right, i, Expr::Ident(i));
-            let index = rec.fields.iter().position(|f| f.name == ident.name);
-            if let Some(index) = index {
-                indices.push(index);
-                ty = Type::from(&rec.fields[index].ty);
+            if let Expr::Ident(ident) = right {
+                let index = rec.fields.iter().position(|f| f.name == ident.name);
+                if let Some(index) = index {
+                    indices.push(index);
+                    ty = Type::from(&rec.fields[index].ty);
+                } else {
+                    return err(self, "field", ident, ty);
+                }
             } else {
-                return err(self, ident, ty);
+                let symbol = self.symbol(&format!("{ty}.impl")).unwrap();
+                let ipl = cast!(symbol, i, Symbol::Implementation(ref i));
+                let call = cast!(right, c, Expr::Call(c));
+                let ident = call.left.ident();
+                let method = ipl
+                    .methods
+                    .iter()
+                    .find(|m| m.name.to_string() == ident.name.to_string());
+                if let Some(method) = method {
+                    symbols.push(Symbol::Function(Rc::clone(method)));
+                    ty = Type::from(method.ty.as_ref());
+                } else {
+                    return err(self, "method", ident, ty);
+                }
             }
         }
         self.accesses
@@ -475,8 +514,36 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn call(&mut self, call: &node::Call) -> Result<Type, TypeError> {
-        let name = cast!(&*call.left, ident.name.clone(), Expr::Ident(ident));
-        let function = symbol!(self, name, Function, "function");
+        let function = match &*call.left {
+            Expr::Ident(ident) => {
+                let name = ident.name.to_string();
+                match self.symbol(&name) {
+                    Some(Symbol::Function(f)) => f.as_ref(),
+                    Some(_) => {
+                        self.error(
+                            ident.name.span,
+                            format!("`{name}` is not a function"),
+                            String::new(),
+                        );
+                        return Err(TypeError::NotType(ident.name.clone(), "function"));
+                    }
+                    None => {
+                        self.error(
+                            ident.name.span,
+                            format!("`{name}` is not defined"),
+                            String::new(),
+                        );
+                        return Err(TypeError::Undefined);
+                    }
+                }
+            }
+            Expr::Access(access) => {
+                let _ = call.left.check(self);
+                let meta = self.accesses.get(&access.id).unwrap();
+                meta.symbols.last().unwrap().function()
+            }
+            _ => unimplemented!(),
+        };
         let (arity, params, ty) = (
             function.params.len(),
             function.params.clone(),
@@ -490,7 +557,7 @@ impl<'a> TypeCheckPass<'a> {
                     arity,
                     call.args.len()
                 ),
-                format!("while calling {name} here"),
+                "while calling function here".into(),
             );
         }
         for (i, arg) in call.args.iter().enumerate() {
