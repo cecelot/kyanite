@@ -223,12 +223,32 @@ impl Translate<Expr> for ast::node::Unary {
 impl Translate<Expr> for ast::node::Access {
     // heh, this is basically the spiritual equivalent of LLVM's getelementptr
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
-        let frame = translator.frame();
         let meta = translator.accesses.get(&self.id).unwrap();
-        let ident = self.chain.first().unwrap().ident().name.to_string();
+        let head = self.chain.first().unwrap();
+        let mut initial = vec![];
+        let ident = match head {
+            AstExpr::Ident(ident) => ident.name.to_string(),
+            AstExpr::Init(init) => {
+                // Invent an "anonymous" variable to hold the value of the initializer
+                let name = Temp::next();
+                let decl = ast::node::VarDecl::wrapped(
+                    Token::new(Kind::Identifier, Some(name.clone().leak()), Span::default()),
+                    Token::new(Kind::Literal, init.name.lexeme, Span::default()),
+                    head.clone(),
+                );
+                let stmt = decl.translate(translator);
+                initial.push(stmt);
+                name
+            }
+            _ => unimplemented!(),
+        };
+        let frame = translator.frame();
         let base = frame.get(&ident);
         let temp = Temp::next();
-        let initial = [Stmt::checked_move(Temp::wrapped(temp.clone()), base)];
+        initial.append(&mut vec![Stmt::checked_move(
+            Temp::wrapped(temp.clone()),
+            base,
+        )]);
         let stmts: Vec<_> = initial
             .into_iter()
             .chain(meta.indices.iter().map(|&field| {

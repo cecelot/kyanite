@@ -1,0 +1,21 @@
+rec Foo {
+    x: int,
+    y: int,
+    z: Bar
+}
+
+rec Bar {
+    z: int
+}
+
+impl Bar {
+    fun show(self: Bar): int {
+        println_int(self.z);
+    }
+}
+
+fun main() {
+    println_int(Foo:init(x: 5, y: 7, z: Bar:init(z: 12)).x);
+    println_int(Foo:init(x: 5, y: 7, z: Bar:init(z: 12)).y);
+    println_int(Foo:init(x: 5, y: 7, z: Bar:init(z: 12)).z.z);
+}
