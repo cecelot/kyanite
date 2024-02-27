@@ -41,8 +41,8 @@ impl<'a> Parser<'a> {
         while let Ok(token) = self.peek() {
             match match token.kind {
                 Kind::Rec => self.record(),
-                Kind::Fun => self.function(false),
-                Kind::Extern => self.function(true),
+                Kind::Fun => self.function(&None, false),
+                Kind::Extern => self.function(&None, true),
                 Kind::Const => self.constant(),
                 Kind::Impl => self.implementation(),
                 Kind::Eof => break,
@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::LeftBrace)?;
         let mut methods = vec![];
         while self.peek()?.kind != Kind::RightBrace {
-            methods.push(match self.function(false)? {
+            methods.push(match self.function(&Some(name.clone()), false)? {
                 Decl::Function(fun) => fun,
                 _ => unreachable!(),
             });
@@ -93,14 +93,14 @@ impl<'a> Parser<'a> {
         Ok(Implementation::wrapped(name, methods))
     }
 
-    fn function(&mut self, external: bool) -> Result<Decl, ParseError> {
+    fn function(&mut self, method: &Option<Token>, external: bool) -> Result<Decl, ParseError> {
         if external {
             self.consume(Kind::Extern)?;
         }
         self.consume(Kind::Fun)?;
         let name = self.consume(Kind::Identifier)?;
         self.consume(Kind::LeftParen)?;
-        let params = self.params()?;
+        let params = self.params(method)?;
         self.consume(Kind::RightParen)?;
         let mut ty: Option<Token> = None;
         if self.peek()?.kind == Kind::Colon {
@@ -114,12 +114,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn params(&mut self) -> Result<Vec<Param>, ParseError> {
+    fn params(&mut self, method: &Option<Token>) -> Result<Vec<Param>, ParseError> {
         let mut params: Vec<Param> = vec![];
+        let mut index = 0;
         while self.peek()?.kind != Kind::RightParen {
             let name = self.consume(Kind::Identifier)?;
-            self.consume(Kind::Colon)?;
-            let ty = self.consume(Kind::Identifier)?;
+            let ty = if method.as_ref().is_some_and(|_| index == 0) {
+                index += 1;
+                method.clone().unwrap()
+            } else {
+                self.consume(Kind::Colon)?;
+                self.consume(Kind::Identifier)?
+            };
             params.push(Param::new(name, ty));
             if self.peek()?.kind != Kind::RightParen {
                 self.consume(Kind::Comma)?;

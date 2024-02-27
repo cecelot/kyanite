@@ -9,7 +9,7 @@ rec Bar {
 }
 
 impl Bar {
-    fun show(self: Bar): int {
+    fun show(self): int {
         println_int(self.z);
     }
 }

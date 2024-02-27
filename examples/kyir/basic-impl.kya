@@ -4,7 +4,7 @@ rec Foo {
 }
 
 impl Foo {
-    fun show(self: Foo, i: int, h: str) {
+    fun show(self, i: int, h: str) {
         println_int(self.x);
         println_int(self.y);
         println_int(i);
