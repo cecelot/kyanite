@@ -9,15 +9,24 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:kyanite"
+  ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
+    "languages": [
       {
-        "command": "kyanite-vscode.helloWorld",
-        "title": "Hello World"
+        "id": "kyanite",
+        "extensions": [
+          ".kya"
+        ]
       }
     ]
+  },
+  "configurationDefaults": {
+    "[kyanite]": {
+      "editor.semanticHighlighting.enabled": true
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -28,14 +37,15 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.86.0",
+    "@kyanite/highlights": "file:../../crates/highlights",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/vscode": "^1.86.0",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.6",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
   }
 }
