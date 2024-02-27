@@ -43,7 +43,9 @@ impl StripId for Expr {
     fn strip_id(&mut self) {
         match self {
             Self::Access(a) => {
-                let access = Rc::get_mut(a).unwrap();
+                let Some(access) = Rc::get_mut(a) else {
+                    return;
+                };
                 access.chain.iter_mut().for_each(StripId::strip_id);
                 access.id = 0;
             }

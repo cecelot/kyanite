@@ -180,7 +180,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                 .iter()
                 .map(|f| match Type::from(&f.ty) {
                     Type::UserDefined(name) => {
-                        let symbol = self.symbols.get(&name).unwrap().clone();
+                        let symbol = self.symbols.get(&format!("{name}.rec")).unwrap().clone();
                         match symbol {
                             Symbol::Record(rec) => self.build_struct(&rec).into(),
                             _ => unreachable!(),

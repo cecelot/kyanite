@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/pass/typecheck.rs
+source: crates/kyac/src/pass/typecheck.rs
 expression: pass.errors
 ---
 [
@@ -155,7 +155,7 @@ expression: pass.errors
             column: 5,
             length: 3,
         },
-        text: "while calling foo here",
+        text: "while calling function here",
     },
     PreciseError {
         filename: "test-cases/typecheck/varied.kya",
