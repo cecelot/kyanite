@@ -280,3 +280,10 @@ fn anon_method_call() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "12\n");
     Ok(())
 }
+
+#[test]
+fn nested_access_in_impl_call() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/nested-access-in-impl-call.kya")?;
+    assert_eq!(res.output, "22\n22\n2\n144\n5\n7\n22\n77\n144\n");
+    Ok(())
+}
