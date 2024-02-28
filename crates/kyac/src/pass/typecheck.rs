@@ -81,6 +81,7 @@ pub struct TypeCheckPass<'a> {
     errors: Vec<PreciseError<'a>>,
     scopes: Vec<SymbolTable>,
     function: Option<Token>,
+    ipl: Option<Token>,
 }
 
 trait Check {
@@ -144,6 +145,7 @@ impl<'a> TypeCheckPass<'a> {
             accesses,
             errors: vec![],
             function: None,
+            ipl: None,
             scopes: vec![],
         }
     }
@@ -188,9 +190,11 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn implementation(&mut self, ipl: &node::Implementation) -> Type {
+        self.ipl = Some(ipl.name.clone());
         for method in &ipl.methods {
             let _ = Decl::Function(Rc::clone(method)).check(self);
         }
+        self.ipl = None;
         Type::Void
     }
 
@@ -455,14 +459,26 @@ impl<'a> TypeCheckPass<'a> {
         let got = r.expr.check(self)?;
         match &self.function {
             Some(function) => {
-                let symbol = self.symbol(&function.to_string()).unwrap().clone();
-                if got != symbol.ty() {
+                let symb = self
+                    .ipl
+                    .as_ref()
+                    .map_or(function.to_string(), |ipl| format!("{ipl}.impl"));
+                let symbol = self.symbol(&symb).unwrap();
+                let expected = match symbol {
+                    Symbol::Implementation(ipl) => {
+                        let method = ipl.methods.iter().find(|m| &m.name == function).unwrap();
+                        Type::from(method.ty.as_ref())
+                    }
+                    Symbol::Function(f) => Type::from(f.ty.as_ref()),
+                    _ => unimplemented!(),
+                };
+                if got != expected {
                     self.error(
                         r.expr.span(),
-                        format!("expected return type to be {}", symbol.ty()),
+                        format!("expected return type to be {expected}"),
                         format!("expression is of type {got}"),
                     );
-                    return Err(TypeError::Mismatch(symbol.ty(), got));
+                    return Err(TypeError::Mismatch(expected, got));
                 }
             }
             None => unimplemented!("disallowed by parser"),
