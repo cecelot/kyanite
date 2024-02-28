@@ -24,20 +24,13 @@
         version = "0.2.0";
         src = ./.;
         nativeBuildInputs = with pkgs; [
-          # rust/cargo
           rust-stable
-          cargo-audit
-          cargo-insta
-          cargo-sort
-          # dependencies
+          # LLVM
           llvmPackages_15.libllvm
-          # (for llvm)
           ncurses # -ltinfo
           libffi # -lffi
           libxml2 # -lxml2
-          # docs site builder
-          mdbook
-          # nix
+          # Nix
           makeWrapper
         ];
         cargoLock = {
