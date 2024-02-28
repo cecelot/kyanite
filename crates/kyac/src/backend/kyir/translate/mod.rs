@@ -48,7 +48,7 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
 
     #[must_use]
     pub fn translate(&mut self, ast: &[AstDecl]) -> Vec<Stmt> {
-        ast.iter().map(|decl| decl.translate(self)).collect()
+        ast.iter().flat_map(|decl| decl.translate(self)).collect()
     }
 
     fn frame(&self) -> &F {
@@ -101,11 +101,11 @@ impl Translate<Stmt> for AstStmt {
     }
 }
 
-impl Translate<Stmt> for AstDecl {
-    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
+impl Translate<Vec<Stmt>> for AstDecl {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Vec<Stmt> {
         match self {
-            AstDecl::Function(function) => function.translate(translator),
-            AstDecl::Record(rec) => rec.translate(translator),
+            AstDecl::Function(function) => vec![function.translate(translator)],
+            AstDecl::Record(rec) => vec![rec.translate(translator)],
             AstDecl::Implementation(ipl) => ipl.translate(translator),
             AstDecl::Constant(_) => todo!(),
         }
@@ -520,10 +520,9 @@ impl Translate<Stmt> for ast::node::FuncDecl {
     }
 }
 
-impl Translate<Stmt> for ast::node::Implementation {
-    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
-        let methods: Vec<_> = self
-            .methods
+impl Translate<Vec<Stmt>> for ast::node::Implementation {
+    fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Vec<Stmt> {
+        self.methods
             .iter()
             .map(|method| {
                 let mut clone = FuncDecl::new(
@@ -538,8 +537,7 @@ impl Translate<Stmt> for ast::node::Implementation {
                 clone.name = Token::new(Kind::Identifier, Some(lexeme()), Span::default());
                 clone.translate(translator)
             })
-            .collect();
-        Stmt::from(&methods[..])
+            .collect()
     }
 }
 
