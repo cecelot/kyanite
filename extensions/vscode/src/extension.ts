@@ -32,7 +32,7 @@ const provider: vscode.DocumentSemanticTokensProvider = {
         new vscode.Position(span.line, span.start),
         new vscode.Position(span.line, span.end)
       );
-      tokensBuilder.push(range, token.kind, token.modifiers);
+      tokensBuilder.push(range, token.kind.toLowerCase(), token.modifiers);
     }
     return tokensBuilder.build();
   },

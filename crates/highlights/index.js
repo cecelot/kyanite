@@ -281,6 +281,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { highlights } = nativeBinding
+const { Kind, highlights } = nativeBinding
 
+module.exports.Kind = Kind
 module.exports.highlights = highlights

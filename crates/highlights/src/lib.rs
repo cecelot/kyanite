@@ -1,6 +1,10 @@
 #[macro_use]
 extern crate napi_derive;
 
+mod kind;
+
+use kind::Kind;
+
 #[napi(object)]
 pub struct Span {
     pub start: u32,
@@ -33,18 +37,12 @@ impl MultiSpan {
 #[napi(object)]
 pub struct Highlight {
     pub span: Span,
-    pub kind: String,
+    pub kind: Kind,
     pub modifiers: Vec<String>,
 }
 
 impl Highlight {
-    pub fn single(
-        start: usize,
-        end: usize,
-        line: usize,
-        kind: String,
-        modifiers: Vec<String>,
-    ) -> Self {
+    pub fn new(start: usize, end: usize, line: usize, kind: Kind, modifiers: Vec<String>) -> Self {
         Self {
             span: Span::new(start, end, line),
             kind,
@@ -62,5 +60,5 @@ pub struct Source {
 
 #[napi]
 pub fn highlights(_source: Source) -> Vec<Highlight> {
-    vec![Highlight::single(0, 3, 0, "keyword".to_string(), vec![])]
+    vec![Highlight::new(0, 3, 0, Kind::Keyword, vec![])]
 }
