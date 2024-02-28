@@ -9,8 +9,6 @@ members = [
     "crates/subprocess"
 ]
 default-members = [
-    "crates/kyac",
     "crates/kyanite",
-    "crates/runtime",
-    "crates/subprocess"
+    "crates/runtime"
 ]
