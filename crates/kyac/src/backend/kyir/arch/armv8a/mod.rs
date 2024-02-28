@@ -108,7 +108,7 @@ impl Frame<isa::A64> for Armv8a {
                 )
             ),
         ));
-        prologue.push(isa::A64::StorePair(r.frame.into(), String::from("x30")));
+        prologue.push(isa::A64::StorePair(r.frame.into(), r.link.into()));
         prologue.push(isa::A64::Add(
             r.frame.into(),
             r.stack.into(),
@@ -127,7 +127,7 @@ impl Frame<isa::A64> for Armv8a {
     fn epilogue(&self) -> Vec<isa::A64> {
         let r = Self::registers();
         vec![
-            isa::A64::LoadPair(r.frame.into(), String::from("x30")),
+            isa::A64::LoadPair(r.frame.into(), r.link.into()),
             isa::A64::Add(
                 r.stack.into(),
                 r.stack.into(),
@@ -163,7 +163,7 @@ impl Frame<isa::A64> for Armv8a {
     fn registers() -> RegisterMap {
         RegisterMap {
             callee: &[
-                "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x29", "x30",
+                "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28",
             ],
             temporary: &["x9", "x10", "x11", "x12", "x13", "x14", "x15"],
             argument: &["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7"],

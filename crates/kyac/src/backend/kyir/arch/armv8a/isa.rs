@@ -1,7 +1,7 @@
 use crate::{
     backend::kyir::{
         alloc::Registers,
-        arch::{ArchInstr, FlowGraphMeta, Format},
+        arch::{armv8a::Armv8a, ArchInstr, FlowGraphMeta, Format},
         ir::RelOp,
     },
     Frame,
@@ -122,10 +122,11 @@ impl FlowGraphMeta for A64 {
     }
 
     fn uses(&self) -> Vec<String> {
+        let r = Armv8a::registers();
         match self {
-            A64::StoreImmediate(src, dst, ..) if dst == "x29" => vec![src.clone()],
+            A64::StoreImmediate(src, dst, ..) if dst == r.frame => vec![src.clone()],
             A64::StoreImmediate(src, dst, ..) => vec![src.clone(), dst.clone()],
-            A64::LoadImmediate(dst, src, ..) if src == "x29" => vec![dst.clone()],
+            A64::LoadImmediate(dst, src, ..) if src == r.frame => vec![dst.clone()],
             A64::LoadImmediate(dst, src, ..) => vec![dst.clone(), src.clone()],
             A64::LoadEffective(.., src) | A64::Move(_, src) => {
                 vec![src.clone()]
