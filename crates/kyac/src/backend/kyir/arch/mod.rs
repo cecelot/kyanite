@@ -31,6 +31,7 @@ pub struct RegisterMap {
     pub stack: &'static str,
     pub frame: &'static str,
     pub link: &'static str,
+    pub discard: &'static str,
 }
 
 pub trait ArchInstr: FlowGraphMeta + Format + fmt::Debug + fmt::Display {

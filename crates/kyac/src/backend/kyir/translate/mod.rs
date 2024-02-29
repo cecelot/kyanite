@@ -28,6 +28,8 @@ struct Context {
     ret: bool,
     name: Vec<String>,
     strings: Strings,
+    mem: Option<Mem>,
+    stmts: Vec<Stmt>,
 }
 
 impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
@@ -40,6 +42,8 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
                 ret: false,
                 strings: Strings::new(),
                 name: vec![],
+                mem: None,
+                stmts: vec![],
             },
             accesses,
             symbols,
@@ -253,16 +257,16 @@ impl Translate<Expr> for ast::node::Access {
             .into_iter()
             .chain(meta.indices.iter().map(|&field| {
                 let offset: i64 = ((field + 1) * F::word_size()).try_into().unwrap();
-                Stmt::checked_move(
+                let mem = Mem::new(Binary::wrapped(
+                    BinOp::Plus,
                     Temp::wrapped(temp.clone()),
-                    Mem::wrapped(Binary::wrapped(
-                        BinOp::Plus,
-                        Temp::wrapped(temp.clone()),
-                        Const::<i64>::int(offset),
-                    )),
-                )
+                    Const::<i64>::int(offset),
+                ));
+                translator.ctx.mem = Some(mem.clone());
+                Stmt::checked_move(Temp::wrapped(temp.clone()), Expr::Mem(mem))
             }))
             .collect();
+        translator.ctx.stmts = stmts.clone();
         ESeq::wrapped(Stmt::from(&stmts[..]), Temp::wrapped(temp))
     }
 }
@@ -456,10 +460,18 @@ impl Translate<Stmt> for ast::node::For {
 
 impl Translate<Stmt> for ast::node::Assign {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Stmt {
-        Stmt::checked_move(
-            self.target.translate(translator),
-            self.expr.translate(translator),
-        )
+        let target: Expr = self.target.translate(translator);
+        translator.ctx.stmts.pop();
+        let target = if matches!(self.target, AstExpr::Access(_)) {
+            ESeq::wrapped(
+                Stmt::from(&translator.ctx.stmts[..]),
+                Expr::Mem(translator.ctx.mem.take().unwrap()),
+            )
+        } else {
+            target
+        };
+        translator.ctx.stmts.clear();
+        Stmt::checked_move(target, self.expr.translate(translator))
     }
 }
 

@@ -158,10 +158,14 @@ pub struct Mem {
 }
 
 impl Mem {
-    pub fn wrapped(expr: Expr) -> Expr {
-        Expr::Mem(Self {
+    pub fn new(expr: Expr) -> Self {
+        Self {
             expr: Box::new(expr),
-        })
+        }
+    }
+
+    pub fn wrapped(expr: Expr) -> Expr {
+        Expr::Mem(Self::new(expr))
     }
 }
 

@@ -126,7 +126,8 @@ impl FlowGraphMeta for A64 {
         match self {
             A64::StoreImmediate(src, dst, ..) if dst == r.frame => vec![src.clone()],
             A64::StoreImmediate(src, dst, ..) => vec![src.clone(), dst.clone()],
-            A64::LoadImmediate(dst, src, ..) if src == r.frame => vec![dst.clone()],
+            A64::LoadImmediate(dst, src, ..) if src == dst => vec![src.clone()],
+            A64::LoadImmediate(_, src, ..) if src == r.frame => vec![],
             A64::LoadImmediate(dst, src, ..) => vec![dst.clone(), src.clone()],
             A64::LoadEffective(.., src) | A64::Move(_, src) => {
                 vec![src.clone()]
@@ -167,7 +168,7 @@ impl Format for A64 {
             if temp == r.frame {
                 temp.to_string()
             } else {
-                registers.get(temp)
+                registers.get::<I, F>(temp)
             }
         };
         match self {

@@ -1,18 +1,23 @@
 use crate::backend::kyir::{
-    alloc::liveness::{InterferenceGraph, LiveRanges},
+    alloc::liveness::LiveRanges,
     arch::{ArchInstr, Frame},
 };
 use std::collections::{HashMap, HashSet};
 
 pub struct Color<I: ArchInstr, F: Frame<I>> {
-    interferences: Vec<InterferenceGraph>,
+    interferences: HashMap<String, HashSet<String>>,
+    live: Vec<HashMap<String, HashSet<String>>>,
     _phantom: std::marker::PhantomData<(F, I)>,
 }
 
 impl<I: ArchInstr, F: Frame<I>> Color<I, F> {
-    pub fn new(interferences: Vec<InterferenceGraph>) -> Self {
+    pub fn new(
+        interferences: HashMap<String, HashSet<String>>,
+        live: Vec<HashMap<String, HashSet<String>>>,
+    ) -> Self {
         Self {
             interferences,
+            live,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -25,7 +30,7 @@ impl<I: ArchInstr, F: Frame<I>> Color<I, F> {
             .iter()
             .map(|&reg| String::from(reg))
             .collect();
-        for (line, graph) in self.interferences.iter().enumerate() {
+        for (line, graph) in self.live.iter().enumerate() {
             let mut live: Vec<&String> = temporaries
                 .iter()
                 .filter(|&t| ranges.get(t)[line])
@@ -34,13 +39,9 @@ impl<I: ArchInstr, F: Frame<I>> Color<I, F> {
             live.sort_by_key(|&t| graph.get(t).map_or(0, HashSet::len));
             while let Some(temp) = live.pop() {
                 if !colors.contains_key(temp) {
-                    let empty = HashSet::new();
-                    let used: Vec<_> = graph
-                        .get(temp)
-                        .unwrap_or(&empty)
-                        .iter()
-                        .map(|t| colors.get(t))
-                        .collect();
+                    let interferes = &self.interferences[temp];
+                    log::trace!("{temp} interferes with {interferes:?}");
+                    let used: Vec<_> = interferes.iter().map(|t| colors.get(t)).collect();
                     let color = registers
                         .iter()
                         .find(|&r| !used.contains(&Some(r)))

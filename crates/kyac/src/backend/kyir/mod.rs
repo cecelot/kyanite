@@ -7,7 +7,7 @@ use crate::{
     ast::Decl,
     backend::kyir::{
         alloc::Registers,
-        arch::{ArchInstr, Frame},
+        arch::{ArchInstr, FlowGraphMeta, Frame},
         ir::{
             BinOp, Binary, CJump, Call, Const, Expr, Jump, Label, Mem, Move, RelOp, Seq, Stmt, Temp,
         },
@@ -31,6 +31,15 @@ pub fn asm<I: ArchInstr, F: Frame<I>>(
     let mut codegen: Codegen<I, F> =
         Codegen::new(translator.functions(), translator.strings(), ast);
     let instrs = codegen.assembly(ir);
+    for instr in instrs {
+        log::trace!(
+            "[{}] {} (defines: {:?}, uses: {:?})",
+            instr.id,
+            instr.inner,
+            instr.defines(),
+            instr.uses()
+        );
+    }
     let registers = alloc::registers::<I, F>(instrs);
     codegen.format(&registers)
 }
@@ -165,7 +174,10 @@ impl Assembly<String> for Expr {
                 tmp
             }
             Self::ConstFloat(_) => todo!(),
-            Self::ESeq { .. } => panic!("`Expr::ESeq` not removed by canonicalization"),
+            Self::ESeq(eseq) => panic!(
+                "`Expr::ESeq` not removed by canonicalization (id: {})",
+                eseq.id
+            ),
         }
     }
 }
@@ -258,7 +270,7 @@ impl Assembly<()> for Move {
                 let src = self.expr.assembly(codegen);
                 I::store(src, addr, offset)
             } else {
-                unimplemented!()
+                I::copy(self.target.assembly(codegen), self.expr.assembly(codegen))
             };
             codegen.emit(instr);
         } else {

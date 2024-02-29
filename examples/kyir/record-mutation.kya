@@ -1,0 +1,20 @@
+rec Foo {
+    x: int,
+    y: Bar,
+    z: int
+}
+
+rec Bar {
+    z: int
+}
+
+fun main() {
+    let foo: Foo = Foo:init(x: 5, y: Bar:init(z: 10), z: 89);
+    println_int(foo.x);
+    foo.x = foo.x + 1;
+    println_int(foo.x);
+    println_int(foo.y.z);
+    foo.y.z = foo.y.z + foo.x + 1 + foo.z;
+    println_int(foo.y.z);
+    println_int(foo.x);
+}

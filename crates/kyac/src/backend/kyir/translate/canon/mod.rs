@@ -15,7 +15,7 @@ use std::collections::VecDeque;
 pub fn canonicalize(ir: Vec<Stmt>) -> Vec<Stmt> {
     let ir: Vec<_> = ir
         .into_iter()
-        .map(|item| item.rewrite(false, false))
+        .map(|item| item.rewrite(false))
         .filter(|item| !matches!(item, Stmt::Noop))
         .collect();
     let mut new = vec![];
@@ -52,6 +52,7 @@ impl Extract for Stmt {
             }
             Stmt::Move(m) => {
                 update(&m.expr, ir, replacements);
+                update(&m.target, ir, replacements);
                 ir.push(Move::wrapped(*m.target.clone(), *m.expr.clone()));
             }
             Stmt::Expr(e) => {

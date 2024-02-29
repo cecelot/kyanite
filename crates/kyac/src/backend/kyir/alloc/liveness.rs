@@ -73,17 +73,33 @@ impl<'a, I: ArchInstr> Graph<'a, I> {
 
 crate::newtype!(LiveRanges:HashMap<String, Vec<bool>>);
 
-pub type InterferenceGraph = HashMap<String, HashSet<String>>;
-
 impl LiveRanges {
     pub fn get(&self, temp: &str) -> &Vec<bool> {
         self.0.get(temp).unwrap()
     }
 
-    pub fn interference_graphs(&self, len: usize) -> Vec<InterferenceGraph> {
+    /// Compute the sets of temporaries that interfere with each other across a program's lifetime.
+    pub fn interferences(&self, len: usize) -> HashMap<String, HashSet<String>> {
+        let local = self.live(len);
+        self.0
+            .keys()
+            .map(|temp| {
+                let interferes = local
+                    .iter()
+                    .filter_map(|g| g.get(temp).map(|set| set.iter().collect::<Vec<_>>()))
+                    .flatten()
+                    .cloned()
+                    .collect();
+                (temp.clone(), interferes)
+            })
+            .collect()
+    }
+
+    /// Compute the sets of temporaries that are live at each instruction.
+    pub fn live(&self, len: usize) -> Vec<HashMap<String, HashSet<String>>> {
         (0..len - 1)
             .map(|line| {
-                let mut interferences: HashMap<String, HashSet<String>> = HashMap::new();
+                let mut live: HashMap<String, HashSet<String>> = HashMap::new();
                 let pairs = self
                     .0
                     .iter()
@@ -92,16 +108,14 @@ impl LiveRanges {
                         temp != other && range[line] && other_range[line]
                     });
                 for ((temp, _), (other, _)) in pairs {
-                    interferences
-                        .entry(temp.to_string())
+                    live.entry(temp.to_string())
                         .or_default()
                         .insert(other.to_string());
-                    interferences
-                        .entry(other.to_string())
+                    live.entry(other.to_string())
                         .or_default()
                         .insert(temp.to_string());
                 }
-                interferences
+                live
             })
             .collect()
     }

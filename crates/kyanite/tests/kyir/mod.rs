@@ -287,3 +287,10 @@ fn nested_access_in_impl_call() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "22\n22\n2\n144\n5\n7\n22\n77\n144\n");
     Ok(())
 }
+
+#[test]
+fn record_mutation() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/record-mutation.kya")?;
+    assert_eq!(res.output, "5\n6\n10\n106\n6\n");
+    Ok(())
+}

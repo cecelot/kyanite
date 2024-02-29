@@ -171,6 +171,7 @@ impl Frame<isa::A64> for Armv8a {
             frame: "x29",
             link: "x30",
             stack: "sp",
+            discard: "xzr",
         }
     }
 

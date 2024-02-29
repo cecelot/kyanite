@@ -7,7 +7,7 @@ use crate::backend::kyir::{
 /// Rewrite any [`Expr::Call`] to [`Expr::ESeq`] if it is not
 /// the immediate child of a [`Stmt::Move`] or [`Stmt::Expr`]
 pub trait Rewrite<R> {
-    fn rewrite(self, immediate: bool, child: bool) -> R;
+    fn rewrite(self, immediate: bool) -> R;
 }
 
 pub trait Substitute {
@@ -15,13 +15,13 @@ pub trait Substitute {
 }
 
 impl Rewrite<Vec<Expr>> for Vec<Expr> {
-    fn rewrite(self, immediate: bool, child: bool) -> Vec<Expr> {
+    fn rewrite(self, immediate: bool) -> Vec<Expr> {
         self.into_iter()
             .map(|arg| match arg {
                 Expr::Call { .. } => {
                     let temp = Temp::next();
                     ESeq::wrapped(
-                        Move::wrapped(Temp::wrapped(temp.clone()), arg.rewrite(immediate, child)),
+                        Move::wrapped(Temp::wrapped(temp.clone()), arg.rewrite(immediate)),
                         Temp::wrapped(temp),
                     )
                 }
@@ -40,10 +40,10 @@ impl Substitute for Vec<Expr> {
 }
 
 impl Rewrite<Expr> for Expr {
-    fn rewrite(self, immediate: bool, child: bool) -> Expr {
+    fn rewrite(self, immediate: bool) -> Expr {
         match self {
             Expr::Call(call) => {
-                let args = call.args.clone().rewrite(false, false);
+                let args = call.args.clone().rewrite(false);
                 if immediate {
                     Expr::Call(call)
                 } else {
@@ -61,18 +61,9 @@ impl Rewrite<Expr> for Expr {
                 }
             }
             Expr::Binary(bin) => {
-                let left = bin.left.rewrite(false, false);
-                let right = bin.right.rewrite(false, false);
-                let bin = Binary::wrapped(bin.op, left, right);
-                if immediate && child {
-                    let temp = Temp::next();
-                    ESeq::wrapped(
-                        Seq::wrapped(Move::wrapped(Temp::wrapped(temp.clone()), bin), None),
-                        Temp::wrapped(temp),
-                    )
-                } else {
-                    bin
-                }
+                let left = bin.left.rewrite(false);
+                let right = bin.right.rewrite(false);
+                Binary::wrapped(bin.op, left, right)
             }
             _ => self,
         }
@@ -88,14 +79,14 @@ impl Substitute for Expr {
 }
 
 impl Rewrite<Stmt> for Stmt {
-    fn rewrite(self, _: bool, _: bool) -> Stmt {
+    fn rewrite(self, _: bool) -> Stmt {
         match self {
-            Stmt::Expr(e) => Stmt::Expr(Box::new(e.rewrite(true, false))),
+            Stmt::Expr(e) => Stmt::Expr(Box::new(e.rewrite(true))),
             Stmt::Seq(seq) => Seq::wrapped(
-                seq.left.rewrite(false, false),
-                seq.right.map(|item| item.rewrite(false, false)),
+                seq.left.rewrite(false),
+                seq.right.map(|item| item.rewrite(false)),
             ),
-            Stmt::Move(m) => Move::wrapped(*m.target, m.expr.rewrite(true, true)),
+            Stmt::Move(m) => Move::wrapped(*m.target, m.expr.rewrite(true)),
             Stmt::CJump(cjmp) => Stmt::CJump(cjmp),
             _ => self,
         }
