@@ -6,6 +6,9 @@
 export const enum Kind {
   Keyword = 'Keyword'
 }
+export const enum Modifier {
+  Declaration = 'Declaration'
+}
 export interface Span {
   start: number
   end: number
@@ -18,7 +21,7 @@ export interface MultiSpan {
 export interface Highlight {
   span: Span
   kind: Kind
-  modifiers: Array<string>
+  modifiers: Array<Modifier>
 }
 export interface Source {
   code: string

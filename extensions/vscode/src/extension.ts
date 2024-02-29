@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import { highlights } from "@kyanite/highlights";
 
+type TokenType = "keyword";
+type TokenModifier = "declaration";
+
 export function activate(context: vscode.ExtensionContext) {
   const semanticTokensProvider =
     vscode.languages.registerDocumentSemanticTokensProvider(
@@ -11,8 +14,8 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(semanticTokensProvider);
 }
 
-const tokenTypes = ["keyword"];
-const tokenModifiers: string[] = [];
+const tokenTypes: TokenType[] = ["keyword"];
+const tokenModifiers: TokenModifier[] = ["declaration"];
 const legend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
 
 const provider: vscode.DocumentSemanticTokensProvider = {
