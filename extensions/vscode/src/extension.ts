@@ -8,7 +8,6 @@ export function activate(context: vscode.ExtensionContext) {
       provider,
       legend
     );
-
   context.subscriptions.push(semanticTokensProvider);
 }
 
@@ -26,13 +25,18 @@ const provider: vscode.DocumentSemanticTokensProvider = {
       filename: document.fileName,
     });
     for (const token of tokens) {
-      console.log(token);
       const span = token.span;
       const range = new vscode.Range(
         new vscode.Position(span.line, span.start),
         new vscode.Position(span.line, span.end)
       );
-      tokensBuilder.push(range, token.kind.toLowerCase(), token.modifiers);
+      const tokenType = `${token.kind
+        .slice(0, 1)
+        .toLowerCase()}${token.kind.slice(1)}`;
+      const tokenModifiers = token.modifiers.map((modifier) =>
+        modifier.toLowerCase()
+      );
+      tokensBuilder.push(range, tokenType, tokenModifiers);
     }
     return tokensBuilder.build();
   },

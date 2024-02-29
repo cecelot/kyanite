@@ -9,19 +9,20 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [
-    "onLanguage:kyanite"
-  ],
   "main": "./out/extension.js",
   "contributes": {
-    "languages": [
-      {
-        "id": "kyanite",
-        "extensions": [
-          ".kya"
-        ]
-      }
-    ]
+    "languages": [{
+      "id": "kyanite",
+      "extensions": [
+        ".kya"
+      ],
+      "configuration": "./spec/language-configuration.json"
+    }],
+    "grammars": [{
+      "path": "./spec/grammar.tmLanguage.json",
+      "scopeName": "source.kyanite",
+      "language": "kyanite"
+    }]
   },
   "configurationDefaults": {
     "[kyanite]": {
