@@ -8,8 +8,10 @@
         { "include": "#control-flow" },
         { "include": "#record-impl-decl" },
         { "include": "#strings" },
+        { "include": "#numbers" },
         { "include": "#functions" },
         { "include": "#keyword" },
+        { "include": "#operators" },
         { "include": "#paren-expression" },
         { "include": "#comment" }
       ]
@@ -22,7 +24,7 @@
     "var-decl": {
       "match": "\\b(let)\\s+([a-zA-Z]+)(:)\\s+([A-Za-z]+)\\b",
       "captures": {
-        "0": { "name": "entity.name.type.kyanite" },
+        "4": { "name": "entity.name.type.kyanite" },
         "2": { "name": "entity.name.variable.kyanite" },
         "3": { "name": "keyword.operator.kyanite" },
         "1": { "name": "keyword.kyanite" }
@@ -39,10 +41,18 @@
         }
       ]
     },
+    "numbers": {
+      "name": "constant.numeric.kyanite",
+      "match": "\\b[0-9]+\\b(.[0-9]+)?\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.kyanite",
+      "match": "[\\+\\-\\/\\*]"
+    },
     "functions": {
       "match": "\\b(fun)\\s+([a-zA-Z]+)\\b",
       "captures": {
-        "0": { "name": "entity.name.function.kyanite" },
+        "2": { "name": "entity.name.function.kyanite" },
         "1": { "name": "keyword.kyanite" }
       }
     },
@@ -51,7 +61,7 @@
       "name": "keyword.kyanite"
     },
     "control-flow": {
-      "match": "\\b(if|else|while|for)\\b",
+      "match": "\\b(if|else|while|for|in)\\b",
       "name": "keyword.control.kyanite"
     },
     "record-impl-decl": {
@@ -60,7 +70,7 @@
         "1": {
           "name": "keyword.kyanite"
         },
-        "0": {
+        "2": {
           "name": "entity.name.type.kyanite"
         }
       }
