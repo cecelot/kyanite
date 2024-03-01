@@ -1,0 +1,23 @@
+class Coordinate {
+    x: int,
+    y: int
+
+    fun add(self, other: Coordinate): Coordinate {
+        let x: int = self.x + other.x;
+        let y: int = self.y + other.y;
+        return Coordinate:init(
+            x: self.x + other.x,
+            y: self.y + other.y
+        );
+    }
+}
+
+fun main() {
+    let c: Coordinate = Coordinate:init(x: 1, x: 2);
+    let res: Coordinate = c.add(Coordinate:init(
+        x: 3,
+        y: 4
+    ));
+    println_int(res.x);
+    println_int(res.y);
+}

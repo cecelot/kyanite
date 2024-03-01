@@ -14,10 +14,9 @@ use std::collections::HashMap;
 pub fn registers<I: ArchInstr, F: Frame<I>>(instrs: &Vec<AsmInstr<I>>) -> Registers {
     let graph = Graph::from(instrs);
     let ranges = LiveRanges::from(graph);
-    let interferences = ranges.interferences(instrs.len());
-    let live = ranges.live(instrs.len());
-    let color: Color<I, F> = Color::new(interferences, live);
-    Registers(color.color(&ranges))
+    let interferences = ranges.interferences();
+    let color: Color<I, F> = Color::new(interferences);
+    Registers(color.color(&ranges, instrs.len()))
 }
 
 crate::newtype!(Registers:HashMap<String, String>);

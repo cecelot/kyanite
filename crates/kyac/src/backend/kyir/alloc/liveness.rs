@@ -78,45 +78,33 @@ impl LiveRanges {
         self.0.get(temp).unwrap()
     }
 
-    /// Compute the sets of temporaries that interfere with each other across a program's lifetime.
-    pub fn interferences(&self, len: usize) -> HashMap<String, HashSet<String>> {
-        let local = self.live(len);
-        self.0
-            .keys()
-            .map(|temp| {
-                let interferes = local
+    pub fn interferences(&self) -> HashMap<String, HashSet<String>> {
+        let mut interferes = HashMap::new();
+        for (temp, range) in &self.0 {
+            interferes.insert(temp.clone(), HashSet::new());
+            let temp_lines = Self::lines(range);
+            for (other, range) in self.0.iter().filter(|&(k, _)| k != temp) {
+                let other_lines = Self::lines(range);
+                let overlaps = temp_lines
                     .iter()
-                    .filter_map(|g| g.get(temp).map(|set| set.iter().collect::<Vec<_>>()))
-                    .flatten()
-                    .cloned()
-                    .collect();
-                (temp.clone(), interferes)
-            })
-            .collect()
+                    .filter(|x| other_lines.contains(x))
+                    .count();
+                if overlaps > 0 {
+                    interferes.entry(temp.clone()).and_modify(|l| {
+                        l.insert(other.clone());
+                    });
+                }
+            }
+        }
+        interferes
     }
 
-    /// Compute the sets of temporaries that are live at each instruction.
-    pub fn live(&self, len: usize) -> Vec<HashMap<String, HashSet<String>>> {
-        (0..len - 1)
-            .map(|line| {
-                let mut live: HashMap<String, HashSet<String>> = HashMap::new();
-                let pairs = self
-                    .0
-                    .iter()
-                    .flat_map(|this| self.0.iter().map(move |other| (this, other)))
-                    .filter(|((temp, range), (other, other_range))| {
-                        temp != other && range[line] && other_range[line]
-                    });
-                for ((temp, _), (other, _)) in pairs {
-                    live.entry(temp.to_string())
-                        .or_default()
-                        .insert(other.to_string());
-                    live.entry(other.to_string())
-                        .or_default()
-                        .insert(temp.to_string());
-                }
-                live
-            })
+    fn lines(range: &[bool]) -> Vec<usize> {
+        range
+            .iter()
+            .enumerate()
+            .filter(|&(_, v)| *v)
+            .map(|(i, _)| i)
             .collect()
     }
 }

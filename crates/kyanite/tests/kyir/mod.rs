@@ -294,3 +294,10 @@ fn field_mutation() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "5\n6\n10\n106\n6\n");
     Ok(())
 }
+
+#[test]
+fn reg_live_across_call() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/reg-live-across-call.kya")?;
+    assert_eq!(res.output, "4\n6\n");
+    Ok(())
+}

@@ -107,12 +107,8 @@ impl ArchInstr for A64 {
 impl FlowGraphMeta for A64 {
     fn defines(&self) -> Vec<String> {
         match self {
-            A64::LoadImmediate(dst, ..)
-            | A64::LoadEffective(dst, ..)
-            | A64::Add(dst, ..)
-            | A64::Sub(dst, ..)
-            | A64::Mul(dst, ..)
-            | A64::Div(dst, ..) => {
+            A64::LoadImmediate(dst, src, ..) if dst == src => vec![],
+            A64::LoadImmediate(dst, ..) | A64::LoadEffective(dst, ..) => {
                 vec![dst.clone()]
             }
             A64::LoadPair(r1, r2) => vec![r1.clone(), r2.clone()],
