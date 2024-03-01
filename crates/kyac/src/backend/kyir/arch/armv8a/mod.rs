@@ -21,7 +21,7 @@ pub struct Armv8a {
 impl Frame<isa::A64> for Armv8a {
     fn new(func: &FuncDecl) -> Self {
         let r = Self::registers();
-        assert!(func.params.len() <= 6);
+        assert!(func.params.len() <= 8);
         let mut variables = HashMap::new();
         let mut offset = 0;
         for (i, param) in func.params.iter().enumerate() {
