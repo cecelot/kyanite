@@ -79,24 +79,24 @@ impl LiveRanges {
     }
 
     pub fn interferences(&self) -> HashMap<String, HashSet<String>> {
-        let mut interferes = HashMap::new();
-        for (temp, range) in &self.0 {
-            interferes.insert(temp.clone(), HashSet::new());
-            let temp_lines = Self::lines(range);
-            for (other, range) in self.0.iter().filter(|&(k, _)| k != temp) {
-                let other_lines = Self::lines(range);
-                let overlaps = temp_lines
+        self.0
+            .iter()
+            .map(|(temp, range)| (temp, Self::lines(range)))
+            .map(|(temp, live)| {
+                let interferes: HashSet<_> = self
+                    .0
                     .iter()
-                    .filter(|x| other_lines.contains(x))
-                    .count();
-                if overlaps > 0 {
-                    interferes.entry(temp.clone()).and_modify(|l| {
-                        l.insert(other.clone());
-                    });
-                }
-            }
-        }
-        interferes
+                    .filter(|&(k, _)| k != temp)
+                    .map(|(other, range)| (other, Self::lines(range)))
+                    .map(|(other, olive)| (other, live.iter().filter(move |x| olive.contains(x))))
+                    .filter_map(|(other, overlaps)| {
+                        let overlaps: Vec<_> = overlaps.collect();
+                        (!overlaps.is_empty()).then(|| other.clone())
+                    })
+                    .collect();
+                (temp.clone(), interferes)
+            })
+            .collect()
     }
 
     fn lines(range: &[bool]) -> Vec<usize> {
