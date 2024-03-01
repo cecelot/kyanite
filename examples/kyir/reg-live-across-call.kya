@@ -3,8 +3,6 @@ class Coordinate {
     y: int
 
     fun add(self, other: Coordinate): Coordinate {
-        let x: int = self.x + other.x;
-        let y: int = self.y + other.y;
         return Coordinate:init(
             x: self.x + other.x,
             y: self.y + other.y
