@@ -6,7 +6,7 @@ This section contains a comprehensive reference for the Kyanite language. A repr
 % Comments are defined with the `%` character.
 const PI: float = 3.14;
 
-rec Coordinate {
+Class Coordinate {
     x: int,
     y: int,
 }
@@ -20,7 +20,7 @@ fun main() {
         x: 1,
         y: 2,
     );
-    
+
     % The `+=` form is not currently supported
     coordinate.x = coordinate.x + 1;
 

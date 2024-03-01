@@ -41,12 +41,11 @@ impl TryFrom<&Source> for Ast {
 #[derive(Debug, Clone)]
 pub enum Decl {
     Function(Rc<node::FuncDecl>),
-    Record(Rc<node::RecordDecl>),
-    Implementation(Rc<node::Implementation>),
+    Class(Rc<node::ClassDecl>),
     Constant(Rc<node::ConstantDecl>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     Var(Rc<node::VarDecl>),
     Assign(Rc<node::Assign>),
@@ -57,7 +56,7 @@ pub enum Stmt {
     For(Rc<node::For>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Call(Rc<node::Call>),
     Access(Rc<node::Access>),

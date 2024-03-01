@@ -246,14 +246,13 @@ impl<'a> Lexer<'a> {
             "true" | "false" => Token::new(Kind::Literal, Some(lexeme.leak()), lexer.span),
             "return" => Token::new(Kind::Return, None, lexer.span),
             "extern" => Token::new(Kind::Extern, None, lexer.span),
-            "rec" => Token::new(Kind::Rec, None, lexer.span),
+            "class" => Token::new(Kind::Class, None, lexer.span),
             "init" => Token::new(Kind::Init, None, lexer.span),
             "if" => Token::new(Kind::If, None, lexer.span),
             "else" => Token::new(Kind::Else, None, lexer.span),
             "while" => Token::new(Kind::While, None, lexer.span),
             "for" => Token::new(Kind::For, None, lexer.span),
             "in" => Token::new(Kind::In, None, lexer.span),
-            "impl" => Token::new(Kind::Impl, None, lexer.span),
             _ => Token::new(Kind::Identifier, Some(lexeme.leak()), lexer.span),
         })
     }

@@ -7,7 +7,7 @@
       "patterns": [
         { "include": "#var-decl" },
         { "include": "#control-flow" },
-        { "include": "#record-impl-decl" },
+        { "include": "#class-decl" },
         { "include": "#strings" },
         { "include": "#numbers" },
         { "include": "#booleans" },
@@ -68,15 +68,15 @@
       "name": "entity.name.type.kyanite"
     },
     "keyword": {
-      "match": "\\b(let|const|fun|impl)\\b",
+      "match": "\\b(let|const|fun|class)\\b",
       "name": "keyword.kyanite"
     },
     "control-flow": {
       "match": "\\b(if|else|while|for|in|return)\\b",
       "name": "keyword.control.kyanite"
     },
-    "record-impl-decl": {
-      "match": "\\b(rec|impl) ([a-zA-Z]+)\\b",
+    "class-decl": {
+      "match": "\\b(class) ([a-zA-Z]+)\\b",
       "captures": {
         "1": {
           "name": "keyword.kyanite"

@@ -1,14 +1,12 @@
-rec Foo {
+class Foo {
     x: int,
     y: int,
     z: Bar
 }
 
-rec Bar {
+class Bar {
     z: int
-}
 
-impl Bar {
     fun show(self): int {
         println_int(self.z);
     }

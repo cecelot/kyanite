@@ -1,4 +1,4 @@
-rec Foo {
+class Foo {
     bar: str
 }
 

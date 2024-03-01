@@ -93,8 +93,7 @@ impl Check for Decl {
         match self {
             Decl::Function(fun) => Ok(pass.function(fun)),
             Decl::Constant(c) => pass.constant(c),
-            Decl::Implementation(ipl) => Ok(pass.implementation(ipl)),
-            Decl::Record(_) => Ok(Type::Void),
+            Decl::Class(cls) => Ok(pass.class(cls)),
         }
     }
 }
@@ -189,15 +188,6 @@ impl<'a> TypeCheckPass<'a> {
         self.errors.push(error);
     }
 
-    fn implementation(&mut self, ipl: &node::Implementation) -> Type {
-        self.ipl = Some(ipl.name.clone());
-        for method in &ipl.methods {
-            let _ = Decl::Function(Rc::clone(method)).check(self);
-        }
-        self.ipl = None;
-        Type::Void
-    }
-
     fn range(&mut self, range: &node::Range) -> Result<Type, TypeError> {
         let start = range.start.check(self)?;
         let end = range.end.check(self)?;
@@ -211,6 +201,15 @@ impl<'a> TypeCheckPass<'a> {
             );
             Err(TypeError::Mismatch(Type::Int, start))
         }
+    }
+
+    fn class(&mut self, cls: &node::ClassDecl) -> Type {
+        self.ipl = Some(cls.name.clone());
+        for method in &cls.methods {
+            let _ = Decl::Function(Rc::clone(method)).check(self);
+        }
+        self.ipl = None;
+        Type::Void
     }
 
     fn unary(&mut self, unary: &node::Unary) -> Result<Type, TypeError> {
@@ -299,19 +298,11 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {
-        let mut name = init.name.clone();
-        let lexeme = init.name.lexeme.map(|s| {
-            fn leak(s: String) -> &'static str {
-                s.leak()
-            }
-            leak(format!("{s}.rec"))
-        });
-        name.lexeme = lexeme;
-        let rec = symbol!(self, name, Record, "record");
+        let cls = symbol!(self, init.name, Class, "class");
         for initializer in &init.initializers {
             let got = initializer.expr.check(self)?;
             let expected =
-                if let Some(field) = rec.fields.iter().find(|f| f.name == initializer.name) {
+                if let Some(field) = cls.fields.iter().find(|f| f.name == initializer.name) {
                     Type::from(&field.ty)
                 } else {
                     self.error(
@@ -350,18 +341,18 @@ impl<'a> TypeCheckPass<'a> {
         let mut ty = access.chain[0].check(self)?;
         let mut symbols = vec![];
         let mut indices = vec![];
-        let Some(mut symbol) = self.symbol(&format!("{ty}.rec")).cloned() else {
+        let Some(mut symbol) = self.symbol(&ty.to_string()).cloned() else {
             return Err(TypeError::Undefined);
         };
         symbols.push(symbol.clone());
         for (i, pair) in access.chain.windows(2).enumerate() {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
-                let rec = cast!(symbol, r, Symbol::Record(ref r));
+                let cls = cast!(symbol, r, Symbol::Class(ref r));
                 if let Expr::Ident(ident) = left {
-                    let field = rec.fields.iter().find(|f| f.name == ident.name);
+                    let field = cls.fields.iter().find(|f| f.name == ident.name);
                     if let Some(field) = field {
-                        symbol = self.symbol(&format!("{}.rec", field.ty)).cloned().unwrap();
+                        symbol = self.symbol(&field.ty.to_string()).cloned().unwrap();
                         symbols.push(symbol.clone());
                     } else {
                         return err(self, "field", ident, ty);
@@ -370,18 +361,18 @@ impl<'a> TypeCheckPass<'a> {
                     todo!("support accesses after method calls")
                 }
             }
-            let rec = cast!(symbol, r, Symbol::Record(ref r));
+            let cls = cast!(symbol, r, Symbol::Class(ref r));
             if let Expr::Ident(ident) = right {
-                let index = rec.fields.iter().position(|f| f.name == ident.name);
+                let index = cls.fields.iter().position(|f| f.name == ident.name);
                 if let Some(index) = index {
                     indices.push(index);
-                    ty = Type::from(&rec.fields[index].ty);
+                    ty = Type::from(&cls.fields[index].ty);
                 } else {
                     return err(self, "field", ident, ty);
                 }
             } else {
-                let symbol = self.symbol(&format!("{ty}.impl")).unwrap();
-                let ipl = cast!(symbol, i, Symbol::Implementation(ref i));
+                let symbol = self.symbol(&ty.to_string()).unwrap();
+                let ipl = cast!(symbol, i, Symbol::Class(ref i));
                 let call = cast!(right, c, Expr::Call(c));
                 let ident = call.left.ident();
                 let method = ipl
@@ -462,11 +453,11 @@ impl<'a> TypeCheckPass<'a> {
                 let symb = self
                     .ipl
                     .as_ref()
-                    .map_or(function.to_string(), |ipl| format!("{ipl}.impl"));
+                    .map_or(function.to_string(), ToString::to_string);
                 let symbol = self.symbol(&symb).unwrap();
                 let expected = match symbol {
-                    Symbol::Implementation(ipl) => {
-                        let method = ipl.methods.iter().find(|m| &m.name == function).unwrap();
+                    Symbol::Class(cls) => {
+                        let method = cls.methods.iter().find(|m| &m.name == function).unwrap();
                         Type::from(method.ty.as_ref())
                     }
                     Symbol::Function(f) => Type::from(f.ty.as_ref()),
@@ -626,5 +617,5 @@ macro_rules! assert_typecheck {
 
 assert_typecheck! {
     "test-cases/typecheck/varied.kya" => varied,
-    "test-cases/typecheck/records.kya" => records
+    "test-cases/typecheck/classes.kya" => classes
 }

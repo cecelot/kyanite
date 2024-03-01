@@ -1,11 +1,11 @@
-rec Foo {
+class Foo {
     w: Bar,
     x: int,
     y: int,
     z: int
 }
 
-rec Bar {
+class Bar {
     a: int,
     b: int,
     c: int

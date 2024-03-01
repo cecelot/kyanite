@@ -58,36 +58,36 @@ fn called_nested_loop() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn simple_record() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/simple-record.kya")?;
+fn simple_class() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/simple-class.kya")?;
     assert_eq!(res.output, "3\n");
     Ok(())
 }
 
 #[test]
-fn record_with_addition() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/record-with-addition.kya")?;
+fn class_with_addition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/class-with-addition.kya")?;
     assert_eq!(res.output, "7\n");
     Ok(())
 }
 
 #[test]
-fn nested_records() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/nested-records.kya")?;
+fn class_composition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/class-composition.kya")?;
     assert_eq!(res.output, "1\n2\ntrue\n");
     Ok(())
 }
 
 #[test]
-fn big_record() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/big-record.kya")?;
+fn large_class() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/large-class.kya")?;
     assert_eq!(res.output, "1\n8\n19\n28\n");
     Ok(())
 }
 
 #[test]
-fn record_access_in_condition() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/record-access-in-condition.kya")?;
+fn field_access_in_condition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/field-access-in-condition.kya")?;
     assert_eq!(res.output, "20\n50\n60\n");
     Ok(())
 }
@@ -100,8 +100,8 @@ fn factorial() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn record_as_arg() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/record-as-arg.kya")?;
+fn class_as_arg() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/class-as-arg.kya")?;
     assert_eq!(res.output, "1\n2\n18\n");
     Ok(())
 }
@@ -163,8 +163,8 @@ fn simple_if() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn record_return() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/record-return.kya")?;
+fn returns_class() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/returns-class.kya")?;
     assert_eq!(res.output, "1\n2\n");
     Ok(())
 }
@@ -177,15 +177,15 @@ fn many_args() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn embedded_record_init() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/embedded-record-init.kya")?;
+fn embedded_class_init() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/embedded-class-init.kya")?;
     assert_eq!(res.output, "7721\n14000\n");
     Ok(())
 }
 
 #[test]
-fn complex_record() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/complex-record.kya")?;
+fn complex_class() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/complex-class.kya")?;
     assert_eq!(res.output, "1\n2\n3\n4\n5\n15\n22\n16\n17\n77\n");
     Ok(())
 }
@@ -198,15 +198,15 @@ fn shadow() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn more_records() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/more-records.kya")?;
+fn more_classes() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/more-classes.kya")?;
     assert_eq!(res.output, "1\n8\n16\n9\n");
     Ok(())
 }
 
 #[test]
-fn deeply_nested_records() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/deeply-nested-records.kya")?;
+fn extreme_composition() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/extreme-composition.kya")?;
     assert_eq!(res.output, "5\n4\n3\n");
     Ok(())
 }
@@ -254,8 +254,8 @@ fn gc_shared_child_field() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn basic_impl_block() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/basic-impl.kya")?;
+fn basic_methods() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/basic-methods.kya")?;
     assert_eq!(res.output, "14\n77\n999\nhello from `show()`\n");
     Ok(())
 }
@@ -289,8 +289,8 @@ fn nested_access_in_impl_call() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn record_mutation() -> Result<(), Box<dyn std::error::Error>> {
-    let res = run("kyir/record-mutation.kya")?;
+fn field_mutation() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/field-mutation.kya")?;
     assert_eq!(res.output, "5\n6\n10\n106\n6\n");
     Ok(())
 }

@@ -1,24 +1,24 @@
-rec A {
+class A {
     a: int,
     b: B
 }
 
-rec B {
+class B {
     c: int,
     d: C
 }
 
-rec C {
+class C {
     e: int,
     f: D
 }
 
-rec D {
+class D {
     g: int,
     h: E
 }
 
-rec E {
+class E {
     i: int
 }
 

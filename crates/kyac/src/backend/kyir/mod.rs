@@ -64,11 +64,12 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
                 .filter_map(|decl| {
                     if let Decl::Function(decl) = decl {
                         Some(vec![(decl.name.to_string(), decl.id)])
-                    } else if let Decl::Implementation(decl) = decl {
+                    } else if let Decl::Class(class) = decl {
                         Some(
-                            decl.methods
+                            class
+                                .methods
                                 .iter()
-                                .map(|m| (format!("{}.{}", decl.name, m.name), m.id))
+                                .map(|m| (format!("{}.{}", class.name, m.name), m.id))
                                 .collect(),
                         )
                     } else {

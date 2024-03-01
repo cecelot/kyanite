@@ -2,7 +2,7 @@ mod builtins;
 
 use crate::{
     ast::{
-        node::{self, Ident, RecordDecl},
+        node::{self, ClassDecl, Ident},
         Decl, Expr, Stmt, Type,
     },
     backend::llvm::builtins::Builtins,
@@ -83,7 +83,7 @@ pub struct Ir<'a, 'ctx> {
     builder: &'a Builder<'ctx>,
     fpm: &'a PassManager<FunctionValue<'ctx>>,
     variables: HashMap<String, (PointerValue<'ctx>, Type)>,
-    records: HashMap<String, (StructType<'ctx>, Rc<RecordDecl>)>,
+    classes: HashMap<String, (StructType<'ctx>, Rc<ClassDecl>)>,
     function: Option<FunctionValue<'ctx>>,
     symbols: SymbolTable,
     accesses: AccessMap,
@@ -114,7 +114,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             fpm: &fpm,
 
             variables: HashMap::new(),
-            records: HashMap::new(),
+            classes: HashMap::new(),
             function: None,
 
             symbols,
@@ -136,8 +136,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         match decl {
             Decl::Function(fun) => self.function(fun).map(Into::into),
             Decl::Constant(_) => todo!(),
-            Decl::Implementation(_) => todo!(),
-            Decl::Record(rec) => Ok(self.record(rec).into()),
+            Decl::Class(cls) => Ok(self.class(cls).into()),
         }
     }
 
@@ -173,16 +172,15 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         }
     }
 
-    fn build_struct(&mut self, record: &node::RecordDecl) -> StructType<'ctx> {
+    fn build_struct(&mut self, cls: &node::ClassDecl) -> StructType<'ctx> {
         self.context.struct_type(
-            record
-                .fields
+            cls.fields
                 .iter()
                 .map(|f| match Type::from(&f.ty) {
                     Type::UserDefined(name) => {
-                        let symbol = self.symbols.get(&format!("{name}.rec")).unwrap().clone();
+                        let symbol = self.symbols.get(&name.to_string()).unwrap().clone();
                         match symbol {
-                            Symbol::Record(rec) => self.build_struct(&rec).into(),
+                            Symbol::Class(cls) => self.build_struct(&cls).into(),
                             _ => unreachable!(),
                         }
                     }
@@ -194,15 +192,15 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         )
     }
 
-    fn record(&mut self, record: &Rc<node::RecordDecl>) -> BasicValueEnum<'ctx> {
-        let rec = self.build_struct(record);
-        self.records
-            .insert(record.name.to_string(), (rec, Rc::clone(record)));
+    fn class(&mut self, cls: &Rc<node::ClassDecl>) -> BasicValueEnum<'ctx> {
+        let class = self.build_struct(cls);
+        self.classes
+            .insert(cls.name.to_string(), (class, Rc::clone(cls)));
         self.context.i64_type().const_int(0, false).into()
     }
 
     fn init(&mut self, init: &node::Init) -> Result<BasicValueEnum<'ctx>, IrError> {
-        let (rec, _) = *self.records.get(&init.name.to_string()).unwrap();
+        let (cls, _) = *self.classes.get(&init.name.to_string()).unwrap();
         let mut values = vec![];
         for init in &init.initializers {
             values.push(
@@ -211,7 +209,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
                     .map_err(|()| IrError::Malformed("init expression"))?,
             );
         }
-        Ok(rec.const_named_struct(values.as_slice()).into())
+        Ok(cls.const_named_struct(values.as_slice()).into())
     }
 
     fn indices(&mut self, access: &node::Access) -> (Vec<(u32, Type)>, Type) {
@@ -233,7 +231,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
         };
         let (indices, last) = self.indices(access);
         let ty = self
-            .records
+            .classes
             .get(&ty.to_string())
             .map(|(ty, _)| ty)
             .copied()
@@ -622,11 +620,11 @@ impl ToBasicTypeEnum for Type {
                 .ptr_type(AddressSpace::default())
                 .into(),
             Type::Bool => ir.context.bool_type().into(),
-            // TODO: this may be something other than a record in the future
+            // TODO: this may be something other than a class in the future
             Type::UserDefined(name) => ir
-                .records
+                .classes
                 .get(name)
-                .expect("called before all records built")
+                .expect("called before all classes built")
                 .0
                 .into(),
             Type::Void => unimplemented!("void does not implement `BasicTypeEnum`"),

@@ -1,6 +1,6 @@
 mod canon;
 
-pub use canon::canonicalize;
+pub(super) use canon::canonicalize;
 
 use crate::{ast::node::FuncDecl, pass::Symbol};
 #[allow(clippy::wildcard_imports)]
@@ -109,8 +109,7 @@ impl Translate<Vec<Stmt>> for AstDecl {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Vec<Stmt> {
         match self {
             AstDecl::Function(function) => vec![function.translate(translator)],
-            AstDecl::Record(rec) => vec![rec.translate(translator)],
-            AstDecl::Implementation(ipl) => ipl.translate(translator),
+            AstDecl::Class(cls) => cls.translate(translator),
             AstDecl::Constant(_) => todo!(),
         }
     }
@@ -170,7 +169,7 @@ impl Translate<Expr> for ast::node::Call {
                 let name = meta.symbols.iter().rev().take(2).rev().map(|item| {
                     match item {
                         Symbol::Function(fun) => fun.name.to_string(),
-                        Symbol::Record(rec)=> rec.name.to_string(),
+                        Symbol::Class(cls)=> cls.name.to_string(),
                         _ => unimplemented!(),
                     }
                 }).fold(String::new(), |acc, item| format!("{acc}{item}."));
@@ -281,9 +280,9 @@ impl Translate<Expr> for ast::node::Init {
         let base = frame.allocate(&name, true);
         let descriptor = &translator
             .symbols
-            .get(&format!("{}.rec", self.name))
+            .get(&self.name.to_string())
             .unwrap()
-            .record()
+            .class()
             .descriptor;
         let descriptor = descriptor.iter().collect();
         let ptr = translator.ctx.strings.add(descriptor);
@@ -532,7 +531,7 @@ impl Translate<Stmt> for ast::node::FuncDecl {
     }
 }
 
-impl Translate<Vec<Stmt>> for ast::node::Implementation {
+impl Translate<Vec<Stmt>> for ast::node::ClassDecl {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Vec<Stmt> {
         self.methods
             .iter()
@@ -550,12 +549,6 @@ impl Translate<Vec<Stmt>> for ast::node::Implementation {
                 clone.translate(translator)
             })
             .collect()
-    }
-}
-
-impl Translate<Stmt> for ast::node::RecordDecl {
-    fn translate<I: ArchInstr, F: Frame<I>>(&self, _: &mut Translator<I, F>) -> Stmt {
-        Stmt::Noop
     }
 }
 

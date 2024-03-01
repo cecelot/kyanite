@@ -1,15 +1,15 @@
-rec Foo {
+class Foo {
    x: int,
    y: int,
    bar: Bar,
    baz: Baz,
 }
 
-rec Bar {
+class Bar {
    z: int,
 }
 
-rec Baz {
+class Baz {
    w: int
 }
 

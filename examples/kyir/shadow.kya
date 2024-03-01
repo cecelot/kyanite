@@ -1,4 +1,4 @@
-rec Bar {
+class Bar {
     x: int
 }
 

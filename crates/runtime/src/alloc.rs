@@ -82,14 +82,11 @@ impl Allocator {
                 (src <= sp).then_some(src)
             })
             .filter(|src| {
-                let record = unsafe { std::ptr::read(src.cast()) };
-                log(&format!(
-                    "runtime: gc: scanning {src:?} -> {}",
-                    record as u64
-                ));
+                let cls = unsafe { std::ptr::read(src.cast()) };
+                log(&format!("runtime: gc: scanning {src:?} -> {}", cls as u64));
                 let forward = {
                     let allocations = self.allocations.lock().unwrap();
-                    allocations.contains(&record)
+                    allocations.contains(&cls)
                 };
                 forward
             })
@@ -102,9 +99,9 @@ impl Allocator {
         children: &HashMap<u64, Vec<*mut u8>>,
         forwarded: &HashMap<*const u8, *const u8>,
     ) {
-        for &record in reachable.iter().map(|(_, record)| record) {
-            if let Some(fields) = children.get(&(record as u64)) {
-                let &ars = forwarded.get(&record).unwrap();
+        for &cls in reachable.iter().map(|(_, cls)| cls) {
+            if let Some(fields) = children.get(&(cls as u64)) {
+                let &ars = forwarded.get(&cls).unwrap();
                 for &new_value_ptr in fields {
                     log(&format!(
                         "runtime: gc: updating child pointer at {new_value_ptr:?} to {ars:?}"
@@ -120,14 +117,14 @@ impl Allocator {
     fn copy_fields(
         count: usize,
         descriptor: &str,
-        record: *const u8,
+        class: *const u8,
         new_region: NonNull<u8>,
         children: &mut HashMap<u64, Vec<*mut u8>>,
     ) {
         for (n, offset) in (0..count).map(|i| i * 8).enumerate() {
             unsafe {
                 let new_value_ptr = new_region.as_ptr().add(offset);
-                let current_value_ptr = record.add(offset);
+                let current_value_ptr = class.add(offset);
                 let current_value: u64 = std::ptr::read(current_value_ptr.cast());
                 log(&format!("runtime: gc: [{offset}]: copying {current_value} from {current_value_ptr:?} to {new_value_ptr:?}"));
                 std::ptr::copy::<u64>(current_value_ptr.cast(), new_value_ptr.cast(), 1);
@@ -146,7 +143,7 @@ impl Allocator {
     }
 
     /// A garbage collector using breadth-first copying which traverses the currently reachable stack
-    /// and forwards all valid records it finds from `self.current` (from-space) to a new region of memory
+    /// and forwards all valid classes it finds from `self.current` (from-space) to a new region of memory
     /// using the `Bump` allocator (to-space).
     pub fn gc(&mut self, frame: &FrameInfo) {
         let fp = unsafe { frame.ptr.sub(frame.size.abs().try_into().unwrap()) };
@@ -161,20 +158,21 @@ impl Allocator {
         let mut allocations: Vec<*const u8> = Vec::new();
         let mut forwarded: HashMap<*const u8, *const u8> = HashMap::new();
         let mut children: HashMap<_, Vec<*mut u8>> = HashMap::new();
-        for &(loc, record) in &reachable {
-            let forwarded = forwarded.get(&record).copied().unwrap_or_else(|| {
-                let descriptor = unsafe { read_string(record).0 };
-                log(&format!("runtime: gc: stack({loc:?}): (descriptor: {descriptor}), forwarding {record:?}"));
+        for &(loc, class) in &reachable {
+            let forwarded = forwarded.get(&class).copied().unwrap_or_else(|| {
+                let descriptor = unsafe { read_string(class).0 };
+                log(&format!(
+                    "runtime: gc: stack({loc:?}): (descriptor: {descriptor}), forwarding {class:?}"
+                ));
                 let count = descriptor.len() + 1;
-                let new_region =
-                    scratch.alloc_layout(Layout::array::<u64>(count).unwrap());
+                let new_region = scratch.alloc_layout(Layout::array::<u64>(count).unwrap());
                 allocations.push(new_region.as_ptr().cast());
-                Self::copy_fields(count, &descriptor, record, new_region, &mut children);
-                forwarded.insert(record, new_region.as_ptr());
+                Self::copy_fields(count, &descriptor, class, new_region, &mut children);
+                forwarded.insert(class, new_region.as_ptr());
                 new_region.as_ptr()
             });
             log(&format!(
-                "runtime: gc: stack({loc:?}): forwarding {record:?} to {forwarded:?}"
+                "runtime: gc: stack({loc:?}): forwarding {class:?} to {forwarded:?}"
             ));
             unsafe {
                 std::ptr::write::<u64>(loc.cast_mut().cast(), forwarded as u64);

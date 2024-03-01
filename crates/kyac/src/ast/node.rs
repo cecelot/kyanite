@@ -7,7 +7,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
@@ -48,40 +48,30 @@ impl FuncDecl {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct RecordDecl {
+#[derive(Debug, PartialEq)]
+pub struct ClassDecl {
     pub name: Token,
     pub fields: Vec<Field>,
     pub descriptor: Vec<char>,
+    pub methods: Vec<Rc<FuncDecl>>,
 }
 
-impl RecordDecl {
-    pub fn wrapped(name: Token, fields: Vec<Field>) -> Decl {
+impl ClassDecl {
+    pub fn wrapped(name: Token, fields: Vec<Field>, methods: Vec<Rc<FuncDecl>>) -> Decl {
         let descriptor: Vec<_> = fields
             .iter()
             .map(|f| match Type::from(&f.ty) {
                 Type::Int | Type::Float | Type::Bool => 'i',
                 Type::Str | Type::UserDefined(_) => 'p',
-                Type::Void => panic!("record cannot contain void field"),
+                Type::Void => panic!("class cannot contain void field"),
             })
             .collect();
-        Decl::Record(Rc::new(Self {
+        Decl::Class(Rc::new(Self {
             name,
             fields,
             descriptor,
+            methods,
         }))
-    }
-}
-
-#[derive(Debug)]
-pub struct Implementation {
-    pub name: Token,
-    pub methods: Vec<Rc<FuncDecl>>,
-}
-
-impl Implementation {
-    pub fn wrapped(name: Token, methods: Vec<Rc<FuncDecl>>) -> Decl {
-        Decl::Implementation(Rc::new(Self { name, methods }))
     }
 }
 
@@ -98,7 +88,7 @@ impl ConstantDecl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct VarDecl {
     pub name: Token,
     pub ty: Token,
@@ -111,7 +101,7 @@ impl VarDecl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Assign {
     pub target: Expr,
     pub expr: Expr,
@@ -123,7 +113,7 @@ impl Assign {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Return {
     pub expr: Expr,
     pub keyword: Token,
@@ -135,7 +125,7 @@ impl Return {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct If {
     pub condition: Expr,
     pub is: Vec<Stmt>,
@@ -152,7 +142,7 @@ impl If {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct While {
     pub condition: Expr,
     pub body: Vec<Stmt>,
@@ -164,7 +154,7 @@ impl While {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct For {
     pub index: Token,
     pub iter: Expr,
@@ -181,7 +171,7 @@ impl For {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Call {
     pub left: Box<Expr>,
     pub args: Vec<Expr>,
@@ -214,7 +204,7 @@ impl Call {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Access {
     pub chain: Vec<Expr>,
     pub id: usize,
@@ -228,7 +218,7 @@ impl Access {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub op: Token,
@@ -245,7 +235,7 @@ impl Binary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Unary {
     pub op: Token,
     pub expr: Box<Expr>,
@@ -260,7 +250,7 @@ impl Unary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Ident {
     pub name: Token,
 }
@@ -271,7 +261,7 @@ impl Ident {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Init {
     pub name: Token,
     pub initializers: Vec<Initializer>,
@@ -288,7 +278,7 @@ impl Init {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Range {
     pub start: Expr,
     pub end: Expr,
@@ -305,7 +295,7 @@ impl Range {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Literal<T> {
     pub value: T,
     pub token: Token,
@@ -333,7 +323,7 @@ impl<T> Literal<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Initializer {
     pub name: Token,
     pub expr: Expr,

@@ -1,4 +1,4 @@
-rec Big {
+class Big {
     a: int,
     b: int,
     c: int,

@@ -1,4 +1,4 @@
-rec Coordinate {
+class Coordinate {
     x: int,
     y: int
 }

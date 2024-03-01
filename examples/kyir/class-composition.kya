@@ -1,9 +1,9 @@
-rec Coordinate {
+class Coordinate {
     pos: Position,
     is_fun: bool
 }
 
-rec Position {
+class Position {
     x: int,
     y: int
 }

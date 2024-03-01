@@ -1,10 +1,8 @@
-rec Foo {
+class Foo {
     x: int,
     y: int,
     z: Bar
-}
 
-impl Foo {
     fun show(self): int {
         println_int(self.x);
         println_int(self.y);
@@ -12,11 +10,9 @@ impl Foo {
     }
 }
 
-rec Bar {
+class Bar {
     z: int
-}
 
-impl Bar {
     fun show(self, x: int): int {
         println_int(self.z);
         println_int(x);

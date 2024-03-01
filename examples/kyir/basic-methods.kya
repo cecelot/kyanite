@@ -1,9 +1,7 @@
-rec Foo {
+class Foo {
     x: int,
     y: int
-}
 
-impl Foo {
     fun show(self, i: int, h: str) {
         println_int(self.x);
         println_int(self.y);

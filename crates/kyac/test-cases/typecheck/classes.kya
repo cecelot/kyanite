@@ -1,14 +1,14 @@
-rec Person {
+class Person {
     name: str,
     favorite: int,
     foo: Foo
 }
 
-rec Foo {
+class Foo {
     bar: Bar
 }
 
-rec Bar {
+class Bar {
     baz: bool
 }
 

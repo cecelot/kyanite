@@ -1,0 +1,116 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: pass.errors
+---
+[
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "no field `hello` on type `Person`",
+        source: "        hello: \"world\"",
+        span: Span {
+            line: 22,
+            column: 9,
+            length: 5,
+        },
+        text: "",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "expected expression of type Person",
+        source: "    p = 5;",
+        span: Span {
+            line: 25,
+            column: 9,
+            length: 1,
+        },
+        text: "expression of type int",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "expected expression of type bool",
+        source: "    p.foo.bar.baz = Bar:init(baz: false);",
+        span: Span {
+            line: 28,
+            column: 21,
+            length: 3,
+        },
+        text: "expression of type Bar",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "expected initializer to be of type int",
+        source: "    let name: int = p.name;",
+        span: Span {
+            line: 30,
+            column: 21,
+            length: 6,
+        },
+        text: "expression of type str",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "no field `faavorite` on type `Person`",
+        source: "    let favorite: int = p.faavorite;",
+        span: Span {
+            line: 31,
+            column: 27,
+            length: 9,
+        },
+        text: "",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "no field `barr` on type `Foo`",
+        source: "    let bar: Bar = p.foo.barr;",
+        span: Span {
+            line: 33,
+            column: 26,
+            length: 4,
+        },
+        text: "",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "no field `baaz` on type `Bar`",
+        source: "    let baz: Baz = p.foo.bar.baaz;",
+        span: Span {
+            line: 34,
+            column: 30,
+            length: 4,
+        },
+        text: "",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "expected initializer to be of type Baz",
+        source: "    let baz: Baz = p.foo.bar;",
+        span: Span {
+            line: 37,
+            column: 20,
+            length: 9,
+        },
+        text: "expression of type Bar",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "expected initializer to be of type Baz",
+        source: "    let baz: Baz = p.foo.bar.baz;",
+        span: Span {
+            line: 38,
+            column: 20,
+            length: 13,
+        },
+        text: "expression of type bool",
+    },
+    PreciseError {
+        filename: "test-cases/typecheck/classes.kya",
+        heading: "`foo` is not defined",
+        source: "    foo.baz;",
+        span: Span {
+            line: 40,
+            column: 5,
+            length: 3,
+        },
+        text: "",
+    },
+]

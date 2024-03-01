@@ -40,11 +40,10 @@ impl<'a> Parser<'a> {
         let mut nodes: Vec<Decl> = vec![];
         while let Ok(token) = self.peek() {
             match match token.kind {
-                Kind::Rec => self.record(),
+                Kind::Class => self.class(),
                 Kind::Fun => self.function(&None, false),
                 Kind::Extern => self.function(&None, true),
                 Kind::Const => self.constant(),
-                Kind::Impl => self.implementation(),
                 Kind::Eof => break,
                 _ => {
                     let token = self.advance().unwrap();
@@ -69,19 +68,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn record(&mut self) -> Result<Decl, ParseError> {
-        self.consume(Kind::Rec)?;
+    fn class(&mut self) -> Result<Decl, ParseError> {
+        self.consume(Kind::Class)?;
         let name = self.consume(Kind::Identifier)?;
         self.consume(Kind::LeftBrace)?;
         let fields = self.fields()?;
-        self.consume(Kind::RightBrace)?;
-        Ok(RecordDecl::wrapped(name, fields))
-    }
-
-    fn implementation(&mut self) -> Result<Decl, ParseError> {
-        self.consume(Kind::Impl)?;
-        let name = self.consume(Kind::Identifier)?;
-        self.consume(Kind::LeftBrace)?;
         let mut methods = vec![];
         while self.peek()?.kind != Kind::RightBrace {
             methods.push(match self.function(&Some(name.clone()), false)? {
@@ -90,7 +81,7 @@ impl<'a> Parser<'a> {
             });
         }
         self.consume(Kind::RightBrace)?;
-        Ok(Implementation::wrapped(name, methods))
+        Ok(ClassDecl::wrapped(name, fields, methods))
     }
 
     fn function(&mut self, method: &Option<Token>, external: bool) -> Result<Decl, ParseError> {
@@ -136,12 +127,12 @@ impl<'a> Parser<'a> {
 
     fn fields(&mut self) -> Result<Vec<Field>, ParseError> {
         let mut fields: Vec<Field> = vec![];
-        while self.peek()?.kind != Kind::RightBrace {
+        while !matches!(self.peek()?.kind, Kind::RightBrace | Kind::Fun) {
             let name = self.consume(Kind::Identifier)?;
             self.consume(Kind::Colon)?;
             let ty = self.consume(Kind::Identifier)?;
             fields.push(Field::new(name, ty));
-            if self.peek()?.kind != Kind::RightBrace {
+            if !matches!(self.peek()?.kind, Kind::RightBrace | Kind::Fun) {
                 self.consume(Kind::Comma)?;
             }
         }
