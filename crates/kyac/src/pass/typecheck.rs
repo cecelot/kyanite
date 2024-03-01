@@ -434,6 +434,13 @@ impl<'a> TypeCheckPass<'a> {
         }
         self.begin_scope();
         self.function = Some(fun.name.clone());
+        if fun.params.len() > 8 {
+            self.error(
+                fun.name.span,
+                "functions cannot have more than 8 parameters".into(),
+                "try removing some parameters".into(),
+            );
+        }
         for param in &fun.params {
             self.scope_mut()
                 .insert(param.name.to_string(), Symbol::Function(Rc::clone(fun)));
