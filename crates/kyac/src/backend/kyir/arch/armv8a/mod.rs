@@ -23,7 +23,7 @@ impl Frame<isa::A64> for Armv8a {
         let r = Self::registers();
         assert!(func.params.len() <= 8);
         let mut variables = HashMap::new();
-        let mut offset = 0;
+        let mut offset = -i64::try_from(r.callee.len() * Self::word_size()).unwrap();
         for (i, param) in func.params.iter().enumerate() {
             if i == 0 {
                 offset -= i64::try_from(Self::word_size()).unwrap();
@@ -95,8 +95,6 @@ impl Frame<isa::A64> for Armv8a {
     fn prologue(&self) -> Vec<isa::A64> {
         let r = Self::registers();
         let mut prologue = vec![];
-        // let saves = list(&Opcode::Push);
-        // prologue.extend(saves);
         prologue.push(isa::A64::Sub(
             r.stack.into(),
             r.stack.into(),
@@ -114,9 +112,15 @@ impl Frame<isa::A64> for Armv8a {
             r.stack.into(),
             String::from("#16"),
         ));
-        for (i, formal) in self.formals.iter().enumerate() {
+        for (i, formal) in r
+            .callee
+            .iter()
+            .copied()
+            .chain(self.formals.iter().map(|formal| formal.register))
+            .enumerate()
+        {
             prologue.push(isa::A64::StoreImmediate(
-                formal.register.into(),
+                formal.into(),
                 r.frame.into(),
                 i64::try_from((i + 1) * Self::word_size()).unwrap(),
             ));
@@ -126,21 +130,33 @@ impl Frame<isa::A64> for Armv8a {
 
     fn epilogue(&self) -> Vec<isa::A64> {
         let r = Self::registers();
-        vec![
-            isa::A64::LoadPair(r.frame.into(), r.link.into()),
-            isa::A64::Add(
-                r.stack.into(),
-                r.stack.into(),
-                format!(
-                    "#{}",
-                    next_multiple_of(
-                        self.offset.abs() + i64::try_from(Self::word_size()).unwrap(),
-                        16
-                    )
+        r.callee
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, callee)| {
+                isa::A64::LoadImmediate(
+                    callee.into(),
+                    r.frame.into(),
+                    i64::try_from((i + 1) * Self::word_size()).unwrap(),
+                )
+            })
+            .chain(vec![
+                isa::A64::LoadPair(r.frame.into(), r.link.into()),
+                isa::A64::Add(
+                    r.stack.into(),
+                    r.stack.into(),
+                    format!(
+                        "#{}",
+                        next_multiple_of(
+                            self.offset.abs() + i64::try_from(Self::word_size()).unwrap(),
+                            16
+                        )
+                    ),
                 ),
-            ),
-            isa::A64::Ret,
-        ]
+                isa::A64::Ret,
+            ])
+            .collect()
     }
 
     fn header() -> &'static str {
