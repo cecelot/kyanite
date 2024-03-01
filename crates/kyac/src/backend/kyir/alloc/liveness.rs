@@ -89,10 +89,7 @@ impl LiveRanges {
                     .filter(|&(k, _)| k != temp)
                     .map(|(other, range)| (other, Self::lines(range)))
                     .map(|(other, olive)| (other, live.iter().filter(move |x| olive.contains(x))))
-                    .filter_map(|(other, overlaps)| {
-                        let overlaps: Vec<_> = overlaps.collect();
-                        (!overlaps.is_empty()).then(|| other.clone())
-                    })
+                    .filter_map(|(other, overlaps)| (overlaps.count() > 0).then(|| other.clone()))
                     .collect();
                 (temp.clone(), interferes)
             })
