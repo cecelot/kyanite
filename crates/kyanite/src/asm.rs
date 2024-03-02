@@ -13,12 +13,7 @@ pub fn compile<I: ArchInstr, F: Frame<I>>(
     write!(file, "{}{}", F::header(), instrs).unwrap();
     subprocess::handle(subprocess::exec(
         "clang",
-        &[
-            asm,
-            "-o",
-            exe,
-            &format!("{}/libkyanite_runtime.a", include_dir()),
-        ],
+        &[asm, "-o", exe, &format!("{}/libruntime.a", include_dir())],
     ))
     .map_err(PipelineError::CompileError)?;
     Ok(exe.into())

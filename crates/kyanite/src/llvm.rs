@@ -13,7 +13,7 @@ pub fn compile(ir: &str, filename: &str) -> Result<String, PipelineError> {
         .map_err(PipelineError::CompileError)?;
     subprocess::handle(subprocess::exec(
         "clang",
-        &[obj, "-o", exe, "-L", &include_dir(), "-lkyanite_runtime"],
+        &[obj, "-o", exe, &format!("{}/libruntime.a", include_dir())],
     ))
     .map_err(PipelineError::CompileError)?;
     Ok(exe.into())

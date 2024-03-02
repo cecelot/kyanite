@@ -49,7 +49,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Commands::Version => {
-            println!("kyanite {} (kyac {})", kyanite::VERSION, kyac::VERSION);
+            println!(
+                "Kyanite:\n{:>12} {:>5}\n{:>12} {:>5}\n{:>12} {:>5}",
+                "CLI:",
+                kyanite::VERSION,
+                "Compiler:",
+                kyac::VERSION,
+                "Runtime:",
+                runtime::VERSION,
+            );
             Ok(())
         }
     }

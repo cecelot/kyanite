@@ -21,7 +21,7 @@
     in {
       packages.default = pkgs.rustPlatform.buildRustPackage {
         pname = "kyanite";
-        version = "0.2.0";
+        version = "0.3.0";
         src = ./.;
         nativeBuildInputs = with pkgs; [
           rust-stable
@@ -43,7 +43,7 @@
         installPhase = ''
           mkdir -p $out/bin
           mkdir -p $out/lib
-          cp target/release/libkyanite_runtime.a $out/lib/libkyanite_runtime.a
+          cp target/release/libruntime.a $out/lib/libruntime.a
           cp target/release/main $out/bin/kyanite
           wrapProgram $out/bin/kyanite \
             --set KYANITE_RUNTIME_LIB $out/lib \
