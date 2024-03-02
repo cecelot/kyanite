@@ -9,14 +9,10 @@ Languages are cool! Compilers are cool! How do they work? That's why this projec
 As of now, the only programs confirmed to be working are those in the `examples/` directory. Experiment with other programs at your own peril, and expect panics to occur, particularly with the `kyir` backend. If you're using macOS on Apple Silicon, you can test out the compiler by running the following command, assuming Nix is installed:
 
 ```
-nix run .# -- run examples/llvm/hello.kya
+nix run .# -- run examples/kyir/hello.kya
 ```
 
-or, using the `kyir` backend:
-
-```
-nix run .# -- run examples/kyir/simple.kya -k
-```
+> **Note**: By default, the `kyir` backend is used. Provide the `--llvm` flag to compile with LLVM instead.
 
 Other operating systems are currently unsupported.
 
