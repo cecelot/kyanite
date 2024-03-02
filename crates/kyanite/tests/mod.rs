@@ -1,4 +1,3 @@
-#[cfg(feature = "kyir-tests")]
 mod kyir;
 mod llvm;
 
