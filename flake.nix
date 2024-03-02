@@ -43,7 +43,7 @@
         installPhase = ''
           mkdir -p $out/bin
           mkdir -p $out/lib
-          cp target/release/libkyanite_runtime.dylib $out/lib/libkyanite_runtime.dylib
+          cp target/release/libkyanite_runtime.a $out/lib/libkyanite_runtime.a
           cp target/release/main $out/bin/kyanite
           wrapProgram $out/bin/kyanite \
             --set KYANITE_RUNTIME_LIB $out/lib \

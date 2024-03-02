@@ -11,10 +11,14 @@ pub fn compile<I: ArchInstr, F: Frame<I>>(
     let exe = &format!("kya-dist/{filename}");
     let mut file = File::create(asm).expect("well-formed file structure");
     write!(file, "{}{}", F::header(), instrs).unwrap();
-    crate::dylib(&include_dir());
     subprocess::handle(subprocess::exec(
         "clang",
-        &[asm, "-o", exe, "-L", &include_dir(), "-lkyanite_runtime"],
+        &[
+            asm,
+            "-o",
+            exe,
+            &format!("{}/libkyanite_runtime.a", include_dir()),
+        ],
     ))
     .map_err(PipelineError::CompileError)?;
     Ok(exe.into())

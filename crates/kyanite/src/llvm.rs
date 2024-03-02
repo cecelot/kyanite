@@ -9,7 +9,6 @@ pub fn compile(ir: &str, filename: &str) -> Result<String, PipelineError> {
     let exe = &format!("kya-dist/{filename}");
     let mut file = File::create(path).expect("well-formed file structure");
     write!(file, "{ir}").unwrap();
-    crate::dylib(&include_dir());
     subprocess::handle(subprocess::exec("llc", &["-filetype=obj", "-o", obj, path]))
         .map_err(PipelineError::CompileError)?;
     subprocess::handle(subprocess::exec(

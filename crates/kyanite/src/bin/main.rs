@@ -44,10 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Commands::Build { path } => {
-            log::info!(
-                "built ./{}",
-                kyanite::build(path, &backend, cli.retain_artifacts)
-            );
+            let exe = kyanite::build(path, &backend, cli.retain_artifacts);
+            log::info!("built ./{exe}");
             Ok(())
         }
         Commands::Version => {

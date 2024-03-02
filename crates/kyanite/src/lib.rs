@@ -122,11 +122,6 @@ pub fn filename(source: &Source) -> String {
     name.iter().rev().collect()
 }
 
-pub fn dylib(dir: &str) {
-    let res = subprocess::exec("file", &[&format!("{dir}/libkyanite_runtime.dylib")]);
-    log::debug!("libkyanite_runtime.dylib: {}", res.output.trim());
-}
-
 pub fn init_logger(verbosity: u8) -> Result<(), fern::InitError> {
     let level = match verbosity {
         0 => log::LevelFilter::Warn,
