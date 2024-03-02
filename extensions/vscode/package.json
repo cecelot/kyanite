@@ -1,7 +1,8 @@
 {
   "name": "kyanite-vscode",
   "displayName": "kyanite-vscode",
-  "description": "VSCode language support for alythical's kyanite",
+  "icon": "assets/icon.jpg",
+  "description": "Kyanite language support for VSCode",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.86.0"
@@ -11,18 +12,22 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "languages": [{
-      "id": "kyanite",
-      "extensions": [
-        ".kya"
-      ],
-      "configuration": "./spec/language-configuration.json"
-    }],
-    "grammars": [{
-      "path": "./spec/grammar.tmLanguage.json",
-      "scopeName": "source.kyanite",
-      "language": "kyanite"
-    }]
+    "languages": [
+      {
+        "id": "kyanite",
+        "extensions": [
+          ".kya"
+        ],
+        "configuration": "./spec/language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "path": "./spec/grammar.tmLanguage.json",
+        "scopeName": "source.kyanite",
+        "language": "kyanite"
+      }
+    ]
   },
   "configurationDefaults": {
     "[kyanite]": {
