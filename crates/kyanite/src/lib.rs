@@ -4,8 +4,8 @@ pub mod llvm;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use fern::colors::{Color, ColoredLevelConfig};
-use kyac::Source;
-use std::path::PathBuf;
+use kyac::{arch::Armv8a, isa::A64, Backend, Output, Source};
+use std::{fmt, fs::File, path::PathBuf};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -17,9 +17,14 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
     #[arg(short, long, global = true)]
-    pub kyir: bool,
+    /// Whether to use the LLVM backend instead of the kyir backend
+    pub llvm: bool,
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    /// The verbosity level (0-3)
     pub verbose: u8,
+    #[arg(short, long, global = true)]
+    /// Whether to retain build artifacts (asm, object files, etc.)
+    pub retain_artifacts: bool,
 }
 
 #[derive(Subcommand)]
@@ -44,6 +49,40 @@ pub enum Commands {
 #[must_use]
 pub fn cli() -> Cli {
     Cli::parse()
+}
+
+pub fn build(path: PathBuf, backend: &Backend, retain_artifacts: bool) -> String {
+    log::info!("compiling `{}`", path.to_string_lossy());
+    let source = Source::new(path).unwrap_or_else(fatal);
+    let output = kyac::compile(&source, backend).unwrap_or_else(fatal);
+    let filename = filename(&source);
+    let exe = match &output {
+        Output::Llvm(ir) => llvm::compile(ir, &filename).unwrap_or_else(fatal),
+        Output::Asm(asm) => asm::compile::<A64, Armv8a>(asm, &filename).unwrap_or_else(fatal),
+    };
+    let exe = copy_exe(&filename, &exe).unwrap_or_else(fatal);
+    remove_artifacts(retain_artifacts, &filename);
+    exe
+}
+
+fn copy_exe(filename: &str, exe: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let to = filename.replace(".kya", "");
+    File::create(&to)?;
+    std::fs::copy(exe, &to)?;
+    Ok(to)
+}
+
+fn remove_artifacts(retain_artifacts: bool, filename: &str) {
+    if !retain_artifacts {
+        log::info!("removing artifacts");
+        let _ = std::fs::remove_file(format!("kya-dist/{filename}.ll"));
+        let _ = std::fs::remove_file(format!("kya-dist/{filename}.o"));
+        let _ = std::fs::remove_file(format!("kya-dist/{filename}.s"));
+        let _ = std::fs::remove_file(format!("kya-dist/{filename}"));
+        if std::fs::read_dir("kya-dist").unwrap().count() == 0 {
+            let _ = std::fs::remove_dir("kya-dist");
+        }
+    }
 }
 
 #[must_use]
@@ -119,4 +158,9 @@ pub fn init_logger(verbosity: u8) -> Result<(), fern::InitError> {
         std::env::set_var("KYANITE_LOG_GC", "1");
     }
     Ok(())
+}
+
+pub fn fatal<E: fmt::Display, R>(e: E) -> R {
+    log::error!("{}", e);
+    std::process::exit(1);
 }
