@@ -12,6 +12,7 @@
         { "include": "#numbers" },
         { "include": "#booleans" },
         { "include": "#functions" },
+        { "include": "#init-expr" },
         { "include": "#keyword" },
         { "include": "#operators" },
         { "include": "#builtin-types" },
@@ -23,6 +24,13 @@
       "name": "comment.kyanite",
       "begin": "%",
       "end": "\\n"
+    },
+    "init-expr": {
+      "match": "\\b([a-zA-Z]+):(init)\\b",
+      "captures": {
+        "1": { "name": "entity.name.type.kyanite" },
+        "2": { "name": "entity.name.function.kyanite" }
+      }
     },
     "var-decl": {
       "match": "\\b(let)\\s+([a-zA-Z]+)(:)\\s+([A-Za-z]+)\\b",
