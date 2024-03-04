@@ -25,6 +25,9 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     /// Whether to retain build artifacts (asm, object files, etc.)
     pub retain_artifacts: bool,
+    #[arg(short, long, global = true)]
+    /// Whether to run the garbage collector before every allocation (for debugging purposes)
+    pub gc_always: bool,
 }
 
 #[derive(Subcommand)]

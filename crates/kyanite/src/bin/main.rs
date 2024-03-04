@@ -20,6 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     log::debug!("using backend: {:?}", backend);
     let cli = kyanite::cli();
+    if cli.gc_always {
+        std::env::set_var("KYANITE_GC_ALWAYS", "1");
+    }
     match cli.command {
         Commands::Run { path } => {
             let exe = kyanite::build(path, &backend, cli.retain_artifacts);
