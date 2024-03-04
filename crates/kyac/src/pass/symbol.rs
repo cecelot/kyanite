@@ -27,6 +27,34 @@ impl Symbol {
         }
     }
 
+    pub fn fields(&self, symbols: &SymbolTable) -> Vec<node::Field> {
+        let mut cls = self.class();
+        let superclasses = {
+            let mut classes = vec![cls];
+            while let Some(parent) = cls.parent.as_ref() {
+                cls = symbols.get(&parent.to_string()).unwrap().class();
+                classes.push(cls);
+            }
+            classes
+        };
+        superclasses
+            .iter()
+            .rev()
+            .flat_map(|cls| cls.fields.iter().cloned())
+            .collect()
+    }
+
+    pub fn descriptor(fields: &[node::Field]) -> Vec<char> {
+        fields
+            .iter()
+            .map(|f| match Type::from(&f.ty) {
+                Type::Int | Type::Float | Type::Bool => 'i',
+                Type::Str | Type::UserDefined(_) => 'p',
+                Type::Void => panic!("class cannot contain void field"),
+            })
+            .collect()
+    }
+
     pub fn ty(&self) -> Type {
         match self {
             Self::Class(cls) => Type::from(&cls.name),

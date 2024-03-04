@@ -71,6 +71,14 @@ impl<'a> Parser<'a> {
     fn class(&mut self) -> Result<Decl, ParseError> {
         self.consume(Kind::Class)?;
         let name = self.consume(Kind::Identifier)?;
+        let parent = (self.peek()?.kind == Kind::Colon).then_some(|| {
+            self.consume(Kind::Colon)?;
+            self.consume(Kind::Identifier)
+        });
+        let parent = match parent {
+            Some(mut parent) => Some(parent()?),
+            None => None,
+        };
         self.consume(Kind::LeftBrace)?;
         let fields = self.fields()?;
         let mut methods = vec![];
@@ -81,7 +89,7 @@ impl<'a> Parser<'a> {
             });
         }
         self.consume(Kind::RightBrace)?;
-        Ok(ClassDecl::wrapped(name, fields, methods))
+        Ok(ClassDecl::wrapped(name, fields, methods, parent))
     }
 
     fn function(&mut self, method: &Option<Token>, external: bool) -> Result<Decl, ParseError> {

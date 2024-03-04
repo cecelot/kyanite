@@ -301,3 +301,10 @@ fn reg_live_across_call() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "4\n6\n");
     Ok(())
 }
+
+#[test]
+fn field_inheritance() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/field-inheritance.kya")?;
+    assert_eq!(res.output, "inside `Y.other()`\n6\n2\n");
+    Ok(())
+}

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Decl, Expr, Stmt, Type},
+    ast::{Decl, Expr, Stmt},
     token::Token,
 };
 use std::{
@@ -52,25 +52,22 @@ impl FuncDecl {
 pub struct ClassDecl {
     pub name: Token,
     pub fields: Vec<Field>,
-    pub descriptor: Vec<char>,
     pub methods: Vec<Rc<FuncDecl>>,
+    pub parent: Option<Token>,
 }
 
 impl ClassDecl {
-    pub fn wrapped(name: Token, fields: Vec<Field>, methods: Vec<Rc<FuncDecl>>) -> Decl {
-        let descriptor: Vec<_> = fields
-            .iter()
-            .map(|f| match Type::from(&f.ty) {
-                Type::Int | Type::Float | Type::Bool => 'i',
-                Type::Str | Type::UserDefined(_) => 'p',
-                Type::Void => panic!("class cannot contain void field"),
-            })
-            .collect();
+    pub fn wrapped(
+        name: Token,
+        fields: Vec<Field>,
+        methods: Vec<Rc<FuncDecl>>,
+        parent: Option<Token>,
+    ) -> Decl {
         Decl::Class(Rc::new(Self {
             name,
             fields,
-            descriptor,
             methods,
+            parent,
         }))
     }
 }

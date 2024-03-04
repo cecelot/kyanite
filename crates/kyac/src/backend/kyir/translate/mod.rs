@@ -278,14 +278,10 @@ impl Translate<Expr> for ast::node::Init {
         let temp = Temp::next();
         let name = translator.ctx.name.join(".");
         let base = frame.allocate(&name, true);
-        let descriptor = &translator
-            .symbols
-            .get(&self.name.to_string())
-            .unwrap()
-            .class()
-            .descriptor;
-        let descriptor = descriptor.iter().collect();
-        let ptr = translator.ctx.strings.add(descriptor);
+        let cls = &translator.symbols[&self.name.to_string()];
+        let fields = cls.fields(translator.symbols);
+        let descriptor = Symbol::descriptor(&fields);
+        let ptr = translator.ctx.strings.add(descriptor.iter().collect()); // convert descriptor to string
         let setup = [
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
@@ -302,9 +298,14 @@ impl Translate<Expr> for ast::node::Init {
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(r.ret.to_string())),
         ];
+        let mut initializers: Vec<_> = self.initializers.iter().collect();
+        initializers.sort_by(|a, b| {
+            let position = |name: &Token| fields.iter().position(|f| f.name == *name);
+            position(&a.name).cmp(&position(&b.name))
+        });
         let stmts: Vec<_> = setup
             .into_iter()
-            .chain(self.initializers.iter().enumerate().flat_map(|(i, init)| {
+            .chain(initializers.iter().enumerate().flat_map(|(i, init)| {
                 translator.ctx.name.push(init.name.to_string());
                 let value = match &init.expr {
                     AstExpr::Init(init) => init.translate(translator),

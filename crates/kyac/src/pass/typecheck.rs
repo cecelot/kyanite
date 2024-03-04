@@ -298,20 +298,23 @@ impl<'a> TypeCheckPass<'a> {
     }
 
     fn init(&mut self, init: &node::Init) -> Result<Type, TypeError> {
-        let cls = symbol!(self, init.name, Class, "class");
+        symbol!(self, init.name, Class, "class"); // ensure class is defined
+        let fields = self
+            .symbol(&init.name.to_string())
+            .unwrap()
+            .fields(self.symbols);
         for initializer in &init.initializers {
             let got = initializer.expr.check(self)?;
-            let expected =
-                if let Some(field) = cls.fields.iter().find(|f| f.name == initializer.name) {
-                    Type::from(&field.ty)
-                } else {
-                    self.error(
-                        initializer.name.span,
-                        format!("no field `{}` on type `{}`", initializer.name, init.name),
-                        String::new(),
-                    );
-                    continue;
-                };
+            let expected = if let Some(field) = fields.iter().find(|f| f.name == initializer.name) {
+                Type::from(&field.ty)
+            } else {
+                self.error(
+                    initializer.name.span,
+                    format!("no field `{}` on type `{}`", initializer.name, init.name),
+                    String::new(),
+                );
+                continue;
+            };
             if got != expected {
                 self.error(
                     initializer.expr.span(),
@@ -349,8 +352,12 @@ impl<'a> TypeCheckPass<'a> {
             let (left, right) = (&pair[0], &pair[1]);
             if i != 0 {
                 let cls = cast!(symbol, r, Symbol::Class(ref r));
+                let fields = self
+                    .symbol(&cls.name.to_string())
+                    .unwrap()
+                    .fields(self.symbols);
                 if let Expr::Ident(ident) = left {
-                    let field = cls.fields.iter().find(|f| f.name == ident.name);
+                    let field = fields.iter().find(|f| f.name == ident.name);
                     if let Some(field) = field {
                         symbol = self.symbol(&field.ty.to_string()).cloned().unwrap();
                         symbols.push(symbol.clone());
@@ -363,10 +370,14 @@ impl<'a> TypeCheckPass<'a> {
             }
             let cls = cast!(symbol, r, Symbol::Class(ref r));
             if let Expr::Ident(ident) = right {
-                let index = cls.fields.iter().position(|f| f.name == ident.name);
+                let fields = self
+                    .symbol(&cls.name.to_string())
+                    .unwrap()
+                    .fields(self.symbols);
+                let index = fields.iter().position(|f| f.name == ident.name);
                 if let Some(index) = index {
                     indices.push(index);
-                    ty = Type::from(&cls.fields[index].ty);
+                    ty = Type::from(&fields[index].ty);
                 } else {
                     return err(self, "field", ident, ty);
                 }
@@ -553,7 +564,9 @@ impl<'a> TypeCheckPass<'a> {
             }
             Expr::Access(access) => {
                 let _ = call.left.check(self);
-                let meta = self.accesses.get(&access.id).unwrap();
+                let Some(meta) = self.accesses.get(&access.id) else {
+                    return Err(TypeError::Undefined);
+                };
                 meta.symbols.last().unwrap().function()
             }
             _ => unimplemented!(),

@@ -1,0 +1,26 @@
+class X {
+    x: int
+
+    fun show(self) {
+        println_str("inside `X.show()`");
+        println_int(self.x);
+        % `y` is inaccessible from methods on `X` even though `self` is actually an instance of `Y`
+        % in the future, `self` could be narrowed to `Y`
+        % println_int(self.y);
+    }
+}
+
+class Y: X {
+    y: int
+
+    fun other(self) {
+        println_str("inside `Y.other()`");
+        println_int(self.y);
+        println_int(self.x); % implicit (as part of X)
+    }
+}
+
+fun main() {
+    let y: Y = Y:init(y: 6, x: 2); % x is an implicit parameter to init
+    y.other();
+}
