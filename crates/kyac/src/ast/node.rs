@@ -174,6 +174,7 @@ pub struct Call {
     pub args: Vec<Expr>,
     pub parens: (Token, Token),
     pub delimiters: Vec<Token>,
+    pub id: usize,
 }
 
 impl Call {
@@ -183,11 +184,14 @@ impl Call {
         parens: (Token, Token),
         delimiters: Vec<Token>,
     ) -> Self {
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
         Self {
             left,
             args,
             parens,
             delimiters,
+            id,
         }
     }
 

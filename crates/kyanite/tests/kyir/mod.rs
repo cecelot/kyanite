@@ -308,3 +308,17 @@ fn field_inheritance() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(res.output, "inside `Y.other()`\n6\n2\n");
     Ok(())
 }
+
+#[test]
+fn method_inheritance() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/method-inheritance.kya")?;
+    assert_eq!(res.output, "inside `X.show()`\n2\ninside `X.show()`\n18\n");
+    Ok(())
+}
+
+#[test]
+fn method_override() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/method-override.kya")?;
+    assert_eq!(res.output, "inside `Y.show()`\n6\ninside `X.show()`\n2\n");
+    Ok(())
+}

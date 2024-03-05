@@ -82,7 +82,7 @@ expression: pass.errors
     },
     PreciseError {
         filename: "test-cases/typecheck/classes.kya",
-        heading: "expected initializer to be of type Baz",
+        heading: "Bar is not a subclass of Baz",
         source: "    let baz: Baz = p.foo.bar;",
         span: Span {
             line: 37,

@@ -13,7 +13,7 @@ use crate::{
         },
         translate::Translator,
     },
-    pass::{AccessMap, SymbolTable},
+    pass::{AccessMap, CallMap, SymbolTable},
 };
 use std::{
     collections::HashMap,
@@ -24,8 +24,9 @@ pub fn asm<I: ArchInstr, F: Frame<I>>(
     ast: &[Decl],
     symbols: &SymbolTable,
     accesses: &AccessMap,
+    calls: &CallMap,
 ) -> String {
-    let mut translator: Translator<I, F> = Translator::new(accesses, symbols);
+    let mut translator: Translator<I, F> = Translator::new(accesses, calls, symbols);
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);
     let mut codegen: Codegen<I, F> =

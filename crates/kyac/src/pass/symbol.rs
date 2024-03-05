@@ -27,20 +27,35 @@ impl Symbol {
         }
     }
 
+    pub fn superclasses<'a>(
+        mut cls: &'a node::ClassDecl,
+        symbols: &'a SymbolTable,
+    ) -> Vec<&'a node::ClassDecl> {
+        let mut classes = vec![cls];
+        while let Some(parent) = cls.parent.as_ref() {
+            cls = symbols.get(&parent.to_string()).unwrap().class();
+            classes.push(cls);
+        }
+        classes
+    }
+
     pub fn fields(&self, symbols: &SymbolTable) -> Vec<node::Field> {
-        let mut cls = self.class();
-        let superclasses = {
-            let mut classes = vec![cls];
-            while let Some(parent) = cls.parent.as_ref() {
-                cls = symbols.get(&parent.to_string()).unwrap().class();
-                classes.push(cls);
-            }
-            classes
-        };
+        let cls = self.class();
+        let superclasses = Self::superclasses(cls, symbols);
         superclasses
             .iter()
             .rev()
             .flat_map(|cls| cls.fields.iter().cloned())
+            .collect()
+    }
+
+    pub fn methods(&self, symbols: &SymbolTable) -> Vec<Rc<node::FuncDecl>> {
+        let cls = self.class();
+        let superclasses = Self::superclasses(cls, symbols);
+        superclasses
+            .iter()
+            .rev()
+            .flat_map(|cls| cls.methods.iter().cloned())
             .collect()
     }
 

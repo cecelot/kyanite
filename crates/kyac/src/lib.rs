@@ -31,14 +31,15 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
     let mut ast = ast::Ast::try_from(source)?;
     let symbols = SymbolTable::from(&ast.nodes);
     let mut accesses = HashMap::new();
-    let mut tc = TypeCheckPass::new(&symbols, &mut accesses, source, &ast.nodes);
+    let mut calls = HashMap::new();
+    let mut tc = TypeCheckPass::new(&symbols, &mut accesses, &mut calls, source, &ast.nodes);
     tc.run().map_err(PipelineError::TypeError)?;
     match backend {
         Backend::Llvm => Ok(Output::Llvm(
             llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
         )),
         Backend::Kyir => Ok(Output::Asm(kyir::asm::<A64, Armv8a>(
-            &ast.nodes, &symbols, &accesses,
+            &ast.nodes, &symbols, &accesses, &calls,
         ))),
     }
 }

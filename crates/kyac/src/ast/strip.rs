@@ -33,6 +33,7 @@ impl StripId for Stmt {
                 for arg in &mut call.args {
                     arg.strip_id();
                 }
+                call.id = 0;
             }
             _ => {}
         }
@@ -52,6 +53,7 @@ impl StripId for Expr {
             Self::Call(c) => {
                 let call = Rc::get_mut(c).unwrap();
                 call.args.iter_mut().for_each(StripId::strip_id);
+                call.id = 0;
             }
             Self::Binary(b) => {
                 let binary = Rc::get_mut(b).unwrap();

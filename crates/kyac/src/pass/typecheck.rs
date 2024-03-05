@@ -72,11 +72,13 @@ impl Access {
 }
 
 pub type AccessMap = HashMap<usize, Access>;
+pub type CallMap = HashMap<usize, String>;
 
 pub struct TypeCheckPass<'a> {
     program: &'a Vec<Decl>,
     symbols: &'a SymbolTable,
     accesses: &'a mut AccessMap,
+    calls: &'a mut CallMap,
     source: &'a Source,
     errors: Vec<PreciseError<'a>>,
     scopes: Vec<SymbolTable>,
@@ -134,6 +136,7 @@ impl<'a> TypeCheckPass<'a> {
     pub fn new(
         symbols: &'a SymbolTable,
         accesses: &'a mut AccessMap,
+        calls: &'a mut CallMap,
         source: &'a Source,
         program: &'a Vec<Decl>,
     ) -> Self {
@@ -142,6 +145,7 @@ impl<'a> TypeCheckPass<'a> {
             program,
             symbols,
             accesses,
+            calls,
             errors: vec![],
             function: None,
             ipl: None,
@@ -383,12 +387,14 @@ impl<'a> TypeCheckPass<'a> {
                 }
             } else {
                 let symbol = self.symbol(&ty.to_string()).unwrap();
-                let ipl = cast!(symbol, i, Symbol::Class(ref i));
                 let call = cast!(right, c, Expr::Call(c));
                 let ident = call.left.ident();
-                let method = ipl
-                    .methods
+                let methods = symbol.methods(self.symbols);
+                let method = methods
                     .iter()
+                    // make sure we find the most "specific" implementation
+                    // (i.e. Y.method() before X.method())
+                    .rev()
                     .find(|m| m.name.to_string() == ident.name.to_string());
                 if let Some(method) = method {
                     symbols.push(Symbol::Function(Rc::clone(method)));
@@ -416,10 +422,27 @@ impl<'a> TypeCheckPass<'a> {
         Ok(expected)
     }
 
+    fn cast(&self, expected: &Type, cls: &String) -> Option<String> {
+        let cls = self.symbol(cls).unwrap().class();
+        Symbol::superclasses(cls, self.symbols)
+            .iter()
+            .filter(|c| c.name != cls.name)
+            .map(|c| c.name.to_string())
+            .find(|cls| cls == &expected.to_string())
+    }
+
     fn var(&mut self, v: &Rc<node::VarDecl>) -> Result<Type, TypeError> {
         let got = v.expr.check(self)?;
         let expected = Type::from(&v.ty);
-        if got != expected {
+        if let Type::UserDefined(ref cls) = got {
+            if got != expected && self.cast(&expected, cls).is_none() {
+                self.error(
+                    v.expr.span(),
+                    format!("{got} is not a subclass of {expected}"),
+                    format!("expression of type {got}"),
+                );
+            }
+        } else if got != expected {
             self.error(
                 v.expr.span(),
                 format!("expected initializer to be of type {expected}"),
@@ -591,7 +614,19 @@ impl<'a> TypeCheckPass<'a> {
             let got = arg.check(self)?;
             if i < params.len() {
                 let expected = Type::from(&params[i].ty);
-                if got != expected {
+                if let Type::UserDefined(ref cls) = got {
+                    let casted = self.cast(&expected, cls);
+                    if got != expected && casted.is_none() {
+                        self.error(
+                            arg.span(),
+                            format!("{got} is not a subclass of {expected}"),
+                            format!("expression of type {got}"),
+                        );
+                    }
+                    if let Some(cls) = casted {
+                        self.calls.insert(call.id, cls);
+                    }
+                } else if got != expected {
                     self.error(
                         arg.span(),
                         format!("expected argument of type {expected}, but found {got}"),
@@ -622,7 +657,8 @@ macro_rules! assert_typecheck {
                     let ast = crate::ast::Ast::try_from(&source)?;
                     let symbols = SymbolTable::from(&ast.nodes);
                     let mut accesses = HashMap::new();
-                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, &source, &ast.nodes);
+                    let mut calls = HashMap::new();
+                    let mut pass = TypeCheckPass::new(&symbols, &mut accesses, &mut calls, &source, &ast.nodes);
                     let _ = pass.run();
                     insta::with_settings!({snapshot_path => "../../snapshots"}, {
                         insta::assert_debug_snapshot!(pass.errors);

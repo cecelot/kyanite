@@ -10,7 +10,7 @@ use crate::{
         arch::{ArchInstr, Frame},
         ir::*,
     },
-    pass::{AccessMap, SymbolTable},
+    pass::{AccessMap, CallMap, SymbolTable},
     token::{Kind, Span, Token},
 };
 use std::{collections::HashMap, ops::Sub};
@@ -19,6 +19,7 @@ pub struct Translator<'a, I: ArchInstr, F: Frame<I>> {
     functions: HashMap<usize, F>,
     function: Option<usize>,
     accesses: &'a AccessMap,
+    calls: &'a CallMap,
     symbols: &'a SymbolTable,
     ctx: Context,
     _isa: std::marker::PhantomData<I>,
@@ -33,7 +34,7 @@ struct Context {
 }
 
 impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
-    pub fn new(accesses: &'a AccessMap, symbols: &'a SymbolTable) -> Self {
+    pub fn new(accesses: &'a AccessMap, calls: &'a CallMap, symbols: &'a SymbolTable) -> Self {
         Self {
             _isa: std::marker::PhantomData,
             functions: HashMap::new(),
@@ -46,6 +47,7 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
                 stmts: vec![],
             },
             accesses,
+            calls,
             symbols,
         }
     }
@@ -169,7 +171,13 @@ impl Translate<Expr> for ast::node::Call {
                 let name = meta.symbols.iter().rev().take(2).rev().map(|item| {
                     match item {
                         Symbol::Function(fun) => fun.name.to_string(),
-                        Symbol::Class(cls)=> cls.name.to_string(),
+                        Symbol::Class(cls) => {
+                            if let Some(cls) = translator.calls.get(&self.id) {
+                                cls.to_string()
+                            } else {
+                                cls.name.to_string()
+                            }
+                        }
                         _ => unimplemented!(),
                     }
                 }).fold(String::new(), |acc, item| format!("{acc}{item}."));

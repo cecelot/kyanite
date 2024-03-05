@@ -1,0 +1,28 @@
+class X {
+    x: int
+
+    fun show(self) {
+        println_str("inside `X.show()`");
+        println_int(self.x);
+    }
+}
+
+class Y: X {
+    y: int
+
+    fun show(self) {
+        println_str("inside `Y.show()`");
+        println_int(self.y);
+    }
+}
+
+class Z {
+    y: int
+}
+
+fun main() {
+    let y: Y = Y:init(x: 2, y: 6);
+    y.show(); % fun show (as Y)
+    let x: X = y; % explicit type widen
+    x.show(); % fun show (as X)
+}
