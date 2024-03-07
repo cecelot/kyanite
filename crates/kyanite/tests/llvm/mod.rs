@@ -6,7 +6,8 @@ fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     let Output::Llvm(ir) = kyac::compile(&source, &Backend::Llvm)? else {
         unreachable!()
     };
-    let exe = kyanite::llvm::compile(&ir, &kyanite::filename(&source))?;
+    let dir = tempfile::tempdir()?;
+    let exe = kyanite::llvm::compile(&ir, &dir, &kyanite::filename(&source))?;
     let res = subprocess::exec(&exe, &[]);
     Ok(res)
 }

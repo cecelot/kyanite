@@ -25,7 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     match cli.command {
         Commands::Run { path } => {
-            let exe = kyanite::build(path, &backend, cli.retain_artifacts);
+            let dir = tempfile::tempdir().unwrap_or_else(kyanite::fatal);
+            let exe = kyanite::build(path, &dir, &backend);
             log::info!("running ./{exe}");
             let child = std::process::Command::new(format!("./{exe}"))
                 .stdin(Stdio::piped())
@@ -40,14 +41,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
-        Commands::Clean => {
-            if let Err(e) = std::fs::remove_dir_all("kya-dist") {
-                log::warn!("failed to remove kya-dist: {e}");
-            }
-            Ok(())
-        }
         Commands::Build { path } => {
-            let exe = kyanite::build(path, &backend, cli.retain_artifacts);
+            let dir = tempfile::tempdir().unwrap_or_else(kyanite::fatal);
+            let exe = kyanite::build(path, &dir, &backend);
             log::info!("built ./{exe}");
             Ok(())
         }

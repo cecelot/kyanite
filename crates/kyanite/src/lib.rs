@@ -6,6 +6,7 @@ use colored::Colorize;
 use fern::colors::{Color, ColoredLevelConfig};
 use kyac::{arch::Armv8a, isa::A64, Backend, Output, Source};
 use std::{fmt, fs::File, path::PathBuf};
+use tempfile::TempDir;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -23,9 +24,6 @@ pub struct Cli {
     /// The verbosity level (0-3)
     pub verbose: u8,
     #[arg(short, long, global = true)]
-    /// Whether to retain build artifacts (asm, object files, etc.)
-    pub retain_artifacts: bool,
-    #[arg(short, long, global = true)]
     /// Whether to run the garbage collector before every allocation (for debugging purposes)
     pub gc_always: bool,
 }
@@ -42,8 +40,6 @@ pub enum Commands {
         /// The path to the .kya file
         path: PathBuf,
     },
-    /// Cleans the target directory
-    Clean,
     /// Prints the kyanite version
     Version,
 }
@@ -54,18 +50,16 @@ pub fn cli() -> Cli {
     Cli::parse()
 }
 
-pub fn build(path: PathBuf, backend: &Backend, retain_artifacts: bool) -> String {
+pub fn build(path: PathBuf, dir: &TempDir, backend: &Backend) -> String {
     log::info!("compiling `{}`", path.to_string_lossy());
     let source = Source::new(path).unwrap_or_else(fatal);
     let output = kyac::compile(&source, backend).unwrap_or_else(fatal);
     let filename = filename(&source);
     let exe = match &output {
-        Output::Llvm(ir) => llvm::compile(ir, &filename).unwrap_or_else(fatal),
-        Output::Asm(asm) => asm::compile::<A64, Armv8a>(asm, &filename).unwrap_or_else(fatal),
+        Output::Llvm(ir) => llvm::compile(ir, dir, &filename).unwrap_or_else(fatal),
+        Output::Asm(asm) => asm::compile::<A64, Armv8a>(asm, dir, &filename).unwrap_or_else(fatal),
     };
-    let exe = copy_exe(&filename, &exe).unwrap_or_else(fatal);
-    remove_artifacts(retain_artifacts, &filename);
-    exe
+    copy_exe(&filename, &exe).unwrap_or_else(fatal)
 }
 
 fn copy_exe(filename: &str, exe: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -73,19 +67,6 @@ fn copy_exe(filename: &str, exe: &str) -> Result<String, Box<dyn std::error::Err
     File::create(&to)?;
     std::fs::copy(exe, &to)?;
     Ok(to)
-}
-
-fn remove_artifacts(retain_artifacts: bool, filename: &str) {
-    if !retain_artifacts {
-        log::info!("removing artifacts");
-        let _ = std::fs::remove_file(format!("kya-dist/{filename}.ll"));
-        let _ = std::fs::remove_file(format!("kya-dist/{filename}.o"));
-        let _ = std::fs::remove_file(format!("kya-dist/{filename}.s"));
-        let _ = std::fs::remove_file(format!("kya-dist/{filename}"));
-        if std::fs::read_dir("kya-dist").unwrap().count() == 0 {
-            let _ = std::fs::remove_dir("kya-dist");
-        }
-    }
 }
 
 #[must_use]

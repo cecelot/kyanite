@@ -12,6 +12,7 @@ kyac = { path = "../kyac" }
 log = "0.4.20"
 runtime = { version = "0.2.0", path = "../runtime" }
 subprocess = { path = "../subprocess" }
+tempfile = "3.10.1"
 which = "4.4.2"
 
 [lints.clippy]
