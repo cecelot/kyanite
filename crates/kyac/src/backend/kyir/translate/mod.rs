@@ -28,7 +28,7 @@ pub struct Translator<'a, I: ArchInstr, F: Frame<I>> {
 struct Context {
     ret: bool,
     name: Vec<String>,
-    strings: Strings,
+    constants: Constants,
     mem: Option<Mem>,
     stmts: Vec<Stmt>,
 }
@@ -41,7 +41,7 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
             function: None,
             ctx: Context {
                 ret: false,
-                strings: Strings::new(),
+                constants: Constants::new(),
                 name: vec![],
                 mem: None,
                 stmts: vec![],
@@ -66,8 +66,8 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
         &self.functions
     }
 
-    pub fn strings(&self) -> &HashMap<String, String> {
-        &self.ctx.strings
+    pub fn constants(&self) -> &HashMap<String, Vec<String>> {
+        &self.ctx.constants
     }
 }
 
@@ -122,8 +122,8 @@ impl Translate<Expr> for ast::node::Literal<&str> {
         Expr::ConstStr(
             translator
                 .ctx
-                .strings
-                .add(self.value.to_string().replace('"', "")),
+                .constants
+                .add(vec![self.value.to_string().replace('"', "")]),
         )
     }
 }
@@ -164,22 +164,22 @@ impl Translate<Expr> for ast::node::Call {
             .iter()
             .map(|arg| arg.translate(translator))
             .collect();
+        let mut cls = None;
         let name = match *self.left {
             AstExpr::Ident(ref ident) => ident.name.to_string(),
             AstExpr::Access(ref access) => {
                 let meta = translator.accesses.get(&access.id).unwrap();
-                let name = meta.symbols.iter().rev().take(2).rev().map(|item| {
-                    match item {
-                        Symbol::Function(fun) => fun.name.to_string(),
-                        Symbol::Class(cls) => {
-                            if let Some(cls) = translator.calls.get(&self.id) {
-                                cls.to_string()
-                            } else {
-                                cls.name.to_string()
-                            }
+                let name = meta.symbols.iter().rev().take(2).rev().map(|item| match item {
+                    Symbol::Function(fun) => fun.name.to_string(),
+                    Symbol::Class(c) => {
+                        cls = Some(c);
+                        if let Some(cls) = translator.calls.get(&self.id) {
+                            cls.to_string()
+                        } else {
+                            c.name.to_string()
                         }
-                        _ => unimplemented!(),
                     }
+                    _ => unimplemented!(),
                 }).fold(String::new(), |acc, item| format!("{acc}{item}."));
                 name.trim_end_matches('.').to_string()
             },
@@ -197,13 +197,43 @@ impl Translate<Expr> for ast::node::Call {
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         let saved = frame.allocate(&temp, matches!(ty, Type::UserDefined(_)));
-        ESeq::wrapped(
-            Seq::wrapped(
-                Stmt::Expr(Box::new(Call::wrapped(name, args))),
-                Some(Move::wrapped(saved.clone(), Temp::wrapped(r.ret.into()))),
-            ),
-            saved,
-        )
+        let mut stmts = vec![];
+        let address = if cls.is_some_and(|cls| Symbol::has_subclass(cls, translator.symbols)) {
+            // This call could be overridden by a subclass in which case we need to use dynamic dispatch.
+            // we just checked is_some_and, so this is safe.
+            let cls = cls.unwrap();
+            let descriptor: &Expr = args.first().unwrap();
+            let arr = Temp::next();
+            let address = Temp::next();
+            let (_, n) = name.rsplit_once('.').unwrap();
+            let index = F::word_size() * (cls.methods.iter().position(|m| m.name == n).unwrap());
+            stmts.append(&mut vec![
+                Move::wrapped(
+                    Temp::wrapped(arr.clone()),
+                    Binary::wrapped(
+                        BinOp::Plus,
+                        descriptor.clone(),
+                        Const::<i64>::int(F::word_size().try_into().unwrap()),
+                    ),
+                ),
+                Stmt::checked_move(
+                    Temp::wrapped(address.clone()),
+                    Mem::wrapped(Binary::wrapped(
+                        BinOp::Plus,
+                        Temp::wrapped(arr.clone()),
+                        Const::<i64>::int(index.try_into().unwrap()),
+                    )),
+                ),
+            ]);
+            address
+        } else {
+            name
+        };
+        stmts.append(&mut vec![
+            Stmt::Expr(Box::new(Call::wrapped(address, args))),
+            Move::wrapped(saved.clone(), Temp::wrapped(r.ret.into())),
+        ]);
+        ESeq::wrapped(Stmt::from(&stmts[..]), saved)
     }
 }
 
@@ -263,7 +293,9 @@ impl Translate<Expr> for ast::node::Access {
         let stmts: Vec<_> = initial
             .into_iter()
             .chain(meta.indices.iter().map(|&field| {
-                let offset: i64 = ((field + 1) * F::word_size()).try_into().unwrap();
+                let offset: i64 = ((field + runtime::METADATA_FIELDS) * F::word_size())
+                    .try_into()
+                    .unwrap();
                 let mem = Mem::new(Binary::wrapped(
                     BinOp::Plus,
                     Temp::wrapped(temp.clone()),
@@ -283,20 +315,20 @@ impl Translate<Expr> for ast::node::Init {
         let r = F::registers();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        let temp = Temp::next();
         let name = translator.ctx.name.join(".");
         let base = frame.allocate(&name, true);
         let cls = &translator.symbols[&self.name.to_string()];
         let fields = cls.fields(translator.symbols);
-        let descriptor = Symbol::descriptor(&fields);
-        let ptr = translator.ctx.strings.add(descriptor.iter().collect()); // convert descriptor to string
-        let setup = [
+        let (descriptor, method_descriptor) = cls.descriptor(translator.symbols);
+        let ptr = translator.ctx.constants.add(vec![descriptor]);
+        let array = Temp::next();
+        let mut setup = vec![
             Stmt::Expr(Box::new(Call::wrapped(
                 "alloc".into(),
                 vec![
                     Expr::ConstStr(ptr),
                     Temp::wrapped(r.frame.to_string()),
-                    Const::<u64>::int(frame.offset().sub(
+                    Const::<i64>::int(frame.offset().sub(
                         // This is an odd offset to require, but any less than this causes the GC to miss
                         // some reachable pointers on the stack. Something to do with field initialization order
                         // perhaps?
@@ -305,33 +337,70 @@ impl Translate<Expr> for ast::node::Init {
                 ],
             ))),
             Stmt::checked_move(base.clone(), Temp::wrapped(r.ret.to_string())),
+            // Allocate an array to hold the method descriptor
+            Stmt::Expr(Box::new(Call::wrapped(
+                "init_array".into(),
+                vec![Const::<i64>::int(
+                    method_descriptor.len().try_into().unwrap(),
+                )],
+            ))),
+            Stmt::checked_move(
+                Temp::wrapped(array.clone()),
+                Temp::wrapped(r.ret.to_string()),
+            ),
         ];
+        // Initialize the method descriptor array
+        for (i, method) in method_descriptor.iter().enumerate() {
+            let offset: i64 = (i * F::word_size()).try_into().unwrap();
+            setup.push(Move::wrapped(
+                Binary::wrapped(
+                    BinOp::Plus,
+                    Temp::wrapped(array.clone()),
+                    Const::<i64>::int(offset),
+                ),
+                Expr::ConstLabel(method.clone()),
+            ));
+        }
+        // Initialize fields in the correct order
         let mut initializers: Vec<_> = self.initializers.iter().collect();
         initializers.sort_by(|a, b| {
             let position = |name: &Token| fields.iter().position(|f| f.name == *name);
             position(&a.name).cmp(&position(&b.name))
         });
+        let temp = Temp::next();
+        // Hold a pointer to the method descriptor array at class_ptr[8]
+        setup.append(&mut vec![
+            Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()),
+            Stmt::checked_move(
+                Binary::wrapped(
+                    BinOp::Plus,
+                    Temp::wrapped(temp.clone()),
+                    Const::<i64>::int(F::word_size().try_into().unwrap()),
+                ),
+                Temp::wrapped(array),
+            ),
+        ]);
+        // Initialize class fields
         let stmts: Vec<_> = setup
             .into_iter()
-            .chain(initializers.iter().enumerate().flat_map(|(i, init)| {
+            .chain(initializers.iter().enumerate().map(|(i, init)| {
                 translator.ctx.name.push(init.name.to_string());
                 let value = match &init.expr {
                     AstExpr::Init(init) => init.translate(translator),
                     _ => init.expr.translate(translator),
                 };
-                let offset: i64 = ((i + 1) * F::word_size()).try_into().unwrap();
+                let offset: i64 = ((i + runtime::METADATA_FIELDS) * F::word_size())
+                    .try_into()
+                    .unwrap();
                 translator.ctx.name.pop();
-                vec![
-                    Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()),
-                    Stmt::checked_move(
-                        Binary::wrapped(
-                            BinOp::Plus,
-                            Temp::wrapped(temp.clone()),
-                            Const::<i64>::int(offset),
-                        ),
-                        value,
+                Stmt::checked_move(
+                    Binary::wrapped(
+                        BinOp::Plus,
+                        Temp::wrapped(temp.clone()),
+                        Const::<i64>::int(offset),
                     ),
-                ]
+                    value,
+                )
             }))
             .collect();
         ESeq::wrapped(Stmt::from(&stmts[..]), base)
@@ -448,7 +517,7 @@ impl Translate<Stmt> for ast::node::For {
                 .body
                 .clone()
                 .into_iter()
-                .chain(std::iter::once(ast::node::Assign::wrapped(
+                .chain([ast::node::Assign::wrapped(
                     cur.clone(),
                     ast::node::Binary::wrapped(
                         cur,
@@ -458,7 +527,7 @@ impl Translate<Stmt> for ast::node::For {
                             Token::new(Kind::Literal, Some("1"), Span::default()),
                         ),
                     ),
-                )))
+                )])
                 .collect(),
         };
         let stmts: Vec<Stmt> = vec![start.translate(translator), w.translate(translator)];
@@ -561,20 +630,20 @@ impl Translate<Vec<Stmt>> for ast::node::ClassDecl {
     }
 }
 
-crate::newtype!(Strings: HashMap<String, String>);
+crate::newtype!(Constants: HashMap<String, Vec<String>>);
 
-impl Strings {
+impl Constants {
     fn new() -> Self {
         Self(HashMap::new())
     }
 
-    fn add(&mut self, value: String) -> String {
-        if let Some((key, _)) = self.0.iter().find(|&(_, v)| v == &value) {
+    fn add(&mut self, values: Vec<String>) -> String {
+        if let Some((key, _)) = self.0.iter().find(|&(_, v)| *v == values) {
             key.to_owned()
         } else {
             let id = self.0.len();
-            let name = format!(".str.{id}");
-            self.0.insert(name.clone(), value);
+            let name = format!(".const.{id}");
+            self.0.insert(name.clone(), values);
             name
         }
     }

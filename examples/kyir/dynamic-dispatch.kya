@@ -1,0 +1,60 @@
+% A typical OOP example program, with animals
+class Animal {
+    fun speak(self) {
+        println_str("unimplemented! you should implement me in a subclass");
+    }
+
+    fun shout(self) {
+        println_str("[shout]");
+    }
+}
+
+class Cat: Animal {
+    fun thiShouldNotBeCalled(self) {
+        println_str("oops");
+    }
+
+    fun speak(self) {
+        println_str("meow");
+    }
+}
+
+class Dog: Animal {
+    fun bar(self) {}
+
+    fun speak(self) {
+        println_str("woof");
+    }
+
+    fun foo(self) {}
+}
+
+class GoldenRetreiver: Dog {
+    fun shout(self) {
+        println_str("no, i won't shout");
+    }
+
+    fun speak(self) {
+        println_str("woof! i'm a golden retreiver");
+    }
+}
+
+fun makeSpeak(a: Animal) {
+    a.speak();
+}
+
+fun makeShout(a: Animal) {
+    a.shout();
+}
+
+fun main() {
+    let cat: Cat = Cat:init();
+    makeSpeak(cat);
+    makeShout(cat);
+    let dog: Dog = Dog:init();
+    makeSpeak(dog);
+    makeShout(dog);
+    let retreiver: GoldenRetreiver = GoldenRetreiver:init();
+    makeSpeak(retreiver);
+    makeShout(retreiver);
+}

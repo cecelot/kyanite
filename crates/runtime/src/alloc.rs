@@ -4,6 +4,8 @@ use std::{alloc::Layout, collections::HashMap, ffi::CStr, ptr::NonNull, sync::Mu
 /// The maximum number of bytes that can be allocated before
 /// running the garbage collector.
 const LIMIT: usize = 4_000_000;
+/// The metadata fields count.
+pub const METADATA_FIELDS: usize = 2;
 
 lazy_static::lazy_static! {
     static ref GLOBAL: Mutex<Allocator> = Mutex::new(Allocator::new());
@@ -128,8 +130,8 @@ impl Allocator {
                 let current_value: u64 = std::ptr::read(current_value_ptr.cast());
                 log(&format!("runtime: gc: [{offset}]: copying {current_value} from {current_value_ptr:?} to {new_value_ptr:?}"));
                 std::ptr::copy::<u64>(current_value_ptr.cast(), new_value_ptr.cast(), 1);
-                if n != 0 {
-                    let pointer = descriptor.as_bytes()[n - 1] == b'p';
+                if n > 1 {
+                    let pointer = descriptor.as_bytes()[n - METADATA_FIELDS] == b'p';
                     if pointer {
                         // we need to move *into* new_value_ptr the forwarded ptr for current_value
                         children
@@ -164,7 +166,7 @@ impl Allocator {
                 log(&format!(
                     "runtime: gc: stack({loc:?}): (descriptor: {descriptor}), forwarding {class:?}"
                 ));
-                let count = descriptor.len() + 1;
+                let count = descriptor.len() + METADATA_FIELDS;
                 let new_region = scratch.alloc_layout(Layout::array::<u64>(count).unwrap());
                 allocations.push(new_region.as_ptr().cast());
                 Self::copy_fields(count, &descriptor, class, new_region, &mut children);
@@ -210,16 +212,27 @@ impl FrameInfo {
 /// # Panics
 /// This function will panic if the allocation fails or
 /// if the string is not valid UTF-8.
-pub extern "C" fn alloc(descriptor: *const u8, fp: *const u8, size: i64) -> *const u64 {
+pub extern "C" fn alloc(field_descriptor: *const u8, fp: *const u8, size: i64) -> *const u64 {
     let frame = FrameInfo::new(fp, size);
-    let count = unsafe { CStr::from_ptr(descriptor.cast()) }
+    let count = unsafe { CStr::from_ptr(field_descriptor.cast()) }
         .to_bytes()
         .len()
-        + 1;
-    match GLOBAL.lock().unwrap().alloc(descriptor, frame, count, 0) {
+        + METADATA_FIELDS;
+    match GLOBAL
+        .lock()
+        .unwrap()
+        .alloc(field_descriptor, frame, count, 0)
+    {
         Ok(ptr) => ptr.cast(),
         Err(msg) => panic!("{msg}"),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn init_array(len: i64) -> *const u64 {
+    // FIXME: multiple allocators don't like each other
+    let slice = vec![0; usize::try_from(len).unwrap()];
+    Box::into_raw(slice.into_boxed_slice()).cast()
 }
 
 #[no_mangle]

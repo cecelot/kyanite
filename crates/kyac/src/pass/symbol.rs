@@ -2,7 +2,10 @@ use crate::{
     ast::{node, Decl, Type},
     builtins,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 #[derive(Debug, Clone)]
 pub enum Symbol {
@@ -27,6 +30,15 @@ impl Symbol {
         }
     }
 
+    pub fn has_subclass<'a>(cls: &'a node::ClassDecl, symbols: &'a SymbolTable) -> bool {
+        symbols.values().any(|symbol| {
+            matches!(symbol, Symbol::Class(subclass) if subclass
+            .parent
+            .as_ref()
+            .is_some_and(|parent| parent.lexeme == cls.name.lexeme))
+        })
+    }
+
     pub fn superclasses<'a>(
         mut cls: &'a node::ClassDecl,
         symbols: &'a SymbolTable,
@@ -49,25 +61,49 @@ impl Symbol {
             .collect()
     }
 
-    pub fn methods(&self, symbols: &SymbolTable) -> Vec<Rc<node::FuncDecl>> {
+    pub fn methods(&self, symbols: &SymbolTable) -> Vec<(String, Rc<node::FuncDecl>)> {
         let cls = self.class();
         let superclasses = Self::superclasses(cls, symbols);
-        superclasses
-            .iter()
-            .rev()
-            .flat_map(|cls| cls.methods.iter().cloned())
-            .collect()
+        let mut used = HashSet::new();
+        let mut methods = vec![];
+        for c in superclasses.iter().rev() {
+            for method in &c.methods {
+                let active = superclasses
+                    .iter()
+                    .find_map(|cls| {
+                        cls.methods
+                            .iter()
+                            .find(|m| m.name == method.name)
+                            .map(|m| format!("{}.{}", cls.name, m.name))
+                    })
+                    .unwrap_or_else(|| panic!("expected to find method {}", method.name));
+                let (_, n) = active.rsplit_once('.').unwrap();
+                if !used.contains(n) {
+                    methods.push((active.clone(), Rc::clone(method)));
+                    used.insert(n.to_string());
+                }
+            }
+        }
+        methods
     }
 
-    pub fn descriptor(fields: &[node::Field]) -> Vec<char> {
-        fields
+    pub fn descriptor(&self, symbols: &SymbolTable) -> (String, Vec<String>) {
+        let methods = self
+            .methods(symbols)
+            .iter()
+            .map(|(label, _)| label)
+            .cloned()
+            .collect();
+        let fields = self
+            .fields(symbols)
             .iter()
             .map(|f| match Type::from(&f.ty) {
                 Type::Int | Type::Float | Type::Bool => 'i',
                 Type::Str | Type::UserDefined(_) => 'p',
                 Type::Void => panic!("class cannot contain void field"),
             })
-            .collect()
+            .collect();
+        (fields, methods)
     }
 
     pub fn ty(&self) -> Type {

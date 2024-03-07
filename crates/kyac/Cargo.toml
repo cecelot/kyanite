@@ -10,6 +10,7 @@ indoc = "2.0.4"
 inkwell = { version = "0.2.0", features = ["llvm15-0"] }
 insta = { version = "1.32.0" }
 log = "0.4.20"
+runtime = { version = "0.2.0", path = "../runtime" }
 thiserror = "1.0.48"
 
 [lib]

@@ -319,6 +319,19 @@ fn method_inheritance() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn method_override() -> Result<(), Box<dyn std::error::Error>> {
     let res = run("kyir/method-override.kya")?;
-    assert_eq!(res.output, "inside `Y.show()`\n6\ninside `X.show()`\n2\n");
+    assert_eq!(
+        res.output,
+        "inside `X.show()`\n2\ninside `Y.show()`\n6\ninside `Z.show()`\n1\n5\n"
+    );
+    Ok(())
+}
+
+#[test]
+fn dynamic_dispatch() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/dynamic-dispatch.kya")?;
+    assert_eq!(
+        res.output,
+        "meow\n[shout]\nwoof\n[shout]\nwoof! i'm a golden retreiver\nno, i won't shout\n"
+    );
     Ok(())
 }

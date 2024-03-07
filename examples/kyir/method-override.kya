@@ -14,15 +14,25 @@ class Y: X {
         println_str("inside `Y.show()`");
         println_int(self.y);
     }
+
+    fun other(self) {}
 }
 
-class Z {
+class Z: X {
     y: int
+
+    fun show(self) {
+        println_str("inside `Z.show()`");
+        println_int(self.x);
+        println_int(self.y);
+    }
 }
 
 fun main() {
     let y: Y = Y:init(x: 2, y: 6);
-    y.show(); % fun show (as Y)
+    y.show(); % fun show
     let x: X = y; % explicit type widen
-    x.show(); % fun show (as X)
+    x.show(); % fun show (as Y)
+    let x: X = Z:init(x: 1, y: 5);
+    x.show(); % fun show (as Z)
 }

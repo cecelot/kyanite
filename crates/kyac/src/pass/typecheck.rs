@@ -395,8 +395,8 @@ impl<'a> TypeCheckPass<'a> {
                     // make sure we find the most "specific" implementation
                     // (i.e. Y.method() before X.method())
                     .rev()
-                    .find(|m| m.name.to_string() == ident.name.to_string());
-                if let Some(method) = method {
+                    .find(|(_, m)| m.name.to_string() == ident.name.to_string());
+                if let Some((_, method)) = method {
                     symbols.push(Symbol::Function(Rc::clone(method)));
                     ty = Type::from(method.ty.as_ref());
                 } else {
@@ -624,6 +624,8 @@ impl<'a> TypeCheckPass<'a> {
                         );
                     }
                     if let Some(cls) = casted {
+                        // This call actually refers to a parent (inherited) method call, so we need
+                        // to switch out the branch label later
                         self.calls.insert(call.id, cls);
                     }
                 } else if got != expected {

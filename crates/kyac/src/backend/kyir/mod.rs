@@ -30,7 +30,7 @@ pub fn asm<I: ArchInstr, F: Frame<I>>(
     let naive = translator.translate(ast);
     let ir = translate::canonicalize(naive);
     let mut codegen: Codegen<I, F> =
-        Codegen::new(translator.functions(), translator.strings(), ast);
+        Codegen::new(translator.functions(), translator.constants(), ast);
     let instrs = codegen.assembly(ir);
     for instr in instrs {
         log::trace!(
@@ -49,14 +49,14 @@ pub fn asm<I: ArchInstr, F: Frame<I>>(
 pub struct Codegen<'a, I: ArchInstr, F: Frame<I>> {
     asm: Vec<AsmInstr<I>>,
     functions: &'a HashMap<usize, F>,
-    strings: &'a HashMap<String, String>,
+    constants: &'a HashMap<String, Vec<String>>,
     idents: HashMap<String, usize>,
 }
 
 impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
     fn new(
         functions: &'a HashMap<usize, F>,
-        strings: &'a HashMap<String, String>,
+        constants: &'a HashMap<String, Vec<String>>,
         ast: &[Decl],
     ) -> Self {
         Self {
@@ -81,7 +81,7 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
                 .collect(),
             asm: Vec::new(),
             functions,
-            strings,
+            constants,
         }
     }
 
@@ -89,18 +89,21 @@ impl<'a, I: ArchInstr, F: Frame<I>> Codegen<'a, I, F> {
     fn assembly(&mut self, ir: Vec<Stmt>) -> &Vec<AsmInstr<I>> {
         ir.into_iter().for_each(|stmt| stmt.assembly(self));
         self.epilogues();
-        self.strings();
+        self.constants();
         &self.asm
     }
 
-    fn strings(&mut self) {
+    fn constants(&mut self) {
         let instrs = self
-            .strings
+            .constants
             .iter()
             .flat_map(|(addr, s)| {
                 vec![
                     I::proc(addr.clone()),
-                    I::data_fragment(String::from("asciz"), format!("\"{s}\"")),
+                    I::data_fragment(
+                        String::from("asciz"),
+                        s.iter().map(|s| format!("\"{s}\"")).collect(),
+                    ),
                 ]
             })
             .map(AsmInstr::new);
@@ -169,10 +172,14 @@ impl Assembly<String> for Expr {
             Self::Mem(mem) => mem.assembly(codegen),
             Self::Call(call) => call.assembly(codegen),
             Self::Temp(t) => t.name.clone(),
-            Self::Dereferenced(t) => format!("[{}]", t.name),
             Self::ConstStr(name) => {
                 let tmp = Temp::next();
                 codegen.emit(I::load_fragment(tmp.clone(), name.clone()));
+                tmp
+            }
+            Self::ConstLabel(label) => {
+                let tmp = Temp::next();
+                codegen.emit(I::label_address(tmp.clone(), label.clone()));
                 tmp
             }
             Self::ConstFloat(_) => todo!(),
@@ -260,15 +267,9 @@ impl Assembly<()> for Label {
 
 impl Assembly<()> for Move {
     fn assembly<I: ArchInstr, F: Frame<I>>(&self, codegen: &mut Codegen<I, F>) {
-        let store = matches!(
-            *self.target,
-            Expr::Mem(_) | Expr::Binary(_) | Expr::Dereferenced(_)
-        );
+        let store = matches!(*self.target, Expr::Mem(_) | Expr::Binary(_));
         if store {
-            let instr = if let Expr::Dereferenced(ref addr) = *self.target {
-                let src = self.expr.assembly(codegen);
-                I::store(src, addr.name.to_string(), 0)
-            } else if let Some((addr, offset)) = Codegen::<I, F>::access(&self.target) {
+            let instr = if let Some((addr, offset)) = Codegen::<I, F>::access(&self.target) {
                 let src = self.expr.assembly(codegen);
                 I::store(src, addr, offset)
             } else {
@@ -276,10 +277,7 @@ impl Assembly<()> for Move {
             };
             codegen.emit(instr);
         } else {
-            let instr = if let Expr::Dereferenced(ref addr) = *self.expr {
-                let dst = self.target.assembly(codegen);
-                I::load(dst, addr.name.to_string(), 0)
-            } else if let Some((src, offset)) = Codegen::<I, F>::access(&self.expr) {
+            let instr = if let Some((src, offset)) = Codegen::<I, F>::access(&self.expr) {
                 let dst = self.target.assembly(codegen);
                 I::load(dst, src, offset)
             } else if let Expr::ConstInt(ref i) = *self.expr {
@@ -338,4 +336,5 @@ const BUILTINS: &[&str] = &[
     "println_str",
     // internal
     "alloc",
+    "init_array",
 ];

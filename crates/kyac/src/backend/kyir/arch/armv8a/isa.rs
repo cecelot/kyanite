@@ -11,12 +11,14 @@ use std::fmt;
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum A64 {
-    /// (kind, value)
-    Data(String, String),
+    /// (kind, values)
+    Data(String, Vec<String>),
     /// (name)
     Label(String),
     /// (dst, src, offset)
     LoadImmediate(String, String, i64),
+    /// (dst, addr)
+    LabelAddress(String, String),
     StoreImmediate(String, String, i64),
     /// (dst, addr)
     LoadEffective(String, String),
@@ -47,8 +49,12 @@ impl ArchInstr for A64 {
         A64::Label(address)
     }
 
-    fn data_fragment(kind: String, value: String) -> Self {
-        A64::Data(kind, value)
+    fn data_fragment(kind: String, values: Vec<String>) -> Self {
+        A64::Data(kind, values)
+    }
+
+    fn label_address(dst: String, src: String) -> Self {
+        A64::LabelAddress(dst, src)
     }
 
     fn load_fragment(dst: String, label: String) -> Self {
@@ -112,7 +118,7 @@ impl FlowGraphMeta for A64 {
                 vec![dst.clone()]
             }
             A64::LoadPair(r1, r2) => vec![r1.clone(), r2.clone()],
-            A64::Move(dst, ..) => vec![dst.clone()],
+            A64::LabelAddress(dst, ..) | A64::Move(dst, ..) => vec![dst.clone()],
             _ => vec![],
         }
     }
@@ -124,7 +130,7 @@ impl FlowGraphMeta for A64 {
             A64::StoreImmediate(src, dst, ..) => vec![src.clone(), dst.clone()],
             A64::LoadImmediate(dst, src, ..) if src == dst => vec![src.clone()],
             A64::LoadImmediate(_, src, ..) if src == r.frame => vec![],
-            A64::LoadImmediate(dst, src, ..) => vec![dst.clone(), src.clone()],
+            A64::LoadImmediate(_, src, ..) => vec![src.clone()],
             A64::LoadEffective(.., src) | A64::Move(_, src) => {
                 vec![src.clone()]
             }
@@ -134,6 +140,7 @@ impl FlowGraphMeta for A64 {
             | A64::Mul(_, r1, r2)
             | A64::Div(_, r1, r2) => vec![r1.clone(), r2.clone()],
             A64::Compare(lhs, rhs) => vec![lhs.clone(), rhs.clone()],
+            A64::Call(ext) if ext.starts_with('T') => vec![ext.clone()],
             _ => vec![],
         }
     }
@@ -172,6 +179,7 @@ impl Format for A64 {
             A64::StoreImmediate(src, dst, offset) => {
                 A64::StoreImmediate(get(src), get(dst), offset)
             }
+            A64::LabelAddress(dst, addr) => A64::LabelAddress(get(dst), addr),
             A64::LoadEffective(dst, addr) => A64::LoadEffective(get(dst), addr),
             A64::StorePair(r1, r2) => A64::StorePair(get(r1), get(r2)),
             A64::LoadPair(r1, r2) => A64::LoadPair(get(r1), get(r2)),
@@ -181,6 +189,7 @@ impl Format for A64 {
             A64::Div(dst, r1, r2) => A64::Div(get(dst), get(r1), get(r2)),
             A64::Move(dst, src) => A64::Move(get(dst), get(src)),
             A64::Compare(lhs, rhs) => A64::Compare(get(lhs), get(rhs)),
+            A64::Call(ext) if ext.starts_with('T') => A64::Call(get(ext)),
             _ => self,
         }
     }
@@ -190,8 +199,9 @@ impl fmt::Display for A64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pad = " ".repeat(8);
         match self {
-            A64::Data(kind, value) => write!(f, "{pad}.{kind} {value}"),
+            A64::Data(kind, value) => write!(f, "{pad}.{kind} {}", value.join(",")),
             A64::Label(name) => write!(f, "{name}:"),
+            A64::LabelAddress(dst, addr) => write!(f, "{pad}adr {dst}, {addr}"),
             A64::LoadImmediate(dst, src, offset) => write!(f, "{pad}ldr {dst}, [{src}, #{offset}]"),
             A64::StoreImmediate(src, dst, offset) => {
                 write!(f, "{pad}str {src}, [{dst}, #{offset}]")
@@ -215,6 +225,7 @@ impl fmt::Display for A64 {
                 }
             }
             A64::BranchLink(label) => write!(f, "{pad}bl {label}"),
+            A64::Call(ext) if ext.starts_with('x') => write!(f, "{pad}blr {ext}"),
             A64::Call(ext) => write!(f, "{pad}bl {ext}"),
             A64::Compare(lhs, rhs) => write!(f, "{pad}cmp {lhs}, {rhs}"),
             A64::Ret => write!(f, "{pad}ret"),

@@ -36,8 +36,9 @@ pub struct RegisterMap {
 
 pub trait ArchInstr: FlowGraphMeta + Format + fmt::Debug + fmt::Display {
     fn proc(address: String) -> Self;
-    fn data_fragment(kind: String, value: String) -> Self;
+    fn data_fragment(kind: String, values: Vec<String>) -> Self;
     fn load_fragment(dst: String, label: String) -> Self;
+    fn label_address(dst: String, src: String) -> Self;
     fn load(dst: String, src: String, offset: i64) -> Self;
     fn store(src: String, addr: String, offset: i64) -> Self;
     /// `move` is a reserved keyword in Rust so we use an analogous term instead

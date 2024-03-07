@@ -28,8 +28,8 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::ConstInt(_)
             | Expr::ConstFloat(_)
             | Expr::Temp(_)
-            | Expr::Dereferenced(_)
-            | Expr::ConstStr(_) => {}
+            | Expr::ConstStr(_)
+            | Expr::ConstLabel(_) => {}
         }
     }
 
@@ -55,8 +55,8 @@ impl<'a> ESeqs<'a> for Expr {
             Expr::ConstInt(_)
             | Expr::ConstFloat(_)
             | Expr::Temp(_)
-            | Expr::Dereferenced(_)
-            | Expr::ConstStr(_) => {}
+            | Expr::ConstStr(_)
+            | Expr::ConstLabel(_) => {}
         }
     }
 }
