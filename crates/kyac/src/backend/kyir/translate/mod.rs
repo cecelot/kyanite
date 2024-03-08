@@ -206,7 +206,8 @@ impl Translate<Expr> for ast::node::Call {
             let arr = Temp::next();
             let address = Temp::next();
             let (_, n) = name.rsplit_once('.').unwrap();
-            let index = F::word_size() * (cls.methods.iter().position(|m| m.name == n).unwrap());
+            let index =
+                F::word_size() * (cls.methods.iter().position(|m| m.name == n).unwrap() + 1);
             stmts.append(&mut vec![
                 Move::wrapped(
                     Temp::wrapped(arr.clone()),
@@ -293,7 +294,7 @@ impl Translate<Expr> for ast::node::Access {
         let stmts: Vec<_> = initial
             .into_iter()
             .chain(meta.indices.iter().map(|&field| {
-                let offset: i64 = ((field + runtime::METADATA_FIELDS) * F::word_size())
+                let offset: i64 = ((field + runtime::CLASS_METADATA_FIELDS) * F::word_size())
                     .try_into()
                     .unwrap();
                 let mem = Mem::new(Binary::wrapped(
@@ -321,6 +322,10 @@ impl Translate<Expr> for ast::node::Init {
         let fields = cls.fields(translator.symbols);
         let (descriptor, method_descriptor) = cls.descriptor(translator.symbols);
         let ptr = translator.ctx.constants.add(vec![descriptor]);
+        let array_ptr = translator
+            .ctx
+            .constants
+            .add(vec![method_descriptor.len().to_string()]);
         let array = Temp::next();
         let mut setup = vec![
             Stmt::Expr(Box::new(Call::wrapped(
@@ -340,9 +345,13 @@ impl Translate<Expr> for ast::node::Init {
             // Allocate an array to hold the method descriptor
             Stmt::Expr(Box::new(Call::wrapped(
                 "init_array".into(),
-                vec![Const::<i64>::int(
-                    method_descriptor.len().try_into().unwrap(),
-                )],
+                vec![
+                    Expr::ConstStr(array_ptr),
+                    Temp::wrapped(r.frame.to_string()),
+                    Const::<i64>::int(frame.offset().sub(
+                        i64::try_from((self.initializers.len() * 2 + 1) * F::word_size()).unwrap(),
+                    )),
+                ],
             ))),
             Stmt::checked_move(
                 Temp::wrapped(array.clone()),
@@ -351,7 +360,7 @@ impl Translate<Expr> for ast::node::Init {
         ];
         // Initialize the method descriptor array
         for (i, method) in method_descriptor.iter().enumerate() {
-            let offset: i64 = (i * F::word_size()).try_into().unwrap();
+            let offset: i64 = ((i + 1) * F::word_size()).try_into().unwrap();
             setup.push(Move::wrapped(
                 Binary::wrapped(
                     BinOp::Plus,
@@ -389,7 +398,7 @@ impl Translate<Expr> for ast::node::Init {
                     AstExpr::Init(init) => init.translate(translator),
                     _ => init.expr.translate(translator),
                 };
-                let offset: i64 = ((i + runtime::METADATA_FIELDS) * F::word_size())
+                let offset: i64 = ((i + runtime::CLASS_METADATA_FIELDS) * F::word_size())
                     .try_into()
                     .unwrap();
                 translator.ctx.name.pop();

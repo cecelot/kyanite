@@ -49,12 +49,12 @@ fun makeShout(a: Animal) {
 
 fun main() {
     let cat: Cat = Cat:init();
+    let dog: Dog = Dog:init();
+    let retreiver: GoldenRetreiver = GoldenRetreiver:init();
     makeSpeak(cat);
     makeShout(cat);
-    let dog: Dog = Dog:init();
     makeSpeak(dog);
     makeShout(dog);
-    let retreiver: GoldenRetreiver = GoldenRetreiver:init();
     makeSpeak(retreiver);
     makeShout(retreiver);
 }
