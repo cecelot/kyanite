@@ -29,7 +29,7 @@ class Dog: Animal {
     fun foo(self) {}
 }
 
-class GoldenRetreiver: Dog {
+class GoldenRetriever: Dog {
     fun shout(self) {
         println_str("no, i won't shout");
     }
@@ -50,11 +50,11 @@ fun makeShout(a: Animal) {
 fun main() {
     let cat: Cat = Cat:init();
     let dog: Dog = Dog:init();
-    let retreiver: GoldenRetreiver = GoldenRetreiver:init();
+    let retriever: GoldenRetriever = GoldenRetriever:init();
     makeSpeak(cat);
     makeShout(cat);
     makeSpeak(dog);
     makeShout(dog);
-    makeSpeak(retreiver);
-    makeShout(retreiver);
+    makeSpeak(retriever);
+    makeShout(retriever);
 }
