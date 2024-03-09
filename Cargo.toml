@@ -5,8 +5,7 @@ members = [
     "crates/highlights",
     "crates/kyac",
     "crates/kyanite",
-    "crates/runtime", 
-    "crates/subprocess"
+    "crates/runtime"
 ]
 default-members = [
     "crates/kyanite",

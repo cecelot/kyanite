@@ -1,5 +1,6 @@
 pub mod asm;
 pub mod llvm;
+pub mod subprocess;
 
 use clap::{Parser, Subcommand};
 use colored::Colorize;

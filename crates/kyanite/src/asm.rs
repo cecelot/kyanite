@@ -1,4 +1,4 @@
-use crate::include_dir;
+use crate::{include_dir, subprocess};
 use kyac::{ArchInstr, Frame, PipelineError};
 use std::{fs::File, io::Write};
 use tempfile::TempDir;

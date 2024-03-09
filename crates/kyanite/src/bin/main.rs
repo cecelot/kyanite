@@ -49,12 +49,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Version => {
             println!(
-                "Kyanite:\n{:>12} {:>5}\n{:>12} {:>5}\n{:>12} {:>5}",
-                "CLI:",
+                "kyanite {} (kyac: {}, runtime: {})",
                 kyanite::VERSION,
-                "Compiler:",
                 kyac::VERSION,
-                "Runtime:",
                 runtime::VERSION,
             );
             Ok(())

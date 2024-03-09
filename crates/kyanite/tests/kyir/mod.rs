@@ -1,5 +1,5 @@
 use kyac::{arch::Armv8a, isa::A64, Backend, Output, Source};
-use subprocess::ProcessResult;
+use kyanite::subprocess::ProcessResult;
 
 fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     let source = Source::new(super::path(name)?)?;
@@ -9,7 +9,7 @@ fn run(name: &str) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let exe = kyanite::asm::compile::<A64, Armv8a>(&asm, &dir, &kyanite::filename(&source))?;
     std::env::set_var("KYANITE_GC_ALWAYS", "1");
-    let res = subprocess::exec(&exe, &[]);
+    let res = kyanite::subprocess::exec(&exe, &[]);
     Ok(res)
 }
 
