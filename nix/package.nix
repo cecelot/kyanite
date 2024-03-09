@@ -38,7 +38,7 @@ in
       cp target/release/main $out/bin/kyanite
       wrapProgram $out/bin/kyanite \
         --set KYANITE_RUNTIME_LIB $out/lib \
-        --prefix PATH : ${pkgs.lib.makeBinPath [llvmPackages_15.libllvm]}
+        --prefix PATH : ${lib.makeBinPath [llvmPackages_15.libllvm]}
     '';
     RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
     LLVM_SYS_150_PREFIX = llvmPackages_15.libllvm.dev;
