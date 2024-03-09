@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "kyac"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "colored 2.1.0",
  "indoc",
