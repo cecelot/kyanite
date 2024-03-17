@@ -16,6 +16,7 @@ nix build "https://flakehub.com/f/alythical/kyanite/[tag].tar.gz"
 ```
 
 `[tag]` should be replaced by either:
+
 1. a version string matching `0.1.[commit-count]` (where `[commit-count]` is the total number of commits in this repository)
 2. any other [published release](https://flakehub.com/flake/alythical/kyanite/releases) tag
 
