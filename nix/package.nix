@@ -13,7 +13,7 @@ in
   pkgs.rustPlatform.buildRustPackage {
     pname = "kyanite";
     version = "0.4.0";
-    src = ../.;
+    src = builtins.path { path = ../.; name = "kyanite"; };
     nativeBuildInputs = [
       rust
       # LLVM
