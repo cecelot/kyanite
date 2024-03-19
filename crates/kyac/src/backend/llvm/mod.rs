@@ -6,7 +6,7 @@ use crate::{
         Decl, Expr, Stmt, Type,
     },
     backend::llvm::builtins::Builtins,
-    pass::{AccessMap, Symbol, SymbolTable},
+    pass::{ResolvedMetaInfo, Symbol, SymbolTable},
     token::{Kind, Span, Token},
 };
 use inkwell::{
@@ -86,14 +86,14 @@ pub struct Ir<'a, 'ctx> {
     classes: HashMap<String, (StructType<'ctx>, Rc<ClassDecl>)>,
     function: Option<FunctionValue<'ctx>>,
     symbols: SymbolTable,
-    accesses: AccessMap,
+    meta: ResolvedMetaInfo,
 }
 
 impl<'a, 'ctx> Ir<'a, 'ctx> {
     pub fn build(
         program: &mut Vec<Decl>,
         symbols: SymbolTable,
-        accesses: AccessMap,
+        meta: ResolvedMetaInfo,
     ) -> Result<String, IrError> {
         let context = Context::create();
         let module = context.create_module("main");
@@ -118,7 +118,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             function: None,
 
             symbols,
-            accesses,
+            meta,
         };
 
         // Inject builtin function declarations
@@ -213,7 +213,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
     }
 
     fn indices(&mut self, access: &node::Access) -> (Vec<(u32, Type)>, Type) {
-        let access = self.accesses.remove(&access.id).unwrap();
+        let access = self.meta.access.remove(&access.id).unwrap();
         let indices = access
             .symbols
             .iter()

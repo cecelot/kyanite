@@ -21,25 +21,23 @@ use crate::{
     arch::Armv8a,
     backend::{kyir, llvm},
     isa::A64,
-    pass::{SymbolTable, TypeCheckPass},
+    pass::SymbolTable,
 };
-use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineError> {
     let mut ast = ast::Ast::try_from(source)?;
     let symbols = SymbolTable::from(&ast.nodes);
-    let mut accesses = HashMap::new();
-    let mut calls = HashMap::new();
-    let mut tc = TypeCheckPass::new(&symbols, &mut accesses, &mut calls, source, &ast.nodes);
-    tc.run().map_err(PipelineError::TypeError)?;
+    let meta = pass::resolve_types(source, &symbols, &ast.nodes)
+        .map_err(|e| PipelineError::TypeError(e.len()))?;
     match backend {
         Backend::Llvm => Ok(Output::Llvm(
-            llvm::Ir::build(&mut ast.nodes, symbols, accesses).map_err(PipelineError::IrError)?,
+            llvm::Ir::build(&mut ast.nodes, symbols, meta).map_err(PipelineError::IrError)?,
         )),
         Backend::Kyir => Ok(Output::Asm(kyir::asm::<A64, Armv8a>(
-            &ast.nodes, &symbols, &accesses, &calls,
+            &ast.nodes, &symbols, &meta,
         ))),
     }
 }

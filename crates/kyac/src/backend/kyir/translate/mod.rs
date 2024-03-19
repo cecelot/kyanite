@@ -2,15 +2,14 @@ mod canon;
 
 pub(super) use canon::canonicalize;
 
-use crate::{ast::node::FuncDecl, pass::Symbol};
 #[allow(clippy::wildcard_imports)]
 use crate::{
-    ast::{self, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
+    ast::{self, node::FuncDecl, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
     backend::kyir::{
         arch::{ArchInstr, Frame},
         ir::*,
     },
-    pass::{AccessMap, CallMap, SymbolTable},
+    pass::{ResolvedMetaInfo, Symbol, SymbolTable},
     token::{Kind, Span, Token},
 };
 use std::{collections::HashMap, ops::Sub};
@@ -18,8 +17,7 @@ use std::{collections::HashMap, ops::Sub};
 pub struct Translator<'a, I: ArchInstr, F: Frame<I>> {
     functions: HashMap<usize, F>,
     function: Option<usize>,
-    accesses: &'a AccessMap,
-    calls: &'a CallMap,
+    meta: &'a ResolvedMetaInfo,
     symbols: &'a SymbolTable,
     ctx: Context,
     _isa: std::marker::PhantomData<I>,
@@ -34,7 +32,7 @@ struct Context {
 }
 
 impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
-    pub fn new(accesses: &'a AccessMap, calls: &'a CallMap, symbols: &'a SymbolTable) -> Self {
+    pub fn new(symbols: &'a SymbolTable, meta: &'a ResolvedMetaInfo) -> Self {
         Self {
             _isa: std::marker::PhantomData,
             functions: HashMap::new(),
@@ -46,9 +44,8 @@ impl<'a, I: ArchInstr, F: Frame<I>> Translator<'a, I, F> {
                 mem: None,
                 stmts: vec![],
             },
-            accesses,
-            calls,
             symbols,
+            meta,
         }
     }
 
@@ -168,12 +165,12 @@ impl Translate<Expr> for ast::node::Call {
         let name = match *self.left {
             AstExpr::Ident(ref ident) => ident.name.to_string(),
             AstExpr::Access(ref access) => {
-                let meta = translator.accesses.get(&access.id).unwrap();
+                let meta = translator.meta.access.get(&access.id).unwrap();
                 let name = meta.symbols.iter().rev().take(2).rev().map(|item| match item {
                     Symbol::Function(fun) => fun.name.to_string(),
                     Symbol::Class(c) => {
                         cls = Some(c);
-                        if let Some(cls) = translator.calls.get(&self.id) {
+                        if let Some(cls) = translator.meta.call.get(&self.id) {
                             cls.to_string()
                         } else {
                             c.name.to_string()
@@ -188,7 +185,7 @@ impl Translate<Expr> for ast::node::Call {
         let ty = match *self.left {
             AstExpr::Ident(_) => translator.symbols[&name].ty(),
             AstExpr::Access(ref access) => {
-                let meta = translator.accesses.get(&access.id).unwrap();
+                let meta = translator.meta.access.get(&access.id).unwrap();
                 meta.ty.clone()
             }
             _ => unimplemented!(),
@@ -265,7 +262,7 @@ impl Translate<Expr> for ast::node::Unary {
 impl Translate<Expr> for ast::node::Access {
     // heh, this is basically the spiritual equivalent of LLVM's getelementptr
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
-        let meta = translator.accesses.get(&self.id).unwrap();
+        let meta = translator.meta.access.get(&self.id).unwrap();
         let head = self.chain.first().unwrap();
         let mut initial = vec![];
         let ident = match head {

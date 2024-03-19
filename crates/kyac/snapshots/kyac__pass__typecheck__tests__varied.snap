@@ -1,193 +1,195 @@
 ---
 source: crates/kyac/src/pass/typecheck.rs
-expression: pass.errors
+expression: errors
 ---
-[
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected initializer to be of type int",
-        source: "const FOO: int = 5. > 7. * 4.;",
-        span: Span {
-            line: 1,
-            column: 18,
-            length: 12,
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected initializer to be of type int",
+            source: "const FOO: int = 5. > 7. * 4.;",
+            span: Span {
+                line: 1,
+                column: 18,
+                length: 12,
+            },
+            text: "expression of type bool",
         },
-        text: "expression of type bool",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "cannot add float to int",
-        source: "    return a + b; % mismatched types for binary op '+'",
-        span: Span {
-            line: 8,
-            column: 14,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "cannot add float to int",
+            source: "    return a + b; % mismatched types for binary op '+'",
+            span: Span {
+                line: 8,
+                column: 14,
+                length: 1,
+            },
+            text: "",
         },
-        text: "",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "cannot subtract float from int",
-        source: "    return a - b + 7; % mismatched types for binary op '-' and '+'",
-        span: Span {
-            line: 12,
-            column: 14,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "cannot subtract float from int",
+            source: "    return a - b + 7; % mismatched types for binary op '-' and '+'",
+            span: Span {
+                line: 12,
+                column: 14,
+                length: 1,
+            },
+            text: "",
         },
-        text: "",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type int, but found float",
-        source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'",
-        span: Span {
-            line: 20,
-            column: 31,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type int, but found float",
+            source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'",
+            span: Span {
+                line: 20,
+                column: 31,
+                length: 1,
+            },
+            text: "expression of type float",
         },
-        text: "expression of type float",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "cannot add int to float",
-        source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'",
-        span: Span {
-            line: 20,
-            column: 22,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "cannot add int to float",
+            source: "    return foo(a, b) + bar(c, d); % mismatched types for binary op '+'",
+            span: Span {
+                line: 20,
+                column: 22,
+                length: 1,
+            },
+            text: "",
         },
-        text: "",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected initializer to be of type float",
-        source: "    let c: float = a * b;",
-        span: Span {
-            line: 34,
-            column: 20,
-            length: 5,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected initializer to be of type float",
+            source: "    let c: float = a * b;",
+            span: Span {
+                line: 34,
+                column: 20,
+                length: 5,
+            },
+            text: "expression of type int",
         },
-        text: "expression of type int",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type float, but found int",
-        source: "    bar(a, b); % mismatched types 'float' and 'int'",
-        span: Span {
-            line: 36,
-            column: 9,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type float, but found int",
+            source: "    bar(a, b); % mismatched types 'float' and 'int'",
+            span: Span {
+                line: 36,
+                column: 9,
+                length: 1,
+            },
+            text: "expression of type int",
         },
-        text: "expression of type int",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type float, but found int",
-        source: "    bar(within(17), 3);",
-        span: Span {
-            line: 38,
-            column: 9,
-            length: 10,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type float, but found int",
+            source: "    bar(within(17), 3);",
+            span: Span {
+                line: 38,
+                column: 9,
+                length: 10,
+            },
+            text: "expression of type int",
         },
-        text: "expression of type int",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type float, but found int",
-        source: "    within(withinFloat(1000));",
-        span: Span {
-            line: 40,
-            column: 24,
-            length: 4,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type float, but found int",
+            source: "    within(withinFloat(1000));",
+            span: Span {
+                line: 40,
+                column: 24,
+                length: 4,
+            },
+            text: "expression of type int",
         },
-        text: "expression of type int",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type int, but found float",
-        source: "    within(withinFloat(1000));",
-        span: Span {
-            line: 40,
-            column: 12,
-            length: 17,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type int, but found float",
+            source: "    within(withinFloat(1000));",
+            span: Span {
+                line: 40,
+                column: 12,
+                length: 17,
+            },
+            text: "expression of type float",
         },
-        text: "expression of type float",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type int, but found str",
-        source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
-        span: Span {
-            line: 41,
-            column: 31,
-            length: 7,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type int, but found str",
+            source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
+            span: Span {
+                line: 41,
+                column: 31,
+                length: 7,
+            },
+            text: "expression of type str",
         },
-        text: "expression of type str",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type float, but found int",
-        source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
-        span: Span {
-            line: 41,
-            column: 24,
-            length: 15,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type float, but found int",
+            source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
+            span: Span {
+                line: 41,
+                column: 24,
+                length: 15,
+            },
+            text: "expression of type int",
         },
-        text: "expression of type int",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type int, but found float",
-        source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
-        span: Span {
-            line: 41,
-            column: 12,
-            length: 28,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type int, but found float",
+            source: "    within(withinFloat(within(\"hello\"))); % mismatched types 'float' and 'string'",
+            span: Span {
+                line: 41,
+                column: 12,
+                length: 28,
+            },
+            text: "expression of type float",
         },
-        text: "expression of type float",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "this function takes 2 arguments, but 3 were provided",
-        source: "    foo(a, b, 10); % mismatched args",
-        span: Span {
-            line: 43,
-            column: 5,
-            length: 3,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "this function takes 2 arguments, but 3 were provided",
+            source: "    foo(a, b, 10); % mismatched args",
+            span: Span {
+                line: 43,
+                column: 5,
+                length: 3,
+            },
+            text: "while calling function here",
         },
-        text: "while calling function here",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected argument of type int, but found float",
-        source: "    within(baz); % mismatched args",
-        span: Span {
-            line: 46,
-            column: 12,
-            length: 3,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected argument of type int, but found float",
+            source: "    within(baz); % mismatched args",
+            span: Span {
+                line: 46,
+                column: 12,
+                length: 3,
+            },
+            text: "expression of type float",
         },
-        text: "expression of type float",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "cannot add float to int",
-        source: "    baz + 7;",
-        span: Span {
-            line: 48,
-            column: 9,
-            length: 1,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "cannot add float to int",
+            source: "    baz + 7;",
+            span: Span {
+                line: 48,
+                column: 9,
+                length: 1,
+            },
+            text: "",
         },
-        text: "",
-    },
-    PreciseError {
-        filename: "test-cases/typecheck/varied.kya",
-        heading: "expected return type to be void",
-        source: "    return 12. * 36.; % mismatched types 'int' and 'float'",
-        span: Span {
-            line: 50,
-            column: 12,
-            length: 9,
+        PreciseError {
+            filename: "test-cases/typecheck/varied.kya",
+            heading: "expected return type to be void",
+            source: "    return 12. * 36.; % mismatched types 'int' and 'float'",
+            span: Span {
+                line: 50,
+                column: 12,
+                length: 9,
+            },
+            text: "expression is of type float",
         },
-        text: "expression is of type float",
-    },
-]
+    ],
+)
