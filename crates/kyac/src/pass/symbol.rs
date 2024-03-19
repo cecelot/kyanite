@@ -124,42 +124,42 @@ impl From<&Vec<Decl>> for SymbolTable {
             builtins::builtins()
                 .nodes
                 .iter()
-                .map(|decl| match decl {
-                    Decl::Function(fun) => (fun.name.to_string(), Symbol::Function(Rc::clone(fun))),
-                    Decl::Constant(c) => (c.name.to_string(), Symbol::Constant(Rc::clone(c))),
-                    Decl::Class(cls) => (cls.name.to_string(), Symbol::Class(Rc::clone(cls))),
-                })
+                .map(ToTuple::to_tuple)
                 .collect(),
         );
-        nodes
-            .iter()
-            .for_each(|node| self::SymbolTableVisitor::visit(node, &mut table));
+        table.extend(nodes.iter().map(ToTuple::to_tuple));
         table
     }
 }
 
-trait SymbolTableVisitor {
-    fn visit(&self, table: &mut SymbolTable);
+trait ToTuple {
+    fn to_tuple(&self) -> (String, Symbol);
 }
 
-impl SymbolTableVisitor for Decl {
-    fn visit(&self, table: &mut SymbolTable) {
+impl ToTuple for Decl {
+    fn to_tuple(&self) -> (String, Symbol) {
         match self {
-            Decl::Function(fun) => func(fun, table),
-            Decl::Constant(c) => constant(c, table),
-            Decl::Class(cls) => class(cls, table),
+            Decl::Function(fun) => fun.to_tuple(),
+            Decl::Constant(c) => c.to_tuple(),
+            Decl::Class(cls) => cls.to_tuple(),
         }
     }
 }
 
-fn func(fun: &Rc<node::FuncDecl>, table: &mut SymbolTable) {
-    table.insert(fun.name.to_string(), Symbol::Function(Rc::clone(fun)));
+impl ToTuple for Rc<node::FuncDecl> {
+    fn to_tuple(&self) -> (String, Symbol) {
+        (self.name.to_string(), Symbol::Function(Rc::clone(self)))
+    }
 }
 
-fn constant(c: &Rc<node::ConstantDecl>, table: &mut SymbolTable) {
-    table.insert(c.name.to_string(), Symbol::Constant(Rc::clone(c)));
+impl ToTuple for Rc<node::ConstantDecl> {
+    fn to_tuple(&self) -> (String, Symbol) {
+        (self.name.to_string(), Symbol::Constant(Rc::clone(self)))
+    }
 }
 
-fn class(cls: &Rc<node::ClassDecl>, table: &mut SymbolTable) {
-    table.insert(cls.name.to_string(), Symbol::Class(Rc::clone(cls)));
+impl ToTuple for Rc<node::ClassDecl> {
+    fn to_tuple(&self) -> (String, Symbol) {
+        (self.name.to_string(), Symbol::Class(Rc::clone(self)))
+    }
 }
