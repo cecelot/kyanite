@@ -1,5 +1,5 @@
 use crate::{
-    ast::{node, Decl, Type},
+    ast::{node, Decl},
     builtins,
 };
 use std::{
@@ -13,14 +13,23 @@ pub enum Symbol {
     Function(Rc<node::FuncDecl>),
     Constant(Rc<node::ConstantDecl>),
     Variable(Rc<node::VarDecl>),
+    Str,
+    Int,
+    Float,
+    Bool,
+    Void,
 }
 
 impl Symbol {
     pub fn class(&self) -> &node::ClassDecl {
         match self {
             Symbol::Class(cls) => cls,
-            _ => panic!("called `Symbol::class()` on a non-class symbol"),
+            _ => panic!("called `Symbol::class()` on a non-class symbol: {self:?}"),
         }
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, Symbol::Class(_) | Symbol::Str)
     }
 
     pub fn function(&self) -> &node::FuncDecl {
@@ -97,22 +106,13 @@ impl Symbol {
         let fields = self
             .fields(symbols)
             .iter()
-            .map(|f| match Type::from(&f.ty) {
-                Type::Int | Type::Float | Type::Bool => 'i',
-                Type::Str | Type::UserDefined(_) => 'p',
-                Type::Void => panic!("class cannot contain void field"),
+            .map(|f| match f.ty.base.lexeme.unwrap() {
+                "int" | "float" | "bool" => 'i',
+                "void" => panic!("class cannot contain void field"),
+                _ => 'p',
             })
             .collect();
         (fields, methods)
-    }
-
-    pub fn ty(&self) -> Type {
-        match self {
-            Self::Class(cls) => Type::from(&cls.name),
-            Self::Function(fun) => fun.ty.as_ref().into(),
-            Self::Constant(c) => Type::from(&c.ty),
-            Self::Variable(v) => Type::from(&v.ty),
-        }
     }
 }
 

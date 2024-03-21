@@ -4,7 +4,7 @@ pub(super) use canon::canonicalize;
 
 #[allow(clippy::wildcard_imports)]
 use crate::{
-    ast::{self, node::FuncDecl, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt, Type},
+    ast::{self, node::FuncDecl, ty::Type, Decl as AstDecl, Expr as AstExpr, Stmt as AstStmt},
     backend::kyir::{
         arch::{ArchInstr, Frame},
         ir::*,
@@ -182,18 +182,18 @@ impl Translate<Expr> for ast::node::Call {
             },
             _ => panic!("Expected either `AstExpr::Ident` or `AstExpr::Access` on left side of call expression"),
         };
-        let ty = match *self.left {
-            AstExpr::Ident(_) => translator.symbols[&name].ty(),
+        let ptr = match *self.left {
+            AstExpr::Ident(_) => translator.symbols[&name].is_ptr(),
             AstExpr::Access(ref access) => {
                 let meta = translator.meta.access.get(&access.id).unwrap();
-                meta.ty.clone()
+                meta.symbols.last().unwrap().is_ptr()
             }
             _ => unimplemented!(),
         };
         let temp = Temp::next();
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
-        let saved = frame.allocate(&temp, matches!(ty, Type::UserDefined(_)));
+        let saved = frame.allocate(&temp, ptr);
         let mut stmts = vec![];
         let address = if cls.is_some_and(|cls| Symbol::has_subclass(cls, translator.symbols)) {
             // This call could be overridden by a subclass in which case we need to use dynamic dispatch.
@@ -272,7 +272,10 @@ impl Translate<Expr> for ast::node::Access {
                 let name = Temp::next();
                 let decl = ast::node::VarDecl::wrapped(
                     Token::new(Kind::Identifier, Some(name.clone().leak()), Span::default()),
-                    Token::new(Kind::Literal, init.name.lexeme, Span::default()),
+                    Type::new(
+                        Token::new(Kind::Literal, init.name.lexeme, Span::default()),
+                        vec![],
+                    ),
                     head.clone(),
                 );
                 let stmt = decl.translate(translator);
@@ -510,7 +513,10 @@ impl Translate<Stmt> for ast::node::For {
         let cur = ast::node::Ident::wrapped(self.index.clone());
         let start = ast::node::VarDecl::wrapped(
             cur.clone().ident().name.clone(),
-            Token::new(Kind::Literal, Some("int"), Span::default()),
+            Type::new(
+                Token::new(Kind::Literal, Some("int"), Span::default()),
+                vec![],
+            ),
             range.start.clone(),
         );
         let w = ast::node::While {
@@ -586,7 +592,10 @@ impl Translate<Stmt> for ast::node::VarDecl {
         let id = translator.function.unwrap();
         let frame = translator.functions.get_mut(&id).unwrap();
         // No matter what, variables are always F::word_size() (either pointer to first element or the value itself)
-        let target = frame.allocate(&name, matches!(Type::from(&self.ty), Type::UserDefined(_)));
+        let target = frame.allocate(
+            &name,
+            !matches!(self.ty.base.lexeme, Some("int" | "float" | "bool")),
+        );
         Stmt::checked_move(target, expr)
     }
 }
@@ -601,7 +610,7 @@ impl Translate<Stmt> for ast::node::FuncDecl {
             .into_iter()
             .chain(self.body.iter().map(|stmt| stmt.translate(translator)))
             .collect();
-        if self.ty == Type::Void {
+        if self.ty.is_none() || self.ty.as_ref().unwrap().base.lexeme == Some("void") {
             // If the function returns void, explicitly zero out the return register. This can
             // cause unwanted behavior in the garbage collector because if the last call is an
             // allocation: that pointer will be copied to the parent frame and be considered
@@ -624,6 +633,7 @@ impl Translate<Vec<Stmt>> for ast::node::ClassDecl {
                     method.name.clone(),
                     method.params.clone(),
                     method.ty.clone(),
+                    method.tp.clone(),
                     method.body.clone(),
                     false,
                 );

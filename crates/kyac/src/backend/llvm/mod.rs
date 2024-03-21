@@ -3,7 +3,8 @@ mod builtins;
 use crate::{
     ast::{
         node::{self, ClassDecl, Ident},
-        Decl, Expr, Stmt, Type,
+        ty::Type,
+        Decl, Expr, Stmt,
     },
     backend::llvm::builtins::Builtins,
     pass::{ResolvedMetaInfo, Symbol, SymbolTable},
@@ -298,6 +299,7 @@ impl<'a, 'ctx> Ir<'a, 'ctx> {
             func.name.clone(),
             func.params.clone(),
             func.ty.clone(),
+            func.tp.clone(),
             func.body.clone(),
             func.external,
         );

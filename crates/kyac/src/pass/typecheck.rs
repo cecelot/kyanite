@@ -1,44 +1,11 @@
 use crate::{
-    ast::{
-        node::{self, Ident},
-        span::Combined,
-        Decl, Expr, Stmt, Type,
-    },
+    ast::{node, span::Combined, ty::Type, Decl, Expr, Stmt},
     error::PreciseError,
     pass::{Symbol, SymbolTable},
     token::{Kind, Span, Token},
     Source,
 };
 use std::{collections::HashMap, rc::Rc};
-
-macro_rules! symbol {
-    ($self:ident, $name:expr, $ty:ident, $s:literal) => {
-        match $self.symbol(&$name.to_string()) {
-            Some(Symbol::$ty(v)) => v.clone(),
-            Some(_) => {
-                $self.error(
-                    $name.span,
-                    format!("`{}` is not a {}", $name, $s),
-                    "".into(),
-                );
-                return Err(TypeError::NotType($name.clone(), $s));
-            }
-            None => {
-                $self.error($name.span, format!("`{}` is not defined", $name), "".into());
-                return Err(TypeError::Undefined);
-            }
-        }
-    };
-}
-
-macro_rules! cast {
-    ($id:expr, $res:expr, $pattern:pat) => {
-        match $id {
-            $pattern => $res,
-            _ => unimplemented!(),
-        }
-    };
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum TypeError {
@@ -49,9 +16,9 @@ pub enum TypeError {
     #[error("cannot {0} {1}")]
     UnaryMismatch(&'static str, Type),
     #[error("expected {0}, got {1}")]
-    Mismatch(Type, Type),
-    #[error("{0} is not a property of {1}")]
-    NotProperty(Token, Type),
+    Mismatch(String, String),
+    #[error("{0:?} is not a property of {1}")]
+    NotProperty(Expr, Type),
 }
 
 #[derive(Debug)]
@@ -80,12 +47,146 @@ struct TypeResolverContext<'a> {
     class: Option<Token>,
 }
 
+#[derive(Debug)]
+struct ResolvedType {
+    base: Symbol,
+    #[allow(dead_code)]
+    params: Vec<ResolvedType>,
+    meta: Type,
+}
+
+impl ResolvedType {
+    fn new(base: Symbol, params: Vec<ResolvedType>, meta: Type) -> Self {
+        Self { base, params, meta }
+    }
+
+    fn field(&self, symbols: &SymbolTable, field: &Expr) -> Option<(usize, node::Field)> {
+        match (&self.base, field) {
+            (Symbol::Class(_), Expr::Ident(ident)) => self
+                .base
+                .fields(symbols)
+                .iter()
+                .enumerate()
+                .find(|(_, f)| f.name.to_string() == ident.name.to_string())
+                .map(|(i, f)| (i, f.clone())),
+            _ => None,
+        }
+    }
+
+    fn method(&self, symbols: &SymbolTable, method: &Expr) -> Option<Rc<node::FuncDecl>> {
+        match (&self.base, method) {
+            #[allow(clippy::cmp_owned)]
+            (Symbol::Class(_), Expr::Call(call)) => self
+                .base
+                .methods(symbols)
+                .iter()
+                .map(|(label, method)| (label.rsplit_once('.').unwrap().1, method))
+                .find(|(name, _)| *name == call.left.ident().name.to_string())
+                .map(|(_, func)| func)
+                .cloned(),
+            _ => None,
+        }
+    }
+
+    fn is_numeric(&self) -> bool {
+        matches!(self.base, Symbol::Int | Symbol::Float)
+    }
+
+    fn is_bool(&self) -> bool {
+        matches!(self.base, Symbol::Bool)
+    }
+
+    fn fake_meta(lexeme: &'static str) -> Type {
+        Type::new(
+            Token::new(Kind::Identifier, Some(lexeme), Span::default()),
+            vec![],
+        )
+    }
+
+    fn str() -> Self {
+        Self::new(Symbol::Str, vec![], Self::fake_meta("str"))
+    }
+
+    fn float() -> Self {
+        Self::new(Symbol::Float, vec![], Self::fake_meta("float"))
+    }
+
+    fn int() -> Self {
+        Self::new(Symbol::Int, vec![], Self::fake_meta("int"))
+    }
+
+    fn bool() -> Self {
+        Self::new(Symbol::Bool, vec![], Self::fake_meta("bool"))
+    }
+
+    fn void() -> Self {
+        Self::new(Symbol::Void, vec![], Self::fake_meta("void"))
+    }
+}
+
+impl PartialEq for ResolvedType {
+    fn eq(&self, other: &Self) -> bool {
+        match &self.base {
+            Symbol::Int | Symbol::Float | Symbol::Str | Symbol::Bool | Symbol::Void => {
+                self.meta.base.to_string() == other.meta.base.to_string()
+            }
+            Symbol::Class(cls) => {
+                let other = other.meta.to_string();
+                let cls = cls.name.to_string();
+                cls == other
+            }
+            Symbol::Constant(c) => {
+                let other = other.meta.to_string();
+                let c = c.name.to_string();
+                c == other
+            }
+            Symbol::Function(f) => {
+                let other = other.meta.to_string();
+                let f = f.name.to_string();
+                f == other
+            }
+            Symbol::Variable(v) => {
+                let other = other.meta.to_string();
+                let v = v.name.to_string();
+                v == other
+            }
+        }
+    }
+}
+
 trait ResolveType {
     fn resolve(
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError>;
+    ) -> Result<ResolvedType, TypeError>;
+}
+
+impl ResolveType for Type {
+    #[allow(clippy::only_used_in_recursion)]
+    fn resolve(
+        &self,
+        cx: &mut TypeResolverContext,
+        meta: &mut ResolvedMetaInfo,
+    ) -> Result<ResolvedType, TypeError> {
+        Ok(ResolvedType::new(
+            if let Some(symbol) = cx.symbol(&self.base.to_string()) {
+                symbol.clone()
+            } else {
+                cx.error(
+                    self.base.span,
+                    format!("`{}` is not defined", self.base.lexeme.unwrap()),
+                    String::new(),
+                );
+                return Err(TypeError::Undefined);
+            },
+            self.params
+                .iter()
+                .map(|p| p.resolve(cx, meta).unwrap())
+                .collect(),
+            self.clone(),
+        ))
+    }
 }
 
 impl ResolveType for Decl {
@@ -93,7 +194,7 @@ impl ResolveType for Decl {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         match self {
             Decl::Function(fun) => fun.resolve(cx, meta),
             Decl::Class(cls) => cls.resolve(cx, meta),
@@ -107,7 +208,7 @@ impl ResolveType for Stmt {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         match self {
             Stmt::Var(v) => v.resolve(cx, meta),
             Stmt::Assign(a) => a.resolve(cx, meta),
@@ -125,7 +226,7 @@ impl ResolveType for Expr {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         match self {
             Expr::Int(i) => i.resolve(cx, meta),
             Expr::Float(f) => f.resolve(cx, meta),
@@ -147,13 +248,13 @@ impl ResolveType for node::ClassDecl {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         cx.class = Some(self.name.clone());
         for method in &self.methods {
             let _ = Decl::Function(Rc::clone(method)).resolve(cx, meta);
         }
         cx.class = None;
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
@@ -162,12 +263,12 @@ impl ResolveType for Rc<node::FuncDecl> {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         if self.name == "main" {
             if let Some(ty) = &self.ty {
-                if ty != "void" {
+                if !matches!(ty.resolve(cx, meta)?.base, Symbol::Void) {
                     cx.error(
-                        ty.span,
+                        ty.span(),
                         "main function must return void".into(),
                         "try changing or removing this type".into(),
                     );
@@ -192,7 +293,7 @@ impl ResolveType for Rc<node::FuncDecl> {
         }
         cx.end_scope();
         cx.function = None;
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
@@ -201,14 +302,14 @@ impl ResolveType for node::ConstantDecl {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.expr.resolve(cx, meta)?;
-        let expected = Type::from(&self.ty);
+        let expected = self.ty.resolve(cx, meta)?;
         if got != expected {
             cx.error(
                 self.expr.span(),
-                format!("expected initializer to be of type {expected}"),
-                format!("expression of type {got}"),
+                format!("expected initializer to be of type {}", expected.meta),
+                format!("expression of type {}", got.meta),
             );
         }
         Ok(expected)
@@ -220,22 +321,25 @@ impl ResolveType for Rc<node::VarDecl> {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.expr.resolve(cx, meta)?;
-        let expected = Type::from(&self.ty);
-        if let Type::UserDefined(ref cls) = got {
-            if got != expected && cx.cast(&expected, cls).is_none() {
+        let expected = self.ty.resolve(cx, meta)?;
+        if !matches!(
+            got.base,
+            Symbol::Bool | Symbol::Int | Symbol::Float | Symbol::Str | Symbol::Void
+        ) {
+            if got != expected && cx.cast(&expected, &got).is_none() {
                 cx.error(
                     self.expr.span(),
-                    format!("{got} is not a subclass of {expected}"),
-                    format!("expression of type {got}"),
+                    format!("{} is not a subclass of {}", got.meta, expected.meta),
+                    format!("expression of type {}", got.meta),
                 );
             }
         } else if got != expected {
             cx.error(
                 self.expr.span(),
-                format!("expected initializer to be of type {expected}"),
-                format!("expression of type {got}"),
+                format!("expected initializer to be of type {}", expected.meta),
+                format!("expression of type {}", got.meta),
             );
         }
         cx.scope_mut()
@@ -249,14 +353,17 @@ impl ResolveType for node::For {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         self.iter.resolve(cx, meta)?;
         cx.begin_scope();
         cx.scope_mut().insert(
             self.index.to_string(),
             Symbol::Variable(Rc::new(node::VarDecl {
                 name: self.index.clone(),
-                ty: Token::new(Kind::Identifier, Some("int"), self.index.span),
+                ty: Type::new(
+                    Token::new(Kind::Identifier, Some("int"), Span::default()),
+                    vec![],
+                ),
                 expr: self.iter.clone(),
             })),
         );
@@ -264,7 +371,7 @@ impl ResolveType for node::For {
             let _ = node.resolve(cx, meta);
         }
         cx.end_scope();
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
@@ -273,13 +380,13 @@ impl ResolveType for node::While {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.condition.resolve(cx, meta)?;
-        if got != Type::Bool {
+        if !got.is_bool() {
             cx.error(
                 self.condition.span(),
-                format!("expected condition of type {}", Type::Bool),
-                format!("expression of type {got}"),
+                "expected condition of type bool".into(),
+                format!("expression of type {}", got.meta),
             );
         }
         cx.begin_scope();
@@ -287,7 +394,7 @@ impl ResolveType for node::While {
             let _ = stmt.resolve(cx, meta);
         }
         cx.end_scope();
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
@@ -296,13 +403,13 @@ impl ResolveType for node::If {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.condition.resolve(cx, meta)?;
-        if got != Type::Bool {
+        if !got.is_bool() {
             cx.error(
                 self.condition.span(),
-                format!("expected condition of type {}", Type::Bool),
-                format!("expression of type {got}"),
+                "expected condition of type bool".into(),
+                format!("expression of type {}", got.meta),
             );
         }
         cx.begin_scope();
@@ -316,7 +423,7 @@ impl ResolveType for node::If {
         }
         cx.end_scope();
 
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
@@ -325,30 +432,30 @@ impl ResolveType for node::Unary {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.expr.resolve(cx, meta)?;
         match self.op.kind {
             Kind::Minus => {
-                if !matches!(got, Type::Int | Type::Float) {
+                if !got.is_numeric() {
                     cx.error(
                         self.expr.span(),
-                        format!("cannot negate {got}"),
-                        format!("expression of type {got}"),
+                        format!("cannot negate {}", got.meta),
+                        format!("expression of type {}", got.meta),
                     );
-                    return Err(TypeError::UnaryMismatch("negate", got));
+                    return Err(TypeError::UnaryMismatch("negate", got.meta));
                 }
                 Ok(got)
             }
             Kind::Bang => {
-                if got != Type::Bool {
+                if !got.is_bool() {
                     cx.error(
                         self.expr.span(),
-                        format!("cannot invert {got}"),
-                        format!("expression of type {got}"),
+                        format!("cannot invert {}", got.meta),
+                        format!("expression of type {}", got.meta),
                     );
-                    return Err(TypeError::UnaryMismatch("invert", got));
+                    return Err(TypeError::UnaryMismatch("invert", got.meta));
                 }
-                Ok(Type::Bool)
+                Ok(ResolvedType::bool())
             }
             _ => unimplemented!(),
         }
@@ -360,12 +467,12 @@ impl ResolveType for node::Call {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let function = match &*self.left {
             Expr::Ident(ident) => {
                 let name = ident.name.to_string();
                 match cx.symbol(&name) {
-                    Some(Symbol::Function(f)) => f.as_ref(),
+                    Some(Symbol::Function(f)) => f,
                     Some(_) => {
                         cx.error(
                             ident.name.span,
@@ -412,14 +519,17 @@ impl ResolveType for node::Call {
         for (i, arg) in self.args.iter().enumerate() {
             let got = arg.resolve(cx, meta)?;
             if i < params.len() {
-                let expected = Type::from(&params[i].ty);
-                if let Type::UserDefined(ref cls) = got {
-                    let casted = cx.cast(&expected, cls);
+                let expected = params[i].ty.resolve(cx, meta)?;
+                if !matches!(
+                    got.base,
+                    Symbol::Bool | Symbol::Int | Symbol::Float | Symbol::Str
+                ) {
+                    let casted = cx.cast(&expected, &got);
                     if got != expected && casted.is_none() {
                         cx.error(
                             arg.span(),
-                            format!("{got} is not a subclass of {expected}"),
-                            format!("expression of type {got}"),
+                            format!("{} is not a subclass of {}", got.meta, expected.meta),
+                            format!("expression of type {}", got.meta),
                         );
                     }
                     if let Some(cls) = casted {
@@ -430,17 +540,20 @@ impl ResolveType for node::Call {
                 } else if got != expected {
                     cx.error(
                         arg.span(),
-                        format!("expected argument of type {expected}, but found {got}"),
-                        format!("expression of type {got}"),
+                        format!(
+                            "expected argument of type {}, but found {}",
+                            expected.meta, got.meta
+                        ),
+                        format!("expression of type {}", got.meta),
                     );
                 }
             }
         }
-        Ok(if let Some(ty) = ty {
-            Type::from(&ty)
+        if let Some(ty) = ty {
+            ty.resolve(cx, meta)
         } else {
-            Type::Void
-        })
+            Ok(ResolvedType::void())
+        }
     }
 }
 
@@ -449,8 +562,15 @@ impl ResolveType for node::Init {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        symbol!(cx, self.name, Class, "class"); // ensure class is defined
+    ) -> Result<ResolvedType, TypeError> {
+        if cx.symbol(&self.name.to_string()).is_none() {
+            cx.error(
+                self.name.span,
+                format!("`{}` is not defined", self.name),
+                String::new(),
+            );
+            return Err(TypeError::Undefined);
+        }
         let fields = cx
             .symbol(&self.name.to_string())
             .unwrap()
@@ -458,7 +578,7 @@ impl ResolveType for node::Init {
         for initializer in &self.initializers {
             let got = initializer.expr.resolve(cx, meta)?;
             let expected = if let Some(field) = fields.iter().find(|f| f.name == initializer.name) {
-                Type::from(&field.ty)
+                field.ty.resolve(cx, meta)?
             } else {
                 cx.error(
                     initializer.name.span,
@@ -470,12 +590,20 @@ impl ResolveType for node::Init {
             if got != expected {
                 cx.error(
                     initializer.expr.span(),
-                    format!("expected initializer to be of type {expected}"),
-                    format!("expression of type {got}"),
+                    format!("expected initializer to be of type {}", expected.meta),
+                    format!("expression of type {}", got.meta),
                 );
             }
         }
-        Ok((&self.name).into())
+        let symbol = {
+            let symbol = cx.symbol(&self.name.to_string()).cloned();
+            symbol.unwrap()
+        };
+        Ok(ResolvedType::new(
+            symbol,
+            vec![],
+            Type::new(self.name.clone(), vec![]),
+        ))
     }
 }
 
@@ -484,18 +612,21 @@ impl ResolveType for node::Range {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let start = self.start.resolve(cx, meta)?;
         let end = self.end.resolve(cx, meta)?;
-        if start == end && start == Type::Int {
-            Ok(Type::Int)
+        if start == end && matches!(start.base, Symbol::Int) {
+            Ok(ResolvedType::int())
         } else {
             cx.error(
                 self.brackets.0.span,
                 "expected range to be of type [int, int]".into(),
-                format!("expression of [{start}, {end}]"),
+                format!("expression of [{}, {}]", start.meta, end.meta),
             );
-            Err(TypeError::Mismatch(Type::Int, start))
+            Err(TypeError::Mismatch(
+                String::from("int"),
+                start.meta.to_string(),
+            ))
         }
     }
 }
@@ -505,95 +636,59 @@ impl ResolveType for node::Assign {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let expected = self.target.resolve(cx, meta)?;
         let got = self.expr.resolve(cx, meta)?;
         if got != expected {
             cx.error(
                 self.expr.span(),
-                format!("expected expression of type {expected}"),
-                format!("expression of type {got}"),
+                format!("expected expression of type {}", expected.meta),
+                format!("expression of type {}", got.meta),
             );
         }
-        Ok(Type::Void)
+        Ok(ResolvedType::void())
     }
 }
 
-// TODO: make this prettier
 impl ResolveType for node::Access {
     fn resolve(
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        fn err(
-            cx: &mut TypeResolverContext,
-            kind: &str,
-            ident: &Ident,
-            ty: Type,
-        ) -> Result<Type, TypeError> {
-            cx.error(
-                ident.name.span,
-                format!("no {kind} `{}` on type `{}`", ident.name, ty),
-                String::new(),
-            );
-            Err(TypeError::NotProperty(ident.name.clone(), ty))
-        }
-        let mut ty = self.chain[0].resolve(cx, meta)?;
+    ) -> Result<ResolvedType, TypeError> {
         let mut symbols = vec![];
         let mut indices = vec![];
-        let Some(mut symbol) = cx.symbol(&ty.to_string()).cloned() else {
-            return Err(TypeError::Undefined);
-        };
-        symbols.push(symbol.clone());
-        for (i, pair) in self.chain.windows(2).enumerate() {
-            let (left, right) = (&pair[0], &pair[1]);
-            if i != 0 {
-                let cls = cast!(symbol, r, Symbol::Class(ref r));
-                let fields = cx.symbol(&cls.name.to_string()).unwrap().fields(cx.symbols);
-                if let Expr::Ident(ident) = left {
-                    let field = fields.iter().find(|f| f.name == ident.name);
-                    if let Some(field) = field {
-                        symbol = cx.symbol(&field.ty.to_string()).cloned().unwrap();
-                        symbols.push(symbol.clone());
-                    } else {
-                        return err(cx, "field", ident, ty);
-                    }
-                } else {
-                    todo!("support accesses after method calls")
-                }
-            }
-            let cls = cast!(symbol, r, Symbol::Class(ref r));
-            if let Expr::Ident(ident) = right {
-                let fields = cx.symbol(&cls.name.to_string()).unwrap().fields(cx.symbols);
-                let index = fields.iter().position(|f| f.name == ident.name);
-                if let Some(index) = index {
-                    indices.push(index);
-                    ty = Type::from(&fields[index].ty);
-                } else {
-                    return err(cx, "field", ident, ty);
-                }
+        let mut ty = self.chain[0].resolve(cx, meta)?;
+        for (n, window) in self.chain.windows(2).enumerate() {
+            let left = &window[0];
+            let right = &window[1];
+            let left = if n == 0 { left.resolve(cx, meta)? } else { ty };
+            if let Some((index, field)) = left.field(cx.symbols, right) {
+                symbols.push(left.base.clone());
+                indices.push(index);
+                ty = field.ty.resolve(cx, meta)?;
+            } else if let Some(method) = left.method(cx.symbols, right) {
+                symbols.push(left.base.clone());
+                symbols.push(Symbol::Function(Rc::clone(&method)));
+                ty = match &method.ty {
+                    Some(ty) => ty.resolve(cx, meta)?,
+                    None => ResolvedType::void(),
+                };
             } else {
-                let symbol = cx.symbol(&ty.to_string()).unwrap();
-                let call = cast!(right, c, Expr::Call(c));
-                let ident = call.left.ident();
-                let methods = symbol.methods(cx.symbols);
-                let method = methods
-                    .iter()
-                    // make sure we find the most "specific" implementation
-                    // (i.e. Y.method() before X.method())
-                    .rev()
-                    .find(|(_, m)| m.name.to_string() == ident.name.to_string());
-                if let Some((_, method)) = method {
-                    symbols.push(Symbol::Function(Rc::clone(method)));
-                    ty = Type::from(method.ty.as_ref());
-                } else {
-                    return err(cx, "method", ident, ty);
-                }
+                cx.error(
+                    right.span(),
+                    format!(
+                        "undefined reference to `{}` (while reading `{}`)",
+                        right.ident().name,
+                        left.meta
+                    ),
+                    String::new(),
+                );
+                return Err(TypeError::NotProperty(right.clone(), left.meta));
             }
         }
         meta.access
-            .insert(self.id, Access::new(symbols, indices, ty.clone()));
+            .insert(self.id, Access::new(symbols, indices, ty.meta.clone()));
         Ok(ty)
     }
 }
@@ -603,10 +698,12 @@ impl ResolveType for node::Binary {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let lhs = self.left.resolve(cx, meta)?;
         let rhs = self.right.resolve(cx, meta)?;
         if lhs != rhs {
+            let lhs = lhs.meta;
+            let rhs = rhs.meta;
             let heading = match self.op.kind {
                 Kind::Plus => format!("cannot add {lhs} to {rhs}"),
                 Kind::Minus => format!("cannot subtract {rhs} from {lhs}"),
@@ -615,7 +712,7 @@ impl ResolveType for node::Binary {
                 _ => format!("cannot compare {lhs} and {rhs}"),
             };
             cx.error(self.op.span, heading, String::new());
-            return Err(TypeError::Mismatch(lhs, rhs));
+            return Err(TypeError::Mismatch(lhs.to_string(), rhs.to_string()));
         }
         if matches!(
             self.op.kind,
@@ -623,7 +720,7 @@ impl ResolveType for node::Binary {
         ) {
             Ok(lhs)
         } else {
-            Ok(Type::Bool)
+            Ok(ResolvedType::bool())
         }
     }
 }
@@ -633,7 +730,7 @@ impl ResolveType for node::Return {
         &self,
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
+    ) -> Result<ResolvedType, TypeError> {
         let got = self.expr.resolve(cx, meta)?;
         match &cx.function {
             Some(function) => {
@@ -641,22 +738,31 @@ impl ResolveType for node::Return {
                     .class
                     .as_ref()
                     .map_or(function.to_string(), ToString::to_string);
-                let symbol = cx.symbol(&symb).unwrap();
+                let symbol = cx.symbol(&symb).unwrap().clone();
                 let expected = match symbol {
                     Symbol::Class(cls) => {
                         let method = cls.methods.iter().find(|m| &m.name == function).unwrap();
-                        Type::from(method.ty.as_ref())
+                        method
+                            .ty
+                            .as_ref()
+                            .map_or(ResolvedType::void(), |t| t.resolve(cx, meta).unwrap())
                     }
-                    Symbol::Function(f) => Type::from(f.ty.as_ref()),
+                    Symbol::Function(f) => {
+                        f.ty.as_ref()
+                            .map_or(ResolvedType::void(), |t| t.resolve(cx, meta).unwrap())
+                    }
                     _ => unimplemented!(),
                 };
                 if got != expected {
                     cx.error(
                         self.expr.span(),
-                        format!("expected return type to be {expected}"),
-                        format!("expression is of type {got}"),
+                        format!("expected return type to be {}", expected.meta),
+                        format!("expression is of type {}", got.meta),
                     );
-                    return Err(TypeError::Mismatch(expected, got));
+                    return Err(TypeError::Mismatch(
+                        expected.meta.base.to_string(),
+                        got.meta.base.to_string(),
+                    ));
                 }
             }
             None => unimplemented!("disallowed by parser"),
@@ -669,24 +775,24 @@ impl ResolveType for node::Ident {
     fn resolve(
         &self,
         cx: &mut TypeResolverContext,
-        _: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        Ok(match cx.symbol(&self.name.to_string()) {
+        meta: &mut ResolvedMetaInfo,
+    ) -> Result<ResolvedType, TypeError> {
+        match cx.symbol(&self.name.to_string()).cloned() {
             Some(Symbol::Function(f)) => {
                 let param = f.params.iter().find(|p| p.name == self.name).unwrap();
-                Type::from(&param.ty)
+                param.ty.resolve(cx, meta)
             }
-            Some(Symbol::Variable(v)) => Type::from(&v.ty),
-            Some(Symbol::Constant(c)) => Type::from(&c.ty),
+            Some(Symbol::Variable(v)) => v.ty.resolve(cx, meta),
+            Some(Symbol::Constant(c)) => c.ty.resolve(cx, meta),
             _ => {
                 cx.error(
                     self.name.span,
                     format!("`{}` is not defined", &self.name),
                     String::new(),
                 );
-                return Err(TypeError::Undefined);
+                Err(TypeError::Undefined)
             }
-        })
+        }
     }
 }
 
@@ -695,8 +801,8 @@ impl ResolveType for node::Literal<bool> {
         &self,
         _: &mut TypeResolverContext,
         _: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        Ok(Type::Bool)
+    ) -> Result<ResolvedType, TypeError> {
+        Ok(ResolvedType::bool())
     }
 }
 
@@ -705,8 +811,8 @@ impl ResolveType for node::Literal<i64> {
         &self,
         _: &mut TypeResolverContext,
         _: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        Ok(Type::Int)
+    ) -> Result<ResolvedType, TypeError> {
+        Ok(ResolvedType::int())
     }
 }
 
@@ -715,8 +821,8 @@ impl ResolveType for node::Literal<f64> {
         &self,
         _: &mut TypeResolverContext,
         _: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        Ok(Type::Float)
+    ) -> Result<ResolvedType, TypeError> {
+        Ok(ResolvedType::float())
     }
 }
 
@@ -725,8 +831,8 @@ impl ResolveType for node::Literal<&'static str> {
         &self,
         _: &mut TypeResolverContext,
         _: &mut ResolvedMetaInfo,
-    ) -> Result<Type, TypeError> {
-        Ok(Type::Str)
+    ) -> Result<ResolvedType, TypeError> {
+        Ok(ResolvedType::str())
     }
 }
 
@@ -793,7 +899,14 @@ impl<'a> TypeResolverContext<'a> {
                 return Some(definition);
             }
         }
-        self.symbols.get(name)
+        match &name[..] {
+            "int" => Some(&Symbol::Int),
+            "float" => Some(&Symbol::Float),
+            "str" => Some(&Symbol::Str),
+            "bool" => Some(&Symbol::Bool),
+            "void" => Some(&Symbol::Void),
+            _ => self.symbols.get(name),
+        }
     }
 
     fn error(&mut self, at: Span, heading: String, text: String) {
@@ -802,13 +915,14 @@ impl<'a> TypeResolverContext<'a> {
         self.errors.push(error);
     }
 
-    fn cast(&self, expected: &Type, cls: &String) -> Option<String> {
-        let cls = self.symbol(cls).unwrap().class();
+    fn cast(&self, expected: &ResolvedType, got: &ResolvedType) -> Option<String> {
+        let cls = self.symbol(&got.meta.to_string())?;
+        let cls = cls.class();
         Symbol::superclasses(cls, self.symbols)
             .iter()
             .filter(|c| c.name != cls.name)
             .map(|c| c.name.to_string())
-            .find(|cls| cls == &expected.to_string())
+            .find(|cls| cls == &expected.meta.to_string())
     }
 }
 

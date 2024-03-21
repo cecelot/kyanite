@@ -1,7 +1,7 @@
 pub mod isa;
 
 use crate::{
-    ast::{node::FuncDecl, Type},
+    ast::node::FuncDecl,
     backend::kyir::{
         arch::{Location, RegisterMap},
         ir::{BinOp, Binary, Const, Expr, Mem, Temp},
@@ -32,7 +32,7 @@ impl Frame<isa::A64> for Armv8a {
                 param.name.to_string(),
                 Variable::new(
                     offset,
-                    matches!(Type::from(&param.ty), Type::UserDefined(_)),
+                    !matches!(param.ty.base.lexeme, Some("int" | "float" | "bool")),
                 ),
             );
             offset -= i64::try_from(Self::word_size()).unwrap();

@@ -1,4 +1,5 @@
 mod kyir;
+#[cfg(feature = "llvm")]
 mod llvm;
 
 pub fn path(name: &str) -> Result<String, Box<dyn std::error::Error>> {

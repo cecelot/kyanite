@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expr, Stmt},
+    ast::{ty::Type, Expr, Stmt},
     token::Span,
 };
 
@@ -11,6 +11,22 @@ pub trait Combined {
     fn start(&self) -> usize;
     fn end(&self) -> usize;
     fn line(&self) -> usize;
+}
+
+impl Combined for Type {
+    fn start(&self) -> usize {
+        self.base.span.column
+    }
+
+    fn end(&self) -> usize {
+        self.params
+            .last()
+            .map_or(self.base.span.column + self.base.span.length, Combined::end)
+    }
+
+    fn line(&self) -> usize {
+        self.base.span.line
+    }
 }
 
 impl Combined for Stmt {

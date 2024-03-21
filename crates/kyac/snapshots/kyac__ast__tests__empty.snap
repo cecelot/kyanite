@@ -1,5 +1,5 @@
 ---
-source: kyanite-core/src/ast/mod.rs
+source: crates/kyac/src/ast/mod.rs
 expression: ast
 ---
 Ast {
@@ -19,18 +19,22 @@ Ast {
                 },
                 params: [],
                 ty: Some(
-                    Token {
-                        kind: Identifier,
-                        lexeme: Some(
-                            "void",
-                        ),
-                        span: Span {
-                            line: 1,
-                            column: 12,
-                            length: 4,
+                    Type {
+                        base: Token {
+                            kind: Identifier,
+                            lexeme: Some(
+                                "void",
+                            ),
+                            span: Span {
+                                line: 1,
+                                column: 12,
+                                length: 4,
+                            },
                         },
+                        params: [],
                     },
                 ),
+                tp: [],
                 body: [],
                 external: false,
                 id: 0,
