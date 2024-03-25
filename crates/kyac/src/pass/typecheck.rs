@@ -284,6 +284,14 @@ impl ResolveType for Rc<node::FuncDecl> {
                 "try removing some parameters".into(),
             );
         }
+        let self_param = self.params.iter().position(|p| p.name == "self");
+        if cx.class.is_some() && (self_param.is_none() || self_param.unwrap() != 0) {
+            cx.error(
+                self.name.span,
+                "first parameter must be `self`".into(),
+                "try adding `self` as the first parameter".into(),
+            );
+        }
         for param in &self.params {
             cx.scope_mut()
                 .insert(param.name.to_string(), Symbol::Function(Rc::clone(self)));
