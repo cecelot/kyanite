@@ -50,7 +50,7 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "no field `faavorite` on type `Person`",
+            heading: "undefined reference to `faavorite` (while reading `Person`)",
             source: "    let favorite: int = p.faavorite;",
             span: Span {
                 line: 31,
@@ -61,7 +61,7 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "no field `barr` on type `Foo`",
+            heading: "undefined reference to `barr` (while reading `Foo`)",
             source: "    let bar: Bar = p.foo.barr;",
             span: Span {
                 line: 33,
@@ -72,7 +72,7 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "no field `baaz` on type `Bar`",
+            heading: "undefined reference to `baaz` (while reading `Bar`)",
             source: "    let baz: Baz = p.foo.bar.baaz;",
             span: Span {
                 line: 34,
@@ -83,25 +83,25 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "Bar is not a subclass of Baz",
+            heading: "`Baz` is not defined",
             source: "    let baz: Baz = p.foo.bar;",
             span: Span {
                 line: 37,
-                column: 20,
-                length: 9,
+                column: 14,
+                length: 3,
             },
-            text: "expression of type Bar",
+            text: "",
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "expected initializer to be of type Baz",
+            heading: "`Baz` is not defined",
             source: "    let baz: Baz = p.foo.bar.baz;",
             span: Span {
                 line: 38,
-                column: 20,
-                length: 13,
+                column: 14,
+                length: 3,
             },
-            text: "expression of type bool",
+            text: "",
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",

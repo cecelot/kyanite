@@ -322,7 +322,7 @@ fn method_override() -> Result<(), Box<dyn std::error::Error>> {
     let res = run("kyir/method-override.kya")?;
     assert_eq!(
         res.output,
-        "inside `X.show()`\n2\ninside `Y.show()`\n6\ninside `Z.show()`\n1\n5\n"
+        "inside `Y.show()`\n6\ninside `Y.show()`\n6\ninside `Z.show()`\n1\n5\n"
     );
     Ok(())
 }

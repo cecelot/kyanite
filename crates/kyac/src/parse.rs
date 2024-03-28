@@ -1,6 +1,10 @@
 #[allow(clippy::wildcard_imports)]
 use crate::{
-    ast::{node::*, Decl, Expr, Stmt},
+    ast::{
+        node::*,
+        ty::{Type, TypeParameter},
+        Decl, Expr, Stmt,
+    },
     error::PreciseError,
     token::{Kind, Span, Token},
     Source,
@@ -71,14 +75,15 @@ impl<'a> Parser<'a> {
     fn class(&mut self) -> Result<Decl, ParseError> {
         self.consume(Kind::Class)?;
         let name = self.consume(Kind::Identifier)?;
-        let parent = (self.peek()?.kind == Kind::Colon).then_some(|| {
-            self.consume(Kind::Colon)?;
-            self.consume(Kind::Identifier)
-        });
-        let parent = match parent {
-            Some(mut parent) => Some(parent()?),
-            None => None,
-        };
+        let tp = (self.peek()?.kind == Kind::Less)
+            .then(|| self.type_parameters())
+            .transpose()?;
+        let parent = (self.peek()?.kind == Kind::Colon)
+            .then(|| {
+                self.consume(Kind::Colon)?;
+                self.consume(Kind::Identifier)
+            })
+            .transpose()?;
         self.consume(Kind::LeftBrace)?;
         let fields = self.fields()?;
         let mut methods = vec![];
@@ -89,7 +94,27 @@ impl<'a> Parser<'a> {
             });
         }
         self.consume(Kind::RightBrace)?;
-        Ok(ClassDecl::wrapped(name, fields, methods, parent))
+        Ok(ClassDecl::wrapped(name, fields, methods, parent, tp))
+    }
+
+    fn type_parameters(&mut self) -> Result<Vec<TypeParameter>, ParseError> {
+        let mut tp = vec![];
+        self.consume(Kind::Less)?;
+        while self.peek()?.kind != Kind::Greater {
+            let name = self.consume(Kind::Identifier)?;
+            let bound = (!matches!(self.peek()?.kind, Kind::Comma | Kind::Greater))
+                .then(|| {
+                    self.consume(Kind::Colon)?;
+                    self.consume(Kind::Identifier)
+                })
+                .transpose()?;
+            if self.peek()?.kind != Kind::Greater {
+                self.consume(Kind::Comma)?;
+            }
+            tp.push(TypeParameter::new(name, bound));
+        }
+        self.consume(Kind::Greater)?;
+        Ok(tp)
     }
 
     fn function(&mut self, method: &Option<Token>, external: bool) -> Result<Decl, ParseError> {
@@ -98,18 +123,29 @@ impl<'a> Parser<'a> {
         }
         self.consume(Kind::Fun)?;
         let name = self.consume(Kind::Identifier)?;
+        let tp = (self.peek()?.kind == Kind::Less)
+            .then(|| self.type_parameters())
+            .transpose()?
+            .unwrap_or(vec![]);
         self.consume(Kind::LeftParen)?;
         let params = self.params(method)?;
         self.consume(Kind::RightParen)?;
-        let mut ty: Option<Token> = None;
+        let mut ty: Option<Type> = None;
         if self.peek()?.kind == Kind::Colon {
             self.consume(Kind::Colon)?;
-            ty = Some(self.consume(Kind::Identifier)?);
+            ty = Some(self.ty()?);
         }
         if external {
-            Ok(FuncDecl::wrapped(name, params, ty, vec![], external))
+            Ok(FuncDecl::wrapped(name, params, ty, tp, vec![], external))
         } else {
-            Ok(FuncDecl::wrapped(name, params, ty, self.block()?, external))
+            Ok(FuncDecl::wrapped(
+                name,
+                params,
+                ty,
+                tp,
+                self.block()?,
+                external,
+            ))
         }
     }
 
@@ -120,10 +156,10 @@ impl<'a> Parser<'a> {
             let name = self.consume(Kind::Identifier)?;
             let ty = if method.as_ref().is_some_and(|_| index == 0) {
                 index += 1;
-                method.clone().unwrap()
+                Type::new(method.clone().unwrap(), vec![])
             } else {
                 self.consume(Kind::Colon)?;
-                self.consume(Kind::Identifier)?
+                self.ty()?
             };
             params.push(Param::new(name, ty));
             if self.peek()?.kind != Kind::RightParen {
@@ -138,13 +174,32 @@ impl<'a> Parser<'a> {
         while !matches!(self.peek()?.kind, Kind::RightBrace | Kind::Fun) {
             let name = self.consume(Kind::Identifier)?;
             self.consume(Kind::Colon)?;
-            let ty = self.consume(Kind::Identifier)?;
+            let ty = self.ty()?;
             fields.push(Field::new(name, ty));
             if !matches!(self.peek()?.kind, Kind::RightBrace | Kind::Fun) {
                 self.consume(Kind::Comma)?;
             }
         }
         Ok(fields)
+    }
+
+    fn ty(&mut self) -> Result<Type, ParseError> {
+        let base = self.consume(Kind::Identifier)?;
+        (self.peek()?.kind == Kind::Less)
+            .then(|| {
+                self.consume(Kind::Less)?;
+                let mut params = vec![];
+                while self.peek()?.kind != Kind::Greater {
+                    params.push(self.ty()?);
+                    if self.peek()?.kind != Kind::Greater {
+                        self.consume(Kind::Comma)?;
+                    }
+                }
+                self.consume(Kind::Greater)?;
+                Ok(params)
+            })
+            .transpose()
+            .map(|params| Type::new(base, params.unwrap_or_default()))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, ParseError> {
@@ -168,7 +223,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::Const)?;
         let name = self.consume(Kind::Identifier)?;
         self.consume(Kind::Colon)?;
-        let ty = self.consume(Kind::Identifier)?;
+        let ty = self.ty()?;
         self.consume(Kind::Equal)?;
         let value = self.expression()?;
         self.consume(Kind::Semicolon)?;
@@ -179,7 +234,7 @@ impl<'a> Parser<'a> {
         self.consume(Kind::Let)?;
         let name = self.consume(Kind::Identifier)?;
         self.consume(Kind::Colon)?;
-        let ty = self.consume(Kind::Identifier)?;
+        let ty = self.ty()?;
         self.consume(Kind::Equal)?;
         let expr = self.expression()?;
         self.consume(Kind::Semicolon)?;

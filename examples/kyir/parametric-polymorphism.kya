@@ -1,0 +1,32 @@
+class Print {
+    fun print(self) {
+        println_str("implement me");
+    }
+}
+
+class Bar: Print {
+    x: int
+
+    fun print(self) {
+        println_int(self.x);
+    }
+}
+
+class Foo<T: Print> {
+    val: T
+
+    fun print(self) {
+        self.val.print();
+    }
+}
+
+fun freeFunction<T: Print>(obj: T) {
+    obj.print();
+}
+
+fun main() {
+    let bar: Bar = Bar:init(x: 42);
+    let foo: Foo<Bar> = Foo:init(val: bar);
+    foo.print();
+    bar.print();
+}

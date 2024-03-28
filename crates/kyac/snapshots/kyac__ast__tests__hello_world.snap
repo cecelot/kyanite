@@ -19,6 +19,7 @@ Ast {
                 },
                 params: [],
                 ty: None,
+                tp: [],
                 body: [
                     Expr(
                         Call(

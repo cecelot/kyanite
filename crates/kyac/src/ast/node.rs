@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Decl, Expr, Stmt},
+    ast::{
+        ty::{Type, TypeParameter},
+        Decl, Expr, Stmt,
+    },
     token::Token,
 };
 use std::{
@@ -11,7 +14,8 @@ use std::{
 pub struct FuncDecl {
     pub name: Token,
     pub params: Vec<Param>,
-    pub ty: Option<Token>,
+    pub ty: Option<Type>,
+    pub tp: Vec<TypeParameter>,
     pub body: Vec<Stmt>,
     pub external: bool,
     pub id: usize,
@@ -21,7 +25,8 @@ impl FuncDecl {
     pub fn new(
         name: Token,
         params: Vec<Param>,
-        ty: Option<Token>,
+        ty: Option<Type>,
+        tp: Vec<TypeParameter>,
         body: Vec<Stmt>,
         external: bool,
     ) -> Self {
@@ -31,6 +36,7 @@ impl FuncDecl {
             name,
             params,
             ty,
+            tp,
             body,
             external,
             id,
@@ -40,11 +46,12 @@ impl FuncDecl {
     pub fn wrapped(
         name: Token,
         params: Vec<Param>,
-        ty: Option<Token>,
+        ty: Option<Type>,
+        tp: Vec<TypeParameter>,
         body: Vec<Stmt>,
         external: bool,
     ) -> Decl {
-        Decl::Function(Rc::new(Self::new(name, params, ty, body, external)))
+        Decl::Function(Rc::new(Self::new(name, params, ty, tp, body, external)))
     }
 }
 
@@ -54,6 +61,7 @@ pub struct ClassDecl {
     pub fields: Vec<Field>,
     pub methods: Vec<Rc<FuncDecl>>,
     pub parent: Option<Token>,
+    pub tp: Option<Vec<TypeParameter>>,
 }
 
 impl ClassDecl {
@@ -62,12 +70,14 @@ impl ClassDecl {
         fields: Vec<Field>,
         methods: Vec<Rc<FuncDecl>>,
         parent: Option<Token>,
+        tp: Option<Vec<TypeParameter>>,
     ) -> Decl {
         Decl::Class(Rc::new(Self {
             name,
             fields,
             methods,
             parent,
+            tp,
         }))
     }
 }
@@ -75,12 +85,12 @@ impl ClassDecl {
 #[derive(Debug)]
 pub struct ConstantDecl {
     pub name: Token,
-    pub ty: Token,
+    pub ty: Type,
     pub expr: Expr,
 }
 
 impl ConstantDecl {
-    pub fn wrapped(name: Token, ty: Token, expr: Expr) -> Decl {
+    pub fn wrapped(name: Token, ty: Type, expr: Expr) -> Decl {
         Decl::Constant(Rc::new(Self { name, ty, expr }))
     }
 }
@@ -88,12 +98,12 @@ impl ConstantDecl {
 #[derive(Debug, PartialEq)]
 pub struct VarDecl {
     pub name: Token,
-    pub ty: Token,
+    pub ty: Type,
     pub expr: Expr,
 }
 
 impl VarDecl {
-    pub fn wrapped(name: Token, ty: Token, expr: Expr) -> Stmt {
+    pub fn wrapped(name: Token, ty: Type, expr: Expr) -> Stmt {
         Stmt::Var(Rc::new(Self { name, ty, expr }))
     }
 }
@@ -339,11 +349,11 @@ impl Initializer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
     pub name: Token,
-    pub ty: Token,
+    pub ty: Type,
 }
 
 impl Param {
-    pub fn new(name: Token, ty: Token) -> Self {
+    pub fn new(name: Token, ty: Type) -> Self {
         Self { name, ty }
     }
 }
@@ -351,11 +361,11 @@ impl Param {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub name: Token,
-    pub ty: Token,
+    pub ty: Type,
 }
 
 impl Field {
-    pub fn new(name: Token, ty: Token) -> Self {
+    pub fn new(name: Token, ty: Type) -> Self {
         Self { name, ty }
     }
 }

@@ -20,10 +20,6 @@ class Y: X {
     }
 }
 
-class Z {
-    y: int
-}
-
 fun main() {
     let y: Y = Y:init(y: 6, x: 2); % x is an implicit parameter to init
     % this is safe (and therefore valid) because `Y` is a subclass of `X`

@@ -2,12 +2,9 @@ pub mod node;
 pub mod span;
 #[cfg(test)]
 mod strip;
+pub mod ty;
 
-use crate::{
-    parse::Parser,
-    token::{Lexer, Token},
-    PipelineError, Source,
-};
+use crate::{parse::Parser, token::Lexer, PipelineError, Source};
 use std::{fmt, rc::Rc};
 
 #[derive(Debug)]
@@ -97,78 +94,12 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
-    Str,
-    Int,
-    Float,
-    Bool,
-    Void,
-    UserDefined(String),
-}
-
-impl From<&Token> for Type {
-    fn from(value: &Token) -> Self {
-        match value.lexeme.expect("token should have lexeme") {
-            "str" => Self::Str,
-            "int" => Self::Int,
-            "float" => Self::Float,
-            "bool" => Self::Bool,
-            "void" => Self::Void,
-            name => Self::UserDefined(name.to_string()),
-        }
-    }
-}
-
-impl From<Option<&Token>> for Type {
-    fn from(token: Option<&Token>) -> Self {
-        match token {
-            Some(token) => Self::from(token),
-            None => Self::Void,
-        }
-    }
-}
-
-impl PartialEq<Type> for Option<Token> {
-    fn eq(&self, other: &Type) -> bool {
-        match self {
-            Some(token) => Type::from(token) == *other,
-            None => *other == Type::Void,
-        }
-    }
-}
-
-impl fmt::Display for Type {
+impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Str => "str",
-                Self::Int => "int",
-                Self::Float => "float",
-                Self::Bool => "bool",
-                Self::Void => "void",
-                Self::UserDefined(name) => name,
-            }
-        )
-    }
-}
-
-impl Expr {
-    pub fn ty(&self) -> Type {
         match self {
-            Expr::Str(..) => Type::Str,
-            Expr::Int(..) => Type::Int,
-            Expr::Float(..) => Type::Float,
-            Expr::Bool(..) => Type::Bool,
-            Expr::Range(r) => r.start.ty(),
-            Expr::Binary(binary) => binary.left.ty(),
-            Expr::Unary(unary) => unary.expr.ty(),
-            Expr::Call(call) => call.left.ty(),
-            Expr::Ident(_) => unimplemented!(),
-            Expr::Init(..) => unimplemented!(),
-            Expr::Access(..) => unimplemented!(),
+            Expr::Call(call) => write!(f, "{}", call.left),
+            Expr::Ident(ident) => write!(f, "{}", ident.name),
+            _ => unimplemented!(),
         }
     }
 }
