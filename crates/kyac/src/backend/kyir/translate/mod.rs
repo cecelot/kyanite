@@ -191,7 +191,10 @@ impl Translate<Expr> for ast::node::Call {
         let frame = translator.functions.get_mut(&id).unwrap();
         let saved = frame.allocate(&temp, ptr);
         let mut stmts = vec![];
-        let address = if cls.is_some_and(|cls| Symbol::has_subclass(cls, translator.symbols)) {
+        let address = if cls.is_some_and(|cls| {
+            Symbol::has_subclass(cls, translator.symbols)
+                || !Symbol::superclasses(cls, translator.symbols).is_empty()
+        }) {
             // This call could be overridden by a subclass in which case we need to use dynamic dispatch.
             // we just checked is_some_and, so this is safe.
             let cls = cls.unwrap();
@@ -199,8 +202,14 @@ impl Translate<Expr> for ast::node::Call {
             let arr = Temp::next();
             let address = Temp::next();
             let (_, n) = name.rsplit_once('.').unwrap();
-            let index =
-                F::word_size() * (cls.methods.iter().position(|m| m.name == n).unwrap() + 1);
+            let symbol = Symbol::Class(cls.clone());
+            let index = F::word_size()
+                * (symbol
+                    .methods(translator.symbols)
+                    .iter()
+                    .position(|(_, m)| m.name == n)
+                    .unwrap()
+                    + 1);
             stmts.append(&mut vec![
                 Move::wrapped(
                     Temp::wrapped(arr.clone()),
