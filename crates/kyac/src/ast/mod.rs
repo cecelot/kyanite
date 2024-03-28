@@ -5,7 +5,7 @@ mod strip;
 pub mod ty;
 
 use crate::{parse::Parser, token::Lexer, PipelineError, Source};
-use std::rc::Rc;
+use std::{fmt, rc::Rc};
 
 #[derive(Debug)]
 pub struct Ast {
@@ -90,6 +90,16 @@ impl Expr {
             range
         } else {
             panic!("called `Expr::range()` on a non-range")
+        }
+    }
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Call(call) => write!(f, "{}", call.left),
+            Expr::Ident(ident) => write!(f, "{}", ident.name),
+            _ => unimplemented!(),
         }
     }
 }

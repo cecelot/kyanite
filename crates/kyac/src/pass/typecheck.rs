@@ -1,5 +1,10 @@
 use crate::{
-    ast::{node, span::Combined, ty::Type, Decl, Expr, Stmt},
+    ast::{
+        node,
+        span::Combined,
+        ty::{Type, TypeParameter},
+        Decl, Expr, Stmt,
+    },
     error::PreciseError,
     pass::{Symbol, SymbolTable},
     token::{Kind, Span, Token},
@@ -42,7 +47,7 @@ struct TypeResolverContext<'a> {
     source: &'a Source,
     symbols: &'a SymbolTable,
     errors: Vec<PreciseError<'a>>,
-    scopes: Vec<SymbolTable>,
+    scopes: Vec<Scope>,
     function: Option<Token>,
     class: Option<Token>,
 }
@@ -60,15 +65,19 @@ impl ResolvedType {
         Self { base, params, meta }
     }
 
-    fn field(&self, symbols: &SymbolTable, field: &Expr) -> Option<(usize, node::Field)> {
+    fn field(
+        &self,
+        symbols: &SymbolTable,
+        field: &Expr,
+    ) -> Option<(usize, &Rc<node::ClassDecl>, node::Field)> {
         match (&self.base, field) {
-            (Symbol::Class(_), Expr::Ident(ident)) => self
+            (Symbol::Class(cls), Expr::Ident(ident)) => self
                 .base
                 .fields(symbols)
                 .iter()
                 .enumerate()
                 .find(|(_, f)| f.name.to_string() == ident.name.to_string())
-                .map(|(i, f)| (i, f.clone())),
+                .map(|(i, f)| (i, cls, f.clone())),
             _ => None,
         }
     }
@@ -96,7 +105,7 @@ impl ResolvedType {
         matches!(self.base, Symbol::Bool)
     }
 
-    fn fake_meta(lexeme: &'static str) -> Type {
+    fn meta(lexeme: &'static str) -> Type {
         Type::new(
             Token::new(Kind::Identifier, Some(lexeme), Span::default()),
             vec![],
@@ -104,23 +113,23 @@ impl ResolvedType {
     }
 
     fn str() -> Self {
-        Self::new(Symbol::Str, vec![], Self::fake_meta("str"))
+        Self::new(Symbol::Str, vec![], Self::meta("str"))
     }
 
     fn float() -> Self {
-        Self::new(Symbol::Float, vec![], Self::fake_meta("float"))
+        Self::new(Symbol::Float, vec![], Self::meta("float"))
     }
 
     fn int() -> Self {
-        Self::new(Symbol::Int, vec![], Self::fake_meta("int"))
+        Self::new(Symbol::Int, vec![], Self::meta("int"))
     }
 
     fn bool() -> Self {
-        Self::new(Symbol::Bool, vec![], Self::fake_meta("bool"))
+        Self::new(Symbol::Bool, vec![], Self::meta("bool"))
     }
 
     fn void() -> Self {
-        Self::new(Symbol::Void, vec![], Self::fake_meta("void"))
+        Self::new(Symbol::Void, vec![], Self::meta("void"))
     }
 }
 
@@ -130,6 +139,7 @@ impl PartialEq for ResolvedType {
             Symbol::Int | Symbol::Float | Symbol::Str | Symbol::Bool | Symbol::Void => {
                 self.meta.base.to_string() == other.meta.base.to_string()
             }
+            Symbol::Opaque(s) => s == other.meta.base.lexeme.unwrap(),
             Symbol::Class(cls) => {
                 let other = other.meta.to_string();
                 let cls = cls.name.to_string();
@@ -172,6 +182,8 @@ impl ResolveType for Type {
         Ok(ResolvedType::new(
             if let Some(symbol) = cx.symbol(&self.base.to_string()) {
                 symbol.clone()
+            } else if let Some(ty) = cx.ty(&self.base.to_string()) {
+                ty.base.clone()
             } else {
                 cx.error(
                     self.base.span,
@@ -197,7 +209,12 @@ impl ResolveType for Decl {
     ) -> Result<ResolvedType, TypeError> {
         match self {
             Decl::Function(fun) => fun.resolve(cx, meta),
-            Decl::Class(cls) => cls.resolve(cx, meta),
+            Decl::Class(cls) => {
+                cx.class = Some(cls.name.clone());
+                let resolved = cls.resolve(cx, meta);
+                cx.class = None;
+                resolved
+            }
             Decl::Constant(c) => c.resolve(cx, meta),
         }
     }
@@ -249,11 +266,12 @@ impl ResolveType for node::ClassDecl {
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
     ) -> Result<ResolvedType, TypeError> {
-        cx.class = Some(self.name.clone());
+        cx.begin_scope();
+        cx.set_type_parameters(meta, self.tp.as_ref());
         for method in &self.methods {
             let _ = Decl::Function(Rc::clone(method)).resolve(cx, meta);
         }
-        cx.class = None;
+        cx.end_scope();
         Ok(ResolvedType::void())
     }
 }
@@ -276,6 +294,7 @@ impl ResolveType for Rc<node::FuncDecl> {
             }
         }
         cx.begin_scope();
+        cx.set_type_parameters(meta, Some(&self.tp));
         cx.function = Some(self.name.clone());
         if self.params.len() > 8 {
             cx.error(
@@ -294,6 +313,7 @@ impl ResolveType for Rc<node::FuncDecl> {
         }
         for param in &self.params {
             cx.scope_mut()
+                .symbols
                 .insert(param.name.to_string(), Symbol::Function(Rc::clone(self)));
         }
         for node in &self.body {
@@ -351,6 +371,7 @@ impl ResolveType for Rc<node::VarDecl> {
             );
         }
         cx.scope_mut()
+            .symbols
             .insert(self.name.to_string(), Symbol::Variable(Rc::clone(self)));
         Ok(expected)
     }
@@ -364,7 +385,7 @@ impl ResolveType for node::For {
     ) -> Result<ResolvedType, TypeError> {
         self.iter.resolve(cx, meta)?;
         cx.begin_scope();
-        cx.scope_mut().insert(
+        cx.scope_mut().symbols.insert(
             self.index.to_string(),
             Symbol::Variable(Rc::new(node::VarDecl {
                 name: self.index.clone(),
@@ -528,10 +549,7 @@ impl ResolveType for node::Call {
             let got = arg.resolve(cx, meta)?;
             if i < params.len() {
                 let expected = params[i].ty.resolve(cx, meta)?;
-                if !matches!(
-                    got.base,
-                    Symbol::Bool | Symbol::Int | Symbol::Float | Symbol::Str
-                ) {
+                if matches!(got.base, Symbol::Class(_)) {
                     let casted = cx.cast(&expected, &got);
                     if got != expected && casted.is_none() {
                         cx.error(
@@ -539,11 +557,6 @@ impl ResolveType for node::Call {
                             format!("{} is not a subclass of {}", got.meta, expected.meta),
                             format!("expression of type {}", got.meta),
                         );
-                    }
-                    if let Some(cls) = casted {
-                        // This call actually refers to a parent (inherited) method call, so we need
-                        // to switch out the branch label later
-                        meta.call.insert(self.id, cls);
                     }
                 } else if got != expected {
                     cx.error(
@@ -571,6 +584,7 @@ impl ResolveType for node::Init {
         cx: &mut TypeResolverContext,
         meta: &mut ResolvedMetaInfo,
     ) -> Result<ResolvedType, TypeError> {
+        cx.begin_scope();
         if cx.symbol(&self.name.to_string()).is_none() {
             cx.error(
                 self.name.span,
@@ -579,10 +593,23 @@ impl ResolveType for node::Init {
             );
             return Err(TypeError::Undefined);
         }
-        let fields = cx
+        cx.set_type_parameters(
+            meta,
+            cx.symbol(&self.name.to_string())
+                .unwrap()
+                .class()
+                .tp
+                .clone()
+                .as_ref(),
+        );
+        let typ = cx
             .symbol(&self.name.to_string())
             .unwrap()
-            .fields(cx.symbols);
+            .class()
+            .tp
+            .clone();
+        let symbol = cx.symbol(&self.name.to_string()).unwrap();
+        let fields = symbol.fields(cx.symbols);
         for initializer in &self.initializers {
             let got = initializer.expr.resolve(cx, meta)?;
             let expected = if let Some(field) = fields.iter().find(|f| f.name == initializer.name) {
@@ -595,7 +622,33 @@ impl ResolveType for node::Init {
                 );
                 continue;
             };
-            if got != expected {
+            let valid = if let Some(ref typ) = typ {
+                if let Some(ty) = typ
+                    .iter()
+                    .find(|t| t.name == expected.meta.base.lexeme.unwrap())
+                {
+                    let uncastable = |bound: &Token| {
+                        let raw_type = Type::new(bound.clone(), vec![]);
+                        let expected = raw_type.resolve(cx, meta).unwrap();
+                        cx.cast(&expected, &got).is_none()
+                    };
+                    if ty.bound.as_ref().is_some_and(uncastable) {
+                        cx.error(
+                            initializer.expr.span(),
+                            format!("expected initializer to be of type {}", expected.meta),
+                            format!("expression of type {}", got.meta),
+                        );
+                        false
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            } else {
+                got == expected
+            };
+            if !valid {
                 cx.error(
                     initializer.expr.span(),
                     format!("expected initializer to be of type {}", expected.meta),
@@ -607,6 +660,7 @@ impl ResolveType for node::Init {
             let symbol = cx.symbol(&self.name.to_string()).cloned();
             symbol.unwrap()
         };
+        cx.end_scope();
         Ok(ResolvedType::new(
             symbol,
             vec![],
@@ -670,16 +724,20 @@ impl ResolveType for node::Access {
         for (n, window) in self.chain.windows(2).enumerate() {
             let left = &window[0];
             let right = &window[1];
-            let left = if n == 0 { left.resolve(cx, meta)? } else { ty };
-            if let Some((index, field)) = left.field(cx.symbols, right) {
+            let left = if n == 0 {
+                left.resolve(cx, meta).unwrap()
+            } else {
+                ty
+            };
+            if let Some((index, _, field)) = left.field(cx.symbols, right) {
                 symbols.push(left.base.clone());
                 indices.push(index);
-                ty = field.ty.resolve(cx, meta)?;
+                ty = field.ty.resolve(cx, meta).unwrap();
             } else if let Some(method) = left.method(cx.symbols, right) {
                 symbols.push(left.base.clone());
                 symbols.push(Symbol::Function(Rc::clone(&method)));
                 ty = match &method.ty {
-                    Some(ty) => ty.resolve(cx, meta)?,
+                    Some(ty) => ty.resolve(cx, meta).unwrap(),
                     None => ResolvedType::void(),
                 };
             } else {
@@ -687,8 +745,7 @@ impl ResolveType for node::Access {
                     right.span(),
                     format!(
                         "undefined reference to `{}` (while reading `{}`)",
-                        right.ident().name,
-                        left.meta
+                        right, left.meta
                     ),
                     String::new(),
                 );
@@ -847,14 +904,12 @@ impl ResolveType for node::Literal<&'static str> {
 #[derive(Debug)]
 pub struct ResolvedMetaInfo {
     pub access: HashMap<usize, Access>,
-    pub call: HashMap<usize, String>,
 }
 
 impl ResolvedMetaInfo {
     pub fn new() -> Self {
         Self {
             access: HashMap::new(),
-            call: HashMap::new(),
         }
     }
 }
@@ -889,21 +944,54 @@ impl<'a> TypeResolverContext<'a> {
         }
     }
 
-    fn scope_mut(&mut self) -> &mut SymbolTable {
+    fn scope_mut(&mut self) -> &mut Scope {
         self.scopes.last_mut().unwrap()
     }
 
     fn begin_scope(&mut self) {
-        self.scopes.push(SymbolTable::default());
+        self.scopes.push(Scope::default());
     }
 
     fn end_scope(&mut self) {
         self.scopes.pop();
     }
 
+    fn set_type_parameters(
+        &mut self,
+        meta: &mut ResolvedMetaInfo,
+        tp: Option<&Vec<TypeParameter>>,
+    ) {
+        if let Some(tp) = tp {
+            for typ in tp {
+                let ty = match typ.bound {
+                    Some(ref bound) => {
+                        let raw_type = Type::new(bound.clone(), vec![]);
+                        raw_type.resolve(self, meta).map_or_else(
+                            |_| {
+                                self.error(
+                                    bound.span,
+                                    format!("`{}` is not defined", bound.lexeme.unwrap()),
+                                    String::new(),
+                                );
+                                None
+                            },
+                            Some,
+                        )
+                    }
+                    None => Some(ResolvedType::new(
+                        Symbol::Opaque(typ.name.to_string()),
+                        vec![],
+                        Type::new(typ.name.clone(), vec![]),
+                    )),
+                };
+                self.scope_mut().types.insert(typ.name.to_string(), ty);
+            }
+        }
+    }
+
     fn symbol(&self, name: &String) -> Option<&Symbol> {
         for scope in self.scopes.iter().rev() {
-            if let Some(definition) = scope.get(name) {
+            if let Some(definition) = scope.symbols.get(name) {
                 return Some(definition);
             }
         }
@@ -913,7 +1001,17 @@ impl<'a> TypeResolverContext<'a> {
             "str" => Some(&Symbol::Str),
             "bool" => Some(&Symbol::Bool),
             "void" => Some(&Symbol::Void),
-            _ => self.symbols.get(name),
+            _ => self
+                .symbols
+                .get(name)
+                .or_else(|| self.ty(name).map(|t| &t.base)),
+        }
+    }
+
+    fn ty(&self, name: &String) -> Option<&ResolvedType> {
+        match self.scopes.iter().rev().find_map(|s| s.types.get(name)) {
+            Some(Some(ty)) => Some(ty),
+            _ => None,
         }
     }
 
@@ -932,6 +1030,12 @@ impl<'a> TypeResolverContext<'a> {
             .map(|c| c.name.to_string())
             .find(|cls| cls == &expected.meta.to_string())
     }
+}
+
+#[derive(Debug, Default)]
+struct Scope {
+    symbols: SymbolTable,
+    types: HashMap<String, Option<ResolvedType>>,
 }
 
 macro_rules! assert_typecheck {

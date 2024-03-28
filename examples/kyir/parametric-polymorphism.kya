@@ -7,7 +7,7 @@ class Print {
 class Bar: Print {
     x: int
 
-    fun print() {
+    fun print(self) {
         println_int(self.x);
     }
 }
@@ -28,4 +28,5 @@ fun main() {
     let bar: Bar = Bar:init(x: 42);
     let foo: Foo<Bar> = Foo:init(val: bar);
     foo.print();
+    bar.print();
 }

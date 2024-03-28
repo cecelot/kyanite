@@ -170,11 +170,7 @@ impl Translate<Expr> for ast::node::Call {
                     Symbol::Function(fun) => fun.name.to_string(),
                     Symbol::Class(c) => {
                         cls = Some(c);
-                        if let Some(cls) = translator.meta.call.get(&self.id) {
-                            cls.to_string()
-                        } else {
-                            c.name.to_string()
-                        }
+                        c.name.to_string()
                     }
                     _ => unimplemented!(),
                 }).fold(String::new(), |acc, item| format!("{acc}{item}."));

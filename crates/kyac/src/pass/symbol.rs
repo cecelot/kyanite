@@ -13,6 +13,7 @@ pub enum Symbol {
     Function(Rc<node::FuncDecl>),
     Constant(Rc<node::ConstantDecl>),
     Variable(Rc<node::VarDecl>),
+    Opaque(String),
     Str,
     Int,
     Float,
