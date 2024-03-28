@@ -41,6 +41,7 @@ in
         --prefix PATH : ${lib.makeBinPath [llvmPackages_15.libllvm]}
     '';
     RUSTFLAGS = "-C link-arg=-lc++abi"; # https://github.com/NixOS/nixpkgs/issues/166205
+    RUST_BACKTRACE = "1";
     LLVM_SYS_150_PREFIX = llvmPackages_15.libllvm.dev;
     meta = with lib; {
       description = "A toy compiled programming language to learn more about PLs";
