@@ -112,7 +112,7 @@ Err(
                 column: 5,
                 length: 3,
             },
-            text: "",
+            text: "the type of `foo` may not be valid",
         },
     ],
 )
