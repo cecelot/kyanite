@@ -267,7 +267,11 @@ impl Translate<Expr> for ast::node::Unary {
 impl Translate<Expr> for ast::node::Access {
     // heh, this is basically the spiritual equivalent of LLVM's getelementptr
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
-        let meta = translator.meta.access.get(&self.id).unwrap();
+        let meta = translator
+            .meta
+            .access
+            .get(&self.id)
+            .unwrap_or_else(|| panic!("expected metadata for access node {}", self.id));
         let head = self.chain.first().unwrap();
         let mut initial = vec![];
         let ident = match head {

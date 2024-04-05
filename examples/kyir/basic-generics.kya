@@ -26,7 +26,8 @@ fun freeFunction<T: Print>(obj: T) {
 
 fun main() {
     let bar: Bar = Bar:init(x: 42);
-    let foo: Foo<Bar> = Foo:init(val: bar);
-    foo.print();
+    let foo: Foo<int> = Foo:init(val: bar);
+    foo.val.print();
     bar.print();
+    freeFunction(foo);
 }

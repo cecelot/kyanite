@@ -22,10 +22,10 @@ pub enum Symbol {
 }
 
 impl Symbol {
-    pub fn class(&self) -> &node::ClassDecl {
+    pub fn class(&self) -> Option<&node::ClassDecl> {
         match self {
-            Symbol::Class(cls) => cls,
-            _ => panic!("called `Symbol::class()` on a non-class symbol: {self:?}"),
+            Symbol::Class(cls) => Some(cls),
+            _ => None,
         }
     }
 
@@ -55,14 +55,14 @@ impl Symbol {
     ) -> Vec<&'a node::ClassDecl> {
         let mut classes = vec![cls];
         while let Some(parent) = cls.parent.as_ref() {
-            cls = symbols.get(&parent.to_string()).unwrap().class();
+            cls = symbols.get(&parent.to_string()).unwrap().class().unwrap();
             classes.push(cls);
         }
         classes
     }
 
     pub fn fields(&self, symbols: &SymbolTable) -> Vec<node::Field> {
-        let cls = self.class();
+        let cls = self.class().unwrap();
         let superclasses = Self::superclasses(cls, symbols);
         superclasses
             .iter()
@@ -72,7 +72,7 @@ impl Symbol {
     }
 
     pub fn methods(&self, symbols: &SymbolTable) -> Vec<(String, Rc<node::FuncDecl>)> {
-        let cls = self.class();
+        let cls = self.class().unwrap();
         let superclasses = Self::superclasses(cls, symbols);
         let mut used = HashSet::new();
         let mut methods = vec![];

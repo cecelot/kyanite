@@ -72,18 +72,18 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "undefined reference to `baaz` (while reading `Bar`)",
+            heading: "type `Baz` does not exist",
             source: "    let baz: Baz = p.foo.bar.baaz;",
             span: Span {
                 line: 34,
-                column: 30,
-                length: 4,
+                column: 14,
+                length: 3,
             },
             text: "",
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "`Baz` is not defined",
+            heading: "type `Baz` does not exist",
             source: "    let baz: Baz = p.foo.bar;",
             span: Span {
                 line: 37,
@@ -94,7 +94,7 @@ Err(
         },
         PreciseError {
             filename: "test-cases/typecheck/classes.kya",
-            heading: "`Baz` is not defined",
+            heading: "type `Baz` does not exist",
             source: "    let baz: Baz = p.foo.bar.baz;",
             span: Span {
                 line: 38,

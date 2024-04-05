@@ -336,3 +336,10 @@ fn dynamic_dispatch() -> Result<(), Box<dyn std::error::Error>> {
     );
     Ok(())
 }
+
+#[test]
+fn basic_generics() -> Result<(), Box<dyn std::error::Error>> {
+    let res = run("kyir/basic-generics.kya")?;
+    assert_eq!(res.output, "42\n42\n42\n");
+    Ok(())
+}
