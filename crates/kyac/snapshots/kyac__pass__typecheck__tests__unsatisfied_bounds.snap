@@ -9,7 +9,7 @@ Err(
             heading: "Baz does not satisfy bound Print",
             source: "    let bar: Bar<Baz> = Bar:init(x: Baz:init());",
             span: Span {
-                line: 16,
+                line: 15,
                 column: 14,
                 length: 3,
             },
