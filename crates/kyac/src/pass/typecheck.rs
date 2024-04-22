@@ -681,8 +681,7 @@ impl ResolveType for node::Init {
                         let expected = raw_type.resolve(cx, meta).unwrap();
                         cx.cast(&expected, &got).is_some()
                     };
-                    let castable = ty.bound.as_ref().is_some_and(castable);
-                    castable
+                    ty.bound.as_ref().map_or(true, castable)
                 } else {
                     true
                 }
