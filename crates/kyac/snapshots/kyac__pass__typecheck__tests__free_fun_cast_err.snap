@@ -1,0 +1,19 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: errors
+---
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/generics/free-fun-cast-err.kya",
+            heading: "Foo is not a subclass of T",
+            source: "    freeFunction(foo);",
+            span: Span {
+                line: 11,
+                column: 18,
+                length: 3,
+            },
+            text: "expression of type Foo",
+        },
+    ],
+)

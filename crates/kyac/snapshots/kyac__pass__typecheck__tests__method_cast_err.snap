@@ -1,0 +1,19 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: errors
+---
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/generics/method-cast-err.kya",
+            heading: "Bar is not a subclass of T",
+            source: "    foo.print(bar);",
+            span: Span {
+                line: 14,
+                column: 15,
+                length: 3,
+            },
+            text: "expression of type Bar",
+        },
+    ],
+)

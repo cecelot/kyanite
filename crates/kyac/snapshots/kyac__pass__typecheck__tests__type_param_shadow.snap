@@ -1,0 +1,19 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: errors
+---
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/generics/type-param-shadow.kya",
+            heading: "`T` already defined",
+            source: "    fun print<T: Print>(self, val: T) {}",
+            span: Span {
+                line: 6,
+                column: 15,
+                length: 1,
+            },
+            text: "",
+        },
+    ],
+)

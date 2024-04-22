@@ -12,7 +12,7 @@ class Bar: Print {
     }
 }
 
-class Foo<T: Print> {
+class Foo<T: Print>: Print {
     val: T
 
     fun print(self) {

@@ -1,0 +1,11 @@
+class Print {
+    fun print(self) {}
+}
+
+class Foo<T> {
+    fun print<T: Print>(self, val: T) {}
+}
+
+class Bar {}
+
+fun main() {}

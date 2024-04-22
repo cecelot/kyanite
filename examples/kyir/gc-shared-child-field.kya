@@ -24,9 +24,9 @@ class E {
 
 fun main() {
     let e: E = E:init(i: 5);
-    let a: A = A:init(a: 1, b: B:init(c: 2, d: C:init(e: 3, f: D:init(g: 4, h: e))));
-    let d: D = D:init(g: 7, h: e);
-    let o: E = E:init(i: 6);
-    println_int(a.b.d.f.h.i); % 5
-    println_int(d.h.i); % 5
+    let f: D = D:init(g: 4, h: e);
+    let c: C = C:init(e: 3, f: f);
+    println_int(c.f.h.i); % 5
+    println_int(c.e); % 3
+    println_int(c.f.g); % 4
 }

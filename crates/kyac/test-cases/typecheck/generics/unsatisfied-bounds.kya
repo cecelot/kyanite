@@ -1,0 +1,17 @@
+class Print {
+    fun print(self) {}
+}
+
+class Foo<T> {
+    x: T
+}
+
+class Bar<T: Print> {}
+
+class Baz {}
+
+fun main() {
+    % currently not functional
+    % let foo: Foo<int> = Foo:init(x: 5);
+    let bar: Bar<Baz> = Bar:init(x: Baz:init());
+}

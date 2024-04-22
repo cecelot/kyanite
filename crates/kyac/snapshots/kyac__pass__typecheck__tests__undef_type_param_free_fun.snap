@@ -1,0 +1,19 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: errors
+---
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/generics/undef-generic-type-free-fun.kya",
+            heading: "`R` is not defined",
+            source: "fun freeFunction<T: Print>(val: R) {}",
+            span: Span {
+                line: 7,
+                column: 33,
+                length: 1,
+            },
+            text: "",
+        },
+    ],
+)

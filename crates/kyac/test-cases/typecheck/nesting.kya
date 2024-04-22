@@ -1,0 +1,17 @@
+fun main() {
+    let a: int = 7;
+    foo();
+}
+
+fun foo() {
+    % ensure that this is an error
+    println_int(a);
+    let b: int = 8;
+    bar();
+}
+
+fun bar() {
+    % same as above
+    println_int(a);
+    println_int(b);
+}

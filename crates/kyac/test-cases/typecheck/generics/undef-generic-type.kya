@@ -1,0 +1,15 @@
+class Print {
+    fun print(self) {}
+}
+
+class Foo {
+    fun print<T: Print>(self, val: R) {}
+}
+
+class Bar {}
+
+fun main() {
+    let bar: Bar = Bar:init();
+    let foo: Foo = Foo:init();
+    foo.print(bar);
+}

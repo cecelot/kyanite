@@ -262,7 +262,7 @@ impl ResolveType for node::ClassDecl {
         meta: &mut ResolvedMetaInfo,
     ) -> Result<ResolvedType, TypeError> {
         cx.begin_scope();
-        cx.set_type_parameters(meta, self.tp.as_ref());
+        cx.set_type_parameters(meta, self.tp.as_ref(), true);
         for field in &self.fields {
             if let Err(e) = field.ty.resolve(cx, meta) {
                 cx.error(
@@ -299,7 +299,7 @@ impl ResolveType for Rc<node::FuncDecl> {
             }
         }
         cx.begin_scope();
-        cx.set_type_parameters(meta, Some(&self.tp));
+        cx.set_type_parameters(meta, Some(&self.tp), true);
         cx.function = Some(self.name.clone());
         if self.params.len() > 8 {
             cx.error(
@@ -325,9 +325,8 @@ impl ResolveType for Rc<node::FuncDecl> {
                 );
                 return Err(e);
             }
-            cx.scope_mut()
-                .symbols
-                .insert(param.name.to_string(), Symbol::Function(Rc::clone(self)));
+            let ty = param.ty.resolve(cx, meta).unwrap().base.clone();
+            cx.scope_mut().symbols.insert(param.name.to_string(), ty);
         }
         for node in &self.body {
             let _ = node.resolve(cx, meta);
@@ -575,10 +574,11 @@ impl ResolveType for node::Call {
             }
             _ => unimplemented!(),
         };
-        let (arity, params, ty) = (
+        let (arity, params, ty, tp) = (
             function.params.len(),
             function.params.clone(),
             function.ty.clone(),
+            function.tp.clone(),
         );
         if arity != self.args.len() {
             cx.error(
@@ -594,7 +594,10 @@ impl ResolveType for node::Call {
         for (i, arg) in self.args.iter().enumerate() {
             let got = arg.resolve(cx, meta)?;
             if i < params.len() {
+                cx.begin_scope();
+                cx.set_type_parameters(meta, Some(tp.as_ref()), false);
                 let expected = params[i].ty.resolve(cx, meta)?;
+                cx.end_scope();
                 if matches!(got.base, Symbol::Class(_)) {
                     let casted = cx.cast(&expected, &got);
                     if got != expected && casted.is_none() {
@@ -771,7 +774,7 @@ impl ResolveType for node::Access {
                 symbols.push(left.base.clone());
                 indices.push(index);
                 cx.begin_scope();
-                cx.set_type_parameters(meta, cls.tp.as_ref());
+                cx.set_type_parameters(meta, cls.tp.as_ref(), false);
                 ty = field.ty.resolve(cx, meta)?;
                 cx.end_scope();
             } else if let Some(method) = left.method(cx.symbols, right) {
@@ -890,11 +893,26 @@ impl ResolveType for node::Ident {
             }
             Some(Symbol::Variable(v)) => v.ty.resolve(cx, meta),
             Some(Symbol::Constant(c)) => c.ty.resolve(cx, meta),
+            Some(Symbol::Class(cls)) => Ok(ResolvedType::new(
+                Symbol::Class(Rc::clone(&cls)),
+                vec![],
+                Type::new(self.name.clone(), vec![]),
+            )),
+            Some(Symbol::Int) => Ok(ResolvedType::int()),
+            Some(Symbol::Float) => Ok(ResolvedType::float()),
+            Some(Symbol::Str) => Ok(ResolvedType::str()),
+            Some(Symbol::Bool) => Ok(ResolvedType::bool()),
+            Some(Symbol::Void) => Ok(ResolvedType::void()),
+            Some(Symbol::Opaque(s)) => Ok(ResolvedType::new(
+                Symbol::Opaque(s),
+                vec![],
+                Type::new(self.name.clone(), vec![]),
+            )),
             _ => {
                 cx.error(
                     self.name.span,
-                    format!("`{}` is not defined", &self.name),
-                    format!("the type of `{}` may not be valid", &self.name),
+                    format!("`{}` is not defined", self.name),
+                    String::from("type may be invalid"),
                 );
                 Err(TypeError::Undefined)
             }
@@ -991,7 +1009,7 @@ impl<'a> TypeResolverContext<'a> {
     }
 
     fn begin_scope(&mut self) {
-        self.scopes.push(Scope::default());
+        self.scopes.push(Scope::new());
     }
 
     fn end_scope(&mut self) {
@@ -1002,9 +1020,18 @@ impl<'a> TypeResolverContext<'a> {
         &mut self,
         meta: &mut ResolvedMetaInfo,
         tp: Option<&Vec<TypeParameter>>,
+        initial: bool,
     ) {
         if let Some(tp) = tp {
             for typ in tp {
+                if self.ty(&typ.name.to_string()).is_some() && initial {
+                    self.error(
+                        typ.name.span,
+                        format!("`{}` already defined", typ.name.lexeme.unwrap()),
+                        String::new(),
+                    );
+                    continue;
+                }
                 let ty = match typ.bound {
                     Some(ref bound) => {
                         let raw_type = Type::new(bound.clone(), vec![]);
@@ -1066,11 +1093,13 @@ impl<'a> TypeResolverContext<'a> {
     fn cast(&self, expected: &ResolvedType, got: &ResolvedType) -> Option<String> {
         let cls = self.symbol(&got.meta.to_string())?;
         let cls = matches!(cls, Symbol::Class(_)).then(|| cls.class().unwrap())?;
+        let expected =
+            matches!(expected.base, Symbol::Class(_)).then(|| expected.base.class().unwrap())?;
         Symbol::superclasses(cls, self.symbols)
             .iter()
             .filter(|c| c.name != cls.name)
             .map(|c| c.name.to_string())
-            .find(|cls| cls == &expected.meta.to_string())
+            .find(|cls| cls == &expected.name.to_string())
     }
 }
 
@@ -1078,6 +1107,15 @@ impl<'a> TypeResolverContext<'a> {
 struct Scope {
     symbols: SymbolTable,
     types: HashMap<String, Option<ResolvedType>>,
+}
+
+impl Scope {
+    fn new() -> Self {
+        Self {
+            symbols: SymbolTable::default(),
+            types: HashMap::new(),
+        }
+    }
 }
 
 macro_rules! assert_typecheck {
@@ -1103,5 +1141,12 @@ macro_rules! assert_typecheck {
 
 assert_typecheck! {
     "test-cases/typecheck/varied.kya" => varied,
-    "test-cases/typecheck/classes.kya" => classes
+    "test-cases/typecheck/classes.kya" => classes,
+    // Generics
+    "test-cases/typecheck/generics/free-fun-cast-err.kya" => free_fun_cast_err,
+    "test-cases/typecheck/generics/method-cast-err.kya" => method_cast_err,
+    "test-cases/typecheck/generics/undef-generic-type.kya" => undef_generic_type,
+    "test-cases/typecheck/generics/undef-generic-type-free-fun.kya" => undef_type_param_free_fun,
+    "test-cases/typecheck/generics/type-param-shadow.kya" => type_param_shadow,
+    "test-cases/typecheck/generics/unsatisfied-bounds.kya" => unsatisfied_bounds
 }

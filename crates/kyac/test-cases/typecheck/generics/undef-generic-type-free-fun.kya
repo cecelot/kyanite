@@ -1,0 +1,12 @@
+class Print {
+    fun print(self) {}
+}
+
+class Foo {}
+
+fun freeFunction<T: Print>(val: R) {}
+
+fun main() {
+    let foo: Foo = Foo:init();
+    freeFunction(foo);
+}

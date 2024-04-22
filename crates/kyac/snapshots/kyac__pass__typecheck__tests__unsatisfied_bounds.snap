@@ -1,0 +1,19 @@
+---
+source: crates/kyac/src/pass/typecheck.rs
+expression: errors
+---
+Err(
+    [
+        PreciseError {
+            filename: "test-cases/typecheck/generics/unsatisfied-bounds.kya",
+            heading: "Baz does not satisfy bound Print",
+            source: "    let bar: Bar<Baz> = Bar:init(x: Baz:init());",
+            span: Span {
+                line: 16,
+                column: 14,
+                length: 3,
+            },
+            text: "in instantiation of type here",
+        },
+    ],
+)
