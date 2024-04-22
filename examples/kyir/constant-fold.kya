@@ -1,0 +1,4 @@
+fun main() {
+    let a: int = 5;
+    println_int(5 * 12 + 3 - 14);
+}

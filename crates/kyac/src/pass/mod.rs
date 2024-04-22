@@ -1,3 +1,4 @@
+mod constant_fold;
 mod symbol;
 mod typecheck;
 

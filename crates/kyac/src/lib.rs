@@ -40,7 +40,7 @@ pub fn compile(source: &Source, backend: &Backend) -> Result<Output, PipelineErr
         #[cfg(not(feature = "llvm"))]
         Backend::Llvm => panic!("LLVM backend not enabled"),
         Backend::Kyir => Ok(Output::Asm(kyir::asm::<A64, Armv8a>(
-            &ast.nodes, &symbols, &meta,
+            &ast.nodes, &symbols, &meta, false,
         ))),
     }
 }

@@ -1,11 +1,12 @@
+mod node;
+pub mod opt;
+
 use std::fmt;
 
 use crate::token::Kind;
 
 #[allow(clippy::wildcard_imports)]
 pub use self::node::*;
-
-mod node;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {

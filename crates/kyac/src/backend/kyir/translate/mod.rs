@@ -145,11 +145,15 @@ impl Translate<Expr> for ast::node::Literal<bool> {
 
 impl Translate<Expr> for ast::node::Binary {
     fn translate<I: ArchInstr, F: Frame<I>>(&self, translator: &mut Translator<I, F>) -> Expr {
-        Expr::checked_binary(
-            self.op.kind.into(),
-            self.left.translate(translator),
-            self.right.translate(translator),
-        )
+        let bin = self.fold();
+        match bin {
+            AstExpr::Binary(_) => Expr::checked_binary(
+                self.op.kind.into(),
+                self.left.translate(translator),
+                self.right.translate(translator),
+            ),
+            _ => bin.translate(translator),
+        }
     }
 }
 
@@ -213,19 +217,11 @@ impl Translate<Expr> for ast::node::Call {
             stmts.append(&mut vec![
                 Move::wrapped(
                     Temp::wrapped(arr.clone()),
-                    Binary::wrapped(
-                        BinOp::Plus,
-                        descriptor.clone(),
-                        Const::<i64>::int(F::word_size().try_into().unwrap()),
-                    ),
+                    Mem::wrapped(descriptor.clone(), F::word_size().try_into().unwrap()),
                 ),
                 Stmt::checked_move(
                     Temp::wrapped(address.clone()),
-                    Mem::wrapped(Binary::wrapped(
-                        BinOp::Plus,
-                        Temp::wrapped(arr.clone()),
-                        Const::<i64>::int(index.try_into().unwrap()),
-                    )),
+                    Mem::wrapped(Temp::wrapped(arr.clone()), index.try_into().unwrap()),
                 ),
             ]);
             address
@@ -306,11 +302,7 @@ impl Translate<Expr> for ast::node::Access {
                 let offset: i64 = ((field + runtime::CLASS_METADATA_FIELDS) * F::word_size())
                     .try_into()
                     .unwrap();
-                let mem = Mem::new(Binary::wrapped(
-                    BinOp::Plus,
-                    Temp::wrapped(temp.clone()),
-                    Const::<i64>::int(offset),
-                ));
+                let mem = Mem::new(Box::new(Temp::wrapped(temp.clone())), offset);
                 translator.ctx.mem = Some(mem.clone());
                 Stmt::checked_move(Temp::wrapped(temp.clone()), Expr::Mem(mem))
             }))
@@ -371,11 +363,7 @@ impl Translate<Expr> for ast::node::Init {
         for (i, method) in method_descriptor.iter().enumerate() {
             let offset: i64 = ((i + 1) * F::word_size()).try_into().unwrap();
             setup.push(Move::wrapped(
-                Binary::wrapped(
-                    BinOp::Plus,
-                    Temp::wrapped(array.clone()),
-                    Const::<i64>::int(offset),
-                ),
+                Mem::wrapped(Temp::wrapped(array.clone()), offset),
                 Expr::ConstLabel(method.clone()),
             ));
         }
@@ -390,10 +378,9 @@ impl Translate<Expr> for ast::node::Init {
         setup.append(&mut vec![
             Stmt::checked_move(Temp::wrapped(temp.clone()), base.clone()),
             Stmt::checked_move(
-                Binary::wrapped(
-                    BinOp::Plus,
+                Mem::wrapped(
                     Temp::wrapped(temp.clone()),
-                    Const::<i64>::int(F::word_size().try_into().unwrap()),
+                    F::word_size().try_into().unwrap(),
                 ),
                 Temp::wrapped(array),
             ),
@@ -407,18 +394,11 @@ impl Translate<Expr> for ast::node::Init {
                     AstExpr::Init(init) => init.translate(translator),
                     _ => init.expr.translate(translator),
                 };
-                let offset: i64 = ((i + runtime::CLASS_METADATA_FIELDS) * F::word_size())
+                let offset = ((i + runtime::CLASS_METADATA_FIELDS) * F::word_size())
                     .try_into()
                     .unwrap();
                 translator.ctx.name.pop();
-                Stmt::checked_move(
-                    Binary::wrapped(
-                        BinOp::Plus,
-                        Temp::wrapped(temp.clone()),
-                        Const::<i64>::int(offset),
-                    ),
-                    value,
-                )
+                Stmt::checked_move(Mem::wrapped(Temp::wrapped(temp.clone()), offset), value)
             }))
             .collect();
         ESeq::wrapped(Stmt::from(&stmts[..]), base)

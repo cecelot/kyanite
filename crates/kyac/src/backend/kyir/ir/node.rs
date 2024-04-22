@@ -150,18 +150,20 @@ impl Binary {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mem {
-    pub expr: Box<Expr>,
+    pub base: Box<Expr>,
+    pub offset: Const<i64>,
 }
 
 impl Mem {
-    pub fn new(expr: Expr) -> Self {
+    pub fn new(base: Box<Expr>, offset: i64) -> Self {
         Self {
-            expr: Box::new(expr),
+            base,
+            offset: Const::new(offset),
         }
     }
 
-    pub fn wrapped(expr: Expr) -> Expr {
-        Expr::Mem(Self::new(expr))
+    pub fn wrapped(base: Expr, offset: i64) -> Expr {
+        Expr::Mem(Self::new(Box::new(base), offset))
     }
 }
 

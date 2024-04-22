@@ -72,18 +72,17 @@ fn update(expr: &Expr, ir: &mut Vec<Stmt>, replacements: &mut Vec<(usize, Box<Ex
     let mut nested = vec![];
     expr.eseqs(&mut nested);
     for expr in nested.iter().rev() {
-        if let Expr::ESeq(eseq) = expr {
-            if let Stmt::Seq(seq) = *eseq.stmt.clone() {
-                ir.push(*seq.left);
-                if let Some(right) = seq.right {
-                    ir.push(*right);
-                }
-            } else {
-                ir.push(*eseq.stmt.clone());
-            }
-            replacements.push((eseq.id, eseq.expr.clone()));
-        } else {
+        let Expr::ESeq(eseq) = expr else {
             panic!("Expected `Expr::ESeq`")
+        };
+        if let Stmt::Seq(seq) = *eseq.stmt.clone() {
+            ir.push(*seq.left);
+            if let Some(right) = seq.right {
+                ir.push(*right);
+            }
+        } else {
+            ir.push(*eseq.stmt.clone());
         }
+        replacements.push((eseq.id, eseq.expr.clone()));
     }
 }

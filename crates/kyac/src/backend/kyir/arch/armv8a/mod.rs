@@ -4,7 +4,7 @@ use crate::{
     ast::node::FuncDecl,
     backend::kyir::{
         arch::{Location, RegisterMap},
-        ir::{BinOp, Binary, Const, Expr, Mem, Temp},
+        ir::{Expr, Mem, Temp},
         Frame,
     },
 };
@@ -71,11 +71,7 @@ impl Frame<isa::A64> for Armv8a {
             variable.offset
         };
         let r = Self::registers();
-        Mem::wrapped(Binary::wrapped(
-            BinOp::Plus,
-            Temp::wrapped(r.frame.into()),
-            Const::<i64>::int(offset),
-        ))
+        Mem::wrapped(Temp::wrapped(r.frame.into()), offset)
     }
 
     fn allocate(&mut self, ident: &str, ptr: bool) -> Expr {
