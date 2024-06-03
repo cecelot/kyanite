@@ -34,4 +34,4 @@ Other operating systems are currently unsupported.
 
 ## Documentation
 
-There are preliminary docs [here](https://alythical.github.io/kyanite/), and some working samples in the `examples/` directory for both backends to demonstrate basic features.
+There's a reference and user guide [here](https://kyanite.alainacn.dev), and some working samples in the `examples/` directory for both backends to demonstrate basic features.

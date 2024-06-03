@@ -24,9 +24,9 @@ fun main() {
     % The `+=` form is not currently supported
     coordinate.x = coordinate.x + 1;
 
-    println(coordinate.x);
-    println(coordinate.y);
+    println_int(coordinate.x);
+    println_int(coordinate.y);
 
-    println(sum(coordinate));
+    println_int(sum(coordinate));
 }
 ```
