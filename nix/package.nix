@@ -45,7 +45,7 @@ in
     LLVM_SYS_150_PREFIX = llvmPackages_15.libllvm.dev;
     meta = with lib; {
       description = "A toy compiled programming language to learn more about PLs";
-      homepage = "https://github.com/alythical/kyanite";
+      homepage = "https://github.com/cecelot/kyanite";
       license = licenses.mit;
       platforms = ["aarch64-darwin"];
     };

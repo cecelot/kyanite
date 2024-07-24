@@ -26,7 +26,7 @@ The test suite verifies the programs in the `examples` directory function correc
 
 ### Cargo
 
-The [Nix derivation](https://github.com/alythical/kyanite/blob/main/nix/package.nix) is an instructive resource for compiling manually. In particular, note `nativeBuildInputs` (dependencies), `buildPhase` and `installPhase`, and the `RUSTFLAGS` and `LLVM_SYS_150_PREFIX` environment variables.
+The [Nix derivation](https://github.com/cecelot/kyanite/blob/main/nix/package.nix) is an instructive resource for compiling manually. In particular, note `nativeBuildInputs` (dependencies), `buildPhase` and `installPhase`, and the `RUSTFLAGS` and `LLVM_SYS_150_PREFIX` environment variables.
 
 ---
 
@@ -34,4 +34,4 @@ Other operating systems are currently unsupported.
 
 ## Documentation
 
-There's a reference and user guide [here](https://kyanite.alainacn.dev), and some working samples in the `examples/` directory for both backends to demonstrate basic features.
+There's a reference and user guide [here](https://kyanite.sydneyn.dev), and some working samples in the `examples/` directory for both backends to demonstrate basic features.
