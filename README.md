@@ -1,37 +1,26 @@
 # Kyanite
 
-Languages are cool! Compilers are cool! How do they work? That's why this project exists: Kyanite is a statically-typed, compiled programming language to learn more about how PLs are created. There are two backends: LLVM and a custom IR, `kyir`. The latter currently supports more language features, but is much less stable than the former.
+Kyanite is a statically-typed, compiled programming language for ARM64, built to understand how programming languages actually work under the hood. It has two backends: LLVM and a custom IR (`kyir`). The custom backend supports more language features; the LLVM backend is more stable.
 
-## Explore
+There's a reference and user guide at [kyanite.sydneyn.dev](https://kyanite.sydneyn.dev), and working samples in `examples/` for both backends.
 
-_(reqiures macOS on Apple Silicon)_
+> Requires macOS on Apple Silicon. Other operating systems are currently unsupported.
+
+## Getting started
 
 ### Nix
 
-Kyanite is available on [FlakeHub](https://flakehub.com/flake/alythical/kyanite):
-
-```
-nix build "https://flakehub.com/f/alythical/kyanite/[tag].tar.gz"
+```bash
+nix build .#
 ./result/bin/kyanite run path/to/program.kya
 ```
 
-`[tag]` should be replaced by either:
-
-1. a version string matching `0.1.[commit-count]` (where `[commit-count]` is the total number of commits in this repository)
-2. any other [published release](https://flakehub.com/flake/alythical/kyanite/releases) tag
-
-The test suite verifies the programs in the `examples` directory function correctly. Feel free to experiment with other programs, but expect panics to occur, particularly with the `kyir` backend.
-
-> **Note**: By default, the `kyir` backend is used. Provide the `--llvm` flag to compile with LLVM instead.
+The `kyir` backend is used by default. Pass `--llvm` to compile with LLVM instead.
 
 ### Cargo
 
-The [Nix derivation](https://github.com/cecelot/kyanite/blob/main/nix/package.nix) is an instructive resource for compiling manually. In particular, note `nativeBuildInputs` (dependencies), `buildPhase` and `installPhase`, and the `RUSTFLAGS` and `LLVM_SYS_150_PREFIX` environment variables.
+See the [Nix derivation](https://github.com/sydrinea/kyanite/blob/main/nix/package.nix) for build dependencies and environment variables (`RUSTFLAGS`, `LLVM_SYS_150_PREFIX`).
 
 ---
 
-Other operating systems are currently unsupported.
-
-## Documentation
-
-There's a reference and user guide [here](https://kyanite.sydneyn.dev), and some working samples in the `examples/` directory for both backends to demonstrate basic features.
+[MIT license](LICENSE)
